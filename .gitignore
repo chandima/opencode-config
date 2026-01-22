@@ -1,0 +1,27 @@
+# OpenCode Config - Ignore patterns
+
+# Secrets and credentials (never commit these)
+.env
+.env.*
+*.key
+*.pem
+secrets/
+credentials.json
+
+# Node modules (plugin dependencies installed at runtime)
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Lock files (regenerated per-machine)
+bun.lock
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Temporary files
+*.tmp
+*.temp
+*.log
