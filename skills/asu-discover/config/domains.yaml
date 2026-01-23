@@ -1784,6 +1784,243 @@ design_patterns:
       - "cloudwatch-logs-to-datadog"
       - "datadogDeployment"
 
+  # ===========================================================================
+  # DNS Configuration Pattern
+  # ===========================================================================
+  dns:
+    name: "DNS Configuration (Infoblox + Cloudflare)"
+    description: |
+      DNS management patterns for ASU infrastructure using Terraform.
+      
+      ROUTING RULES:
+        - *.asu.edu domains → Infoblox (dnsadmin.asu.edu)
+        - External/non-ASU domains → Cloudflare (registration + DNS)
+        - Hybrid pattern → Infoblox CNAME → Cloudflare CDN → Origin
+    
+    when_to_use:
+      - Creating DNS records for *.asu.edu domains (A, CNAME)
+      - Registering and configuring non-ASU domains
+      - Setting up Cloudflare CDN/WAF for ASU domains (hybrid pattern)
+      - Migrating DNS configurations to Terraform
+    
+    decision_tree:
+      - condition: "Domain ends with .asu.edu"
+        provider: infoblox
+        action: "Use Infoblox via dnsadmin.asu.edu"
+        views: [default, external]
+        
+      - condition: "Non-ASU domain (external)"
+        provider: cloudflare
+        action: "Register domain + configure DNS records in Cloudflare"
+        
+      - condition: "ASU domain needs CDN/WAF protection"
+        provider: hybrid
+        action: "Infoblox CNAME → Cloudflare CDN → Origin server"
+        description: |
+          Creates Infoblox CNAMEs (both views) pointing to Cloudflare CDN,
+          then Cloudflare proxied record pointing to actual origin.
+    
+    providers:
+      infoblox:
+        server: "dnsadmin.asu.edu"
+        views:
+          - default   # Internal ASU network
+          - external  # External/public DNS
+        vault_path: "secret/services/dco/jenkins/dco/jenkins/prod/kerberos/principals/jenkins_app"
+        resources:
+          - infoblox_a_record
+          - infoblox_cname_record
+        provider_config: |
+          provider "infoblox" {
+            server   = "dnsadmin.asu.edu"
+            username = data.vault_generic_secret.infoblox.data["username"]
+            password = data.vault_generic_secret.infoblox.data["password"]
+          }
+        
+      cloudflare:
+        vault_path: "secret/services/dco/jenkins/ewp/cloudflare/prod/api/principals/asu-jenkins-devops"
+        resources:
+          - cloudflare_record
+          - cloudflare_zone
+        terraform_modules:
+          - cloudflare-tunnel
+          - cloudflare-tunnel-route53-dns
+          - cloudflare-access-app
+          - cloudflare-origin-ca-certificate
+        provider_config: |
+          provider "cloudflare" {
+            api_token = data.vault_generic_secret.cloudflare.data["api_token"]
+          }
+    
+    code_examples:
+      infoblox_cname: |
+        # Infoblox CNAME record for *.asu.edu domain
+        resource "infoblox_cname_record" "myapp_internal" {
+          dns_view  = "default"
+          alias     = "myapp.asu.edu"
+          canonical = "myapp-origin.aws.amazon.com"
+          comment   = "Managed by Terraform"
+        }
+        
+        resource "infoblox_cname_record" "myapp_external" {
+          dns_view  = "external"
+          alias     = "myapp.asu.edu"
+          canonical = "myapp-origin.aws.amazon.com"
+          comment   = "Managed by Terraform"
+        }
+      
+      infoblox_a: |
+        # Infoblox A record for *.asu.edu domain
+        resource "infoblox_a_record" "myapp_internal" {
+          dns_view = "default"
+          fqdn     = "myapp.asu.edu"
+          ip_addr  = "10.1.2.3"
+          comment  = "Managed by Terraform"
+        }
+        
+        resource "infoblox_a_record" "myapp_external" {
+          dns_view = "external"
+          fqdn     = "myapp.asu.edu"
+          ip_addr  = "203.0.113.10"
+          comment  = "Managed by Terraform"
+        }
+      
+      cloudflare_cname: |
+        # Cloudflare CNAME for external domain
+        resource "cloudflare_record" "myapp" {
+          zone_id = data.vault_generic_secret.cloudflare.data["zone_id"]
+          name    = "www"
+          value   = "myapp-origin.aws.amazon.com"
+          type    = "CNAME"
+          proxied = true  # Enable Cloudflare CDN/WAF
+        }
+      
+      hybrid_pattern: |
+        # Hybrid: ASU domain with Cloudflare CDN protection
+        # Flow: User → myapp.asu.edu (Infoblox) → Cloudflare CDN → Origin
+        
+        # Step 1: Infoblox CNAMEs pointing to Cloudflare CDN
+        resource "infoblox_cname_record" "myapp_internal" {
+          dns_view  = "default"
+          alias     = "myapp.asu.edu"
+          canonical = "myapp.asu.edu.cdn.cloudflare.net"
+          comment   = "Points to Cloudflare CDN"
+        }
+        
+        resource "infoblox_cname_record" "myapp_external" {
+          dns_view  = "external"
+          alias     = "myapp.asu.edu"
+          canonical = "myapp.asu.edu.cdn.cloudflare.net"
+          comment   = "Points to Cloudflare CDN"
+        }
+        
+        # Step 2: Cloudflare proxied record to origin
+        resource "cloudflare_record" "myapp" {
+          zone_id = data.vault_generic_secret.cloudflare.data["zone_id"]
+          name    = "myapp.asu.edu"
+          value   = "myapp-origin.aws.amazon.com"
+          type    = "CNAME"
+          proxied = true
+        }
+      
+      vault_secrets: |
+        # Vault secrets for DNS provider authentication
+        
+        # Infoblox credentials
+        data "vault_generic_secret" "infoblox" {
+          path = "secret/services/dco/jenkins/dco/jenkins/prod/kerberos/principals/jenkins_app"
+        }
+        
+        # Cloudflare credentials
+        data "vault_generic_secret" "cloudflare" {
+          path = "secret/services/dco/jenkins/ewp/cloudflare/prod/api/principals/asu-jenkins-devops"
+        }
+    
+    example_repos:
+      infoblox:
+        - repo: "ASU/sso-shibboleth"
+          path: "terraform/app/dns.tf"
+          description: "Hybrid Infoblox+Cloudflare pattern"
+        - repo: "ASU/hosting-fse"
+          path: "terraform/ets_services_qa_prod/infoblox.tf"
+          description: "Infoblox CNAME with for_each"
+        - repo: "ASU/ewp-www-farm-acquia"
+          description: "Infoblox A and CNAME records"
+        - repo: "ASU/hosting-cronkite"
+          description: "infoblox-cname-record module usage"
+        - repo: "ASU/xreal-xr-at-asu-portal"
+          description: "Infoblox integration"
+      cloudflare:
+        - repo: "ASU/sso-shibboleth"
+          path: "terraform/app/dns.tf"
+          description: "Cloudflare proxied records"
+      module_source:
+        - repo: "ASU/dns-infoblox"
+          description: "Infoblox Terraform configurations (per-region)"
+    
+    scaffolding:
+      command: "./scripts/discover.sh dns-scaffold"
+      options:
+        - "--domain <domain>     Domain to create records for"
+        - "--type a|cname        Record type (default: cname)"
+        - "--target <value>      Target IP or hostname"
+        - "--pattern hybrid      Use hybrid Infoblox→Cloudflare pattern"
+        - "--origin <value>      Origin server for hybrid pattern"
+        - "--no-vault            Skip Vault secrets in output"
+      examples:
+        - cmd: "dns-scaffold --domain myapp.asu.edu --type cname --target cdn.example.com"
+          desc: "Generate Infoblox CNAME for ASU domain"
+        - cmd: "dns-scaffold --domain myapp.example.com --type a --target 1.2.3.4"
+          desc: "Generate Cloudflare A record for external domain"
+        - cmd: "dns-scaffold --domain myapp.asu.edu --pattern hybrid --origin myapp-origin.aws.com"
+          desc: "Generate hybrid Infoblox→Cloudflare CDN pattern"
+    
+    validation:
+      command: "./scripts/discover.sh dns-validate"
+      options:
+        - "--domain <domain>     Domain to validate"
+        - "--check-dns           Check if domain exists in DNS (uses dig)"
+      examples:
+        - cmd: "dns-validate --domain myapp.asu.edu"
+          desc: "Returns provider recommendation (infoblox)"
+        - cmd: "dns-validate --domain myapp.example.com --check-dns"
+          desc: "Returns cloudflare + checks if domain resolves"
+    
+    triggers:
+      - dns record
+      - dns configuration
+      - infoblox
+      - cloudflare dns
+      - cname record
+      - a record
+      - asu.edu domain
+      - domain registration
+    
+    team_prefixes:
+      - dco
+      - ewp
+    
+    best_practices:
+      - "Always create records in BOTH Infoblox views (default + external) for *.asu.edu"
+      - "Use Vault for provider credentials - never hardcode"
+      - "Enable proxied=true on Cloudflare records for CDN/WAF benefits"
+      - "Use hybrid pattern when ASU domains need Cloudflare protection"
+      - "Add meaningful comments to DNS records for auditability"
+      - "Use for_each when creating multiple similar records"
+    
+    related_domains:
+      - cloudflare
+      - infoblox
+      - terraform
+      - vault
+    
+    code_search_queries:
+      - "infoblox_cname_record"
+      - "infoblox_a_record"
+      - "cloudflare_record"
+      - "dnsadmin.asu.edu"
+      - "dns_view"
+
 # =============================================================================
 # Search configuration
 # =============================================================================

@@ -23,6 +23,11 @@ DOMAINS_FILE="$CONFIG_DIR/domains.yaml"
 # Source database helpers
 source "$LIB_DIR/db.sh"
 
+# Source DNS scaffolding helpers
+if [[ -f "$LIB_DIR/dns.sh" ]]; then
+    source "$LIB_DIR/dns.sh"
+fi
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -123,6 +128,35 @@ DESIGN PATTERNS:
   terraform-modules - ASU Terraform Modules (dco-terraform on JFrog)
   vault            - HashiCorp Vault Secrets (read/sync patterns)
   observability    - Observability Stack (Datadog, Logging Lake, CloudWatch)
+  dns              - DNS Configuration (Infoblox for *.asu.edu, Cloudflare for external)
+
+DNS COMMANDS:
+  dns-validate     Validate domain and show provider recommendation
+  dns-scaffold     Generate Terraform scaffolding for DNS records
+  dns-examples     Show example repos using DNS patterns
+
+DNS OPTIONS:
+  --domain DOMAIN  Domain to validate or scaffold
+  --type TYPE      Record type: a, cname (default: cname)
+  --target VALUE   Target IP or hostname
+  --pattern PTRN   Pattern: hybrid (Infoblox->Cloudflare CDN)
+  --origin VALUE   Origin server for hybrid pattern
+  --check-dns      Check if domain exists in DNS (uses dig)
+  --no-vault       Skip Vault secrets in output
+
+DNS EXAMPLES:
+  # Validate a domain (returns provider recommendation)
+  discover.sh dns-validate --domain myapp.asu.edu
+  discover.sh dns-validate --domain myapp.example.com --check-dns
+  
+  # Scaffold Infoblox CNAME for *.asu.edu domain
+  discover.sh dns-scaffold --domain myapp.asu.edu --type cname --target cdn.example.com
+  
+  # Scaffold Cloudflare A record for external domain
+  discover.sh dns-scaffold --domain myapp.example.com --type a --target 1.2.3.4
+  
+  # Scaffold hybrid pattern (ASU domain with Cloudflare CDN)
+  discover.sh dns-scaffold --domain myapp.asu.edu --pattern hybrid --origin origin.aws.com
 
 TEAM PREFIXES:
   crm (66), eadv (38), authn (15), aiml (12), edna (11), iden (10),
@@ -174,9 +208,9 @@ parse_args() {
             --domain) DOMAIN="$2"; shift 2 ;;
             --prefix) PREFIX="$2"; shift 2 ;;
             --source) SOURCE_DOMAIN="$2"; shift 2 ;;
-            --target) TARGET_DOMAIN="$2"; shift 2 ;;
+            --target) TARGET_DOMAIN="$2"; TARGET="$2"; shift 2 ;;
             --name) PATTERN_NAME="$2"; shift 2 ;;
-            --type) PATTERN_TYPE="$2"; shift 2 ;;
+            --type) TYPE="$2"; PATTERN_TYPE="$2"; shift 2 ;;
             --list) LIST_PATTERNS=true; shift ;;
             --language) LANGUAGE="$2"; shift 2 ;;
             --limit) LIMIT="$2"; shift 2 ;;
@@ -185,6 +219,10 @@ parse_args() {
             --cached-only) CACHED_ONLY=true; shift ;;
             --json) JSON_OUTPUT=true; shift ;;
             --verbose) VERBOSE=true; shift ;;
+            --origin) ORIGIN="$2"; shift 2 ;;
+            --pattern) PATTERN="$2"; shift 2 ;;
+            --check-dns) CHECK_DNS=true; shift ;;
+            --no-vault) INCLUDE_VAULT=false; shift ;;
             --help) usage ;;
             *) shift ;;
         esac
@@ -990,6 +1028,10 @@ action_pattern() {
         echo "     Datadog APM/RUM, Cribl/Logging Lake, CloudWatch, OpenTelemetry"
         echo -e "     ${YELLOW}Splunk is DEPRECATED${NC} - use Logging Lake instead"
         echo ""
+        echo -e "${GREEN}dns${NC} - DNS Configuration"
+        echo "     Infoblox for *.asu.edu, Cloudflare for external domains"
+        echo "     Includes hybrid pattern (Infoblox → Cloudflare CDN → Origin)"
+        echo ""
         echo "Usage: discover.sh pattern --name <pattern>"
         echo "       discover.sh pattern --name <pattern> --type <type>"
         return
@@ -1012,6 +1054,7 @@ action_pattern() {
         terraform-modules) show_pattern_terraform "$ptype" ;;
         vault) show_pattern_vault "$ptype" ;;
         observability) show_pattern_observability "$ptype" ;;
+        dns) show_pattern_dns "$ptype" ;;
         *) show_pattern_generic "$pattern" "$ptype" ;;
     esac
 }
@@ -1920,6 +1963,389 @@ action_expand() {
 }
 
 #
+# ACTION: DNS Validate - Validate domain and show provider recommendation
+#
+action_dns_validate() {
+    [[ -z "${DOMAIN:-}" ]] && error "Missing --domain. Usage: dns-validate --domain <domain>"
+    
+    # Use dns.sh functions if available
+    if type show_recommendation &>/dev/null; then
+        show_recommendation "$DOMAIN" "${CHECK_DNS:-false}"
+    else
+        # Fallback inline implementation
+        local provider
+        if [[ "$DOMAIN" =~ \.asu\.edu$ ]]; then
+            provider="infoblox"
+        else
+            provider="cloudflare"
+        fi
+        
+        echo "Domain: $DOMAIN"
+        echo "Provider: $provider"
+        echo ""
+        
+        case "$provider" in
+            infoblox)
+                echo "Configuration:"
+                echo "  Server: dnsadmin.asu.edu"
+                echo "  Views: default, external"
+                echo "  Vault Path: secret/services/dco/jenkins/dco/jenkins/prod/kerberos/principals/jenkins_app"
+                echo ""
+                echo "Resources:"
+                echo "  - infoblox_a_record"
+                echo "  - infoblox_cname_record"
+                ;;
+            cloudflare)
+                echo "Configuration:"
+                echo "  Action: Register domain + configure DNS"
+                echo "  Vault Path: secret/services/dco/jenkins/ewp/cloudflare/prod/api/principals/asu-jenkins-devops"
+                echo ""
+                echo "Resources:"
+                echo "  - cloudflare_record"
+                echo "  - cloudflare_zone"
+                ;;
+        esac
+        
+        # Check DNS if requested
+        if [[ "${CHECK_DNS:-false}" == "true" ]]; then
+            echo ""
+            local result
+            result=$(dig +short "$DOMAIN" 2>/dev/null)
+            if [[ -n "$result" ]]; then
+                echo "DNS Status: EXISTS"
+                echo "=== DNS Records for $DOMAIN ==="
+                local a_records=$(dig +short A "$DOMAIN" 2>/dev/null)
+                [[ -n "$a_records" ]] && echo "A Records:" && echo "$a_records" | sed 's/^/  /'
+                local cname_records=$(dig +short CNAME "$DOMAIN" 2>/dev/null)
+                [[ -n "$cname_records" ]] && echo "CNAME Records:" && echo "$cname_records" | sed 's/^/  /'
+            else
+                echo "DNS Status: NOT FOUND (domain does not resolve)"
+            fi
+        fi
+    fi
+}
+
+#
+# ACTION: DNS Scaffold - Generate Terraform scaffolding for DNS records
+#
+action_dns_scaffold() {
+    [[ -z "${DOMAIN:-}" ]] && error "Missing --domain. Usage: dns-scaffold --domain <domain> [--type a|cname] [--target <target>]"
+    
+    local record_type="${TYPE:-cname}"
+    local target="${TARGET:-}"
+    local pattern="${PATTERN:-}"
+    local origin="${ORIGIN:-}"
+    local include_vault="${INCLUDE_VAULT:-true}"
+    
+    # Determine provider from domain
+    local provider
+    if [[ "$DOMAIN" =~ \.asu\.edu$ ]]; then
+        provider="infoblox"
+    else
+        provider="cloudflare"
+    fi
+    
+    # Generate resource name from domain
+    local name
+    name=$(echo "$DOMAIN" | tr '.' '_' | tr '-' '_')
+    
+    # Use dns.sh functions if available
+    if type scaffold_vault_secrets &>/dev/null; then
+        # Output Vault secrets if requested
+        if [[ "$include_vault" == "true" ]]; then
+            echo "# Vault secrets for $provider provider"
+            if [[ "$pattern" == "hybrid" ]]; then
+                scaffold_vault_secrets "both"
+            else
+                scaffold_vault_secrets "$provider"
+            fi
+            echo ""
+        fi
+        
+        # Generate based on pattern/provider
+        if [[ "$pattern" == "hybrid" ]]; then
+            local subdomain="${DOMAIN%.asu.edu}"
+            [[ -z "$origin" ]] && error "Missing --origin for hybrid pattern"
+            scaffold_hybrid "$name" "$subdomain" "$origin"
+        elif [[ "$provider" == "infoblox" ]]; then
+            for view in default external; do
+                echo "# DNS View: $view"
+                if [[ "$record_type" == "a" ]]; then
+                    scaffold_infoblox_a "${name}_${view}" "$DOMAIN" "$target" "$view"
+                else
+                    scaffold_infoblox_cname "${name}_${view}" "$DOMAIN" "$target" "$view"
+                fi
+                echo ""
+            done
+        else
+            if [[ "$record_type" == "a" ]]; then
+                scaffold_cloudflare_a "$name" "$DOMAIN" "$target"
+            else
+                scaffold_cloudflare_cname "$name" "$DOMAIN" "$target"
+            fi
+        fi
+    else
+        # Fallback: Show inline code examples
+        echo "# DNS Scaffolding for $DOMAIN (provider: $provider)"
+        echo "# Note: Install dns.sh for template-based scaffolding"
+        echo ""
+        
+        if [[ "$provider" == "infoblox" ]]; then
+            cat << EOF
+# Vault secrets for Infoblox
+data "vault_generic_secret" "infoblox" {
+  path = "secret/services/dco/jenkins/dco/jenkins/prod/kerberos/principals/jenkins_app"
+}
+
+# Infoblox ${record_type^^} record - default view
+resource "infoblox_${record_type}_record" "${name}_internal" {
+  dns_view  = "default"
+EOF
+            if [[ "$record_type" == "a" ]]; then
+                echo "  fqdn     = \"$DOMAIN\""
+                echo "  ip_addr  = \"${target:-<IP_ADDRESS>}\""
+            else
+                echo "  alias     = \"$DOMAIN\""
+                echo "  canonical = \"${target:-<TARGET_HOSTNAME>}\""
+            fi
+            cat << EOF
+  comment   = "Managed by Terraform"
+}
+
+# Infoblox ${record_type^^} record - external view
+resource "infoblox_${record_type}_record" "${name}_external" {
+  dns_view  = "external"
+EOF
+            if [[ "$record_type" == "a" ]]; then
+                echo "  fqdn     = \"$DOMAIN\""
+                echo "  ip_addr  = \"${target:-<IP_ADDRESS>}\""
+            else
+                echo "  alias     = \"$DOMAIN\""
+                echo "  canonical = \"${target:-<TARGET_HOSTNAME>}\""
+            fi
+            echo "  comment   = \"Managed by Terraform\""
+            echo "}"
+        else
+            cat << EOF
+# Vault secrets for Cloudflare
+data "vault_generic_secret" "cloudflare" {
+  path = "secret/services/dco/jenkins/ewp/cloudflare/prod/api/principals/asu-jenkins-devops"
+}
+
+# Cloudflare ${record_type^^} record
+resource "cloudflare_record" "${name}" {
+  zone_id = data.vault_generic_secret.cloudflare.data["zone_id"]
+  name    = "$DOMAIN"
+  value   = "${target:-<TARGET_VALUE>}"
+  type    = "${record_type^^}"
+  proxied = true
+}
+EOF
+        fi
+    fi
+}
+
+#
+# ACTION: DNS Examples - Show example repos using DNS patterns
+#
+action_dns_examples() {
+    local pattern="${PATTERN:-all}"
+    
+    # Use dns.sh functions if available
+    if type show_dns_examples &>/dev/null; then
+        show_dns_examples "$pattern"
+    else
+        # Fallback inline implementation
+        echo "=== Example Repos for DNS Pattern: $pattern ==="
+        echo ""
+        
+        case "$pattern" in
+            infoblox)
+                echo "Infoblox DNS Examples:"
+                echo "  ASU/sso-shibboleth      - Hybrid Infoblox+Cloudflare pattern"
+                echo "  ASU/hosting-fse         - Infoblox CNAME with for_each"
+                echo "  ASU/ewp-www-farm-acquia - Infoblox A and CNAME records"
+                echo "  ASU/hosting-cronkite    - infoblox-cname-record module"
+                echo "  ASU/xreal-xr-at-asu-portal - Infoblox integration"
+                echo ""
+                echo "Module Source:"
+                echo "  ASU/dns-infoblox        - Infoblox Terraform configurations"
+                ;;
+            cloudflare)
+                echo "Cloudflare DNS Examples:"
+                echo "  ASU/sso-shibboleth      - Cloudflare proxied records"
+                echo ""
+                echo "Available Cloudflare Modules:"
+                echo "  - cloudflare-tunnel"
+                echo "  - cloudflare-tunnel-route53-dns"
+                echo "  - cloudflare-access-app"
+                echo "  - cloudflare-origin-ca-certificate"
+                ;;
+            hybrid)
+                echo "Hybrid Pattern Examples (Infoblox -> Cloudflare CDN -> Origin):"
+                echo "  ASU/sso-shibboleth      - Full hybrid pattern implementation"
+                echo ""
+                echo "Pattern Flow:"
+                echo "  1. Infoblox CNAME (default + external views) -> Cloudflare CDN"
+                echo "  2. Cloudflare proxied record -> Origin server"
+                ;;
+            all|*)
+                echo "All DNS Patterns:"
+                echo ""
+                echo "Infoblox (*.asu.edu):"
+                echo "  ASU/hosting-fse, ASU/ewp-www-farm-acquia, ASU/hosting-cronkite"
+                echo ""
+                echo "Cloudflare (external domains):"
+                echo "  ASU/sso-shibboleth"
+                echo ""
+                echo "Hybrid (ASU domain + Cloudflare CDN):"
+                echo "  ASU/sso-shibboleth"
+                echo ""
+                echo "Module Sources:"
+                echo "  ASU/dns-infoblox"
+                ;;
+        esac
+    fi
+}
+
+#
+# Show DNS design pattern details
+#
+show_pattern_dns() {
+    local ptype="${1:-}"
+    
+    echo -e "${BOLD}=== Design Pattern: DNS Configuration (Infoblox + Cloudflare) ===${NC}"
+    echo ""
+    echo "DNS management patterns for ASU infrastructure using Terraform."
+    echo ""
+    echo -e "${BOLD}Routing Rules:${NC}"
+    echo "  *.asu.edu domains   → Infoblox (dnsadmin.asu.edu)"
+    echo "  External domains    → Cloudflare (registration + DNS)"
+    echo "  ASU + CDN/WAF       → Hybrid (Infoblox → Cloudflare → Origin)"
+    echo ""
+    
+    case "$ptype" in
+        infoblox)
+            echo -e "${BOLD}=== Infoblox Configuration ===${NC}"
+            echo ""
+            echo "Server: dnsadmin.asu.edu"
+            echo "Views: default (internal), external (public)"
+            echo "Vault: secret/services/dco/jenkins/dco/jenkins/prod/kerberos/principals/jenkins_app"
+            echo ""
+            echo -e "${BOLD}Resources:${NC}"
+            echo "  - infoblox_a_record"
+            echo "  - infoblox_cname_record"
+            echo ""
+            echo -e "${BOLD}Example:${NC}"
+            cat << 'EOF'
+resource "infoblox_cname_record" "myapp_internal" {
+  dns_view  = "default"
+  alias     = "myapp.asu.edu"
+  canonical = "myapp-origin.aws.amazon.com"
+  comment   = "Managed by Terraform"
+}
+
+resource "infoblox_cname_record" "myapp_external" {
+  dns_view  = "external"
+  alias     = "myapp.asu.edu"
+  canonical = "myapp-origin.aws.amazon.com"
+  comment   = "Managed by Terraform"
+}
+EOF
+            ;;
+        cloudflare)
+            echo -e "${BOLD}=== Cloudflare Configuration ===${NC}"
+            echo ""
+            echo "Use for: Non-ASU domain registration and DNS"
+            echo "Vault: secret/services/dco/jenkins/ewp/cloudflare/prod/api/principals/asu-jenkins-devops"
+            echo ""
+            echo -e "${BOLD}Resources:${NC}"
+            echo "  - cloudflare_record"
+            echo "  - cloudflare_zone"
+            echo ""
+            echo -e "${BOLD}Modules:${NC}"
+            echo "  - cloudflare-tunnel"
+            echo "  - cloudflare-tunnel-route53-dns"
+            echo "  - cloudflare-access-app"
+            echo "  - cloudflare-origin-ca-certificate"
+            echo ""
+            echo -e "${BOLD}Example:${NC}"
+            cat << 'EOF'
+resource "cloudflare_record" "myapp" {
+  zone_id = data.vault_generic_secret.cloudflare.data["zone_id"]
+  name    = "www"
+  value   = "myapp-origin.aws.amazon.com"
+  type    = "CNAME"
+  proxied = true
+}
+EOF
+            ;;
+        hybrid)
+            echo -e "${BOLD}=== Hybrid Pattern (Infoblox → Cloudflare CDN → Origin) ===${NC}"
+            echo ""
+            echo "Use when: ASU domain needs Cloudflare CDN/WAF protection"
+            echo ""
+            echo "Flow:"
+            echo "  User → myapp.asu.edu (Infoblox) → Cloudflare CDN → Origin"
+            echo ""
+            echo -e "${BOLD}Example:${NC}"
+            cat << 'EOF'
+# Step 1: Infoblox CNAMEs pointing to Cloudflare CDN
+resource "infoblox_cname_record" "myapp_internal" {
+  dns_view  = "default"
+  alias     = "myapp.asu.edu"
+  canonical = "myapp.asu.edu.cdn.cloudflare.net"
+  comment   = "Points to Cloudflare CDN"
+}
+
+resource "infoblox_cname_record" "myapp_external" {
+  dns_view  = "external"
+  alias     = "myapp.asu.edu"
+  canonical = "myapp.asu.edu.cdn.cloudflare.net"
+  comment   = "Points to Cloudflare CDN"
+}
+
+# Step 2: Cloudflare proxied record to origin
+resource "cloudflare_record" "myapp" {
+  zone_id = data.vault_generic_secret.cloudflare.data["zone_id"]
+  name    = "myapp.asu.edu"
+  value   = "myapp-origin.aws.amazon.com"
+  type    = "CNAME"
+  proxied = true
+}
+EOF
+            ;;
+        *)
+            echo -e "${BOLD}Providers:${NC}"
+            echo ""
+            echo "  Infoblox (*.asu.edu):"
+            echo "    Server: dnsadmin.asu.edu"
+            echo "    Views: default, external"
+            echo "    Resources: infoblox_a_record, infoblox_cname_record"
+            echo ""
+            echo "  Cloudflare (external):"
+            echo "    Resources: cloudflare_record, cloudflare_zone"
+            echo "    Modules: cloudflare-tunnel, cloudflare-access-app"
+            echo ""
+            echo -e "${BOLD}Example Repos:${NC}"
+            echo "  ASU/sso-shibboleth      - Hybrid Infoblox+Cloudflare"
+            echo "  ASU/hosting-fse         - Infoblox CNAME with for_each"
+            echo "  ASU/dns-infoblox        - Infoblox module source"
+            echo ""
+            echo -e "${BOLD}Commands:${NC}"
+            echo "  discover.sh dns-validate --domain myapp.asu.edu"
+            echo "  discover.sh dns-scaffold --domain myapp.asu.edu --type cname --target cdn.example.com"
+            echo "  discover.sh dns-scaffold --domain myapp.asu.edu --pattern hybrid --origin origin.aws.com"
+            echo ""
+            echo -e "${BOLD}Related Commands:${NC}"
+            echo "  discover.sh pattern --name dns --type infoblox"
+            echo "  discover.sh pattern --name dns --type cloudflare"
+            echo "  discover.sh pattern --name dns --type hybrid"
+            ;;
+    esac
+}
+
+#
 # Main
 #
 main() {
@@ -1960,6 +2386,9 @@ main() {
         patterns) action_patterns ;;
         pattern) action_pattern ;;
         expand) action_expand ;;
+        dns-validate) action_dns_validate ;;
+        dns-scaffold) action_dns_scaffold ;;
+        dns-examples) action_dns_examples ;;
         --help|-h) usage ;;
         *) error "Unknown action: $action. Use --help for usage." ;;
     esac
