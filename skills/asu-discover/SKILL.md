@@ -1,17 +1,21 @@
 ---
 name: asu-discover
-description: "Smart discovery across ASU's 760+ GitHub repositories. ONLY use when active repo is in ASU org (github.com/ASU). Use for finding ASU repos, code patterns, integrations, and SDKs. Domains: PeopleSoft, EDNA, DPL, Terraform, Salesforce, Auth, CI/CD. Use BEFORE starting ASU integration tasks."
+description: "Smart discovery across ASU GitHub repositories. ONLY use when active repo is in ASU org (github.com/ASU). Use for finding ASU repos, code patterns, integrations, and SDKs. Domains: PeopleSoft, EDNA, DPL, Terraform, Salesforce, Auth, CI/CD. Use BEFORE starting ASU integration tasks."
 allowed-tools: Bash(gh:*) Bash(./scripts/*) Read Glob Grep
 context: fork
 ---
 
 # ASU Domain Discovery Skill
 
-Intelligent search and discovery across Arizona State University's GitHub organization (760+ repositories). This skill provides domain-aware search with local caching to work within GitHub's rate limits.
+Intelligent search and discovery across Arizona State University's GitHub organization. This skill provides domain-aware search with local caching to work within GitHub's rate limits.
 
 **Prerequisite:** The active repository must be in the [ASU GitHub organization](https://github.com/ASU). ASU org repos integrate with ASU infrastructure (EDNA, DPL, PeopleSoft, Vault, etc.).
 
-**Requirements:** `gh` CLI authenticated with access to ASU org (`gh auth login`)
+**Requirements:**
+- `gh` CLI authenticated with access to ASU org (`gh auth login`)
+- `yq` (recommended) for reliable YAML parsing (`brew install yq`)
+
+**Note:** Run `./scripts/discover.sh index stats` to see current repository counts.
 
 ## Architecture
 
@@ -36,7 +40,7 @@ Intelligent search and discovery across Arizona State University's GitHub organi
 │ (instant)     │      │  (rate limited)   │
 │               │      │                   │
 │ FTS5 search   │      │ gh search code    │
-│ 760+ repos    │      │ 10 req/min        │
+│ All ASU repos │      │ 10 req/min        │
 │ No rate limit │      │ 24h cache         │
 └───────────────┘      └───────────────────┘
         │                       │

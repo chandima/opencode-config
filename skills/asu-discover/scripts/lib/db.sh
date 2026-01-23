@@ -445,3 +445,127 @@ rate_limit_wait() {
     
     rate_limit_update
 }
+
+# ==============================================================================
+# Dynamic Count Functions (for avoiding hardcoded values)
+# ==============================================================================
+
+#
+# Get total repository count from index
+# Usage: get_repo_count [--active|--archived|--all]
+#
+get_repo_count() {
+    local filter="${1:---all}"
+    
+    case "$filter" in
+        --active)
+            sqlite3 "$DB_FILE" "SELECT COUNT(*) FROM repos WHERE archived = 0;" 2>/dev/null || echo "0"
+            ;;
+        --archived)
+            sqlite3 "$DB_FILE" "SELECT COUNT(*) FROM repos WHERE archived = 1;" 2>/dev/null || echo "0"
+            ;;
+        --all|*)
+            sqlite3 "$DB_FILE" "SELECT COUNT(*) FROM repos;" 2>/dev/null || echo "0"
+            ;;
+    esac
+}
+
+#
+# Get last indexed timestamp
+# Usage: get_last_indexed [--human|--epoch]
+#
+get_last_indexed() {
+    local format="${1:---human}"
+    local epoch
+    
+    epoch=$(sqlite3 "$DB_FILE" "SELECT value FROM metadata WHERE key='last_indexed';" 2>/dev/null)
+    
+    if [[ -z "$epoch" ]]; then
+        echo "never"
+        return 1
+    fi
+    
+    case "$format" in
+        --epoch)
+            echo "$epoch"
+            ;;
+        --human|*)
+            date -r "$epoch" "+%Y-%m-%d %H:%M:%S" 2>/dev/null || echo "$epoch"
+            ;;
+    esac
+}
+
+#
+# Get index statistics
+# Usage: get_index_stats
+#
+get_index_stats() {
+    local total active archived domains last_indexed
+    
+    total=$(get_repo_count --all)
+    active=$(get_repo_count --active)
+    archived=$(get_repo_count --archived)
+    domains=$(sqlite3 "$DB_FILE" "SELECT COUNT(DISTINCT name) FROM domains;" 2>/dev/null || echo "0")
+    last_indexed=$(get_last_indexed --human || true)
+    
+    echo "Repositories: $total ($active active, $archived archived)"
+    echo "Domains: $domains"
+    echo "Last indexed: $last_indexed"
+}
+
+#
+# Get prefix statistics
+# Usage: get_prefix_stats [--limit N]
+#
+get_prefix_stats() {
+    local limit="${1:-10}"
+    
+    sqlite3 -separator $'\t' "$DB_FILE" "
+        SELECT prefix, COUNT(*) as count 
+        FROM repos 
+        WHERE prefix IS NOT NULL AND prefix != ''
+        GROUP BY prefix 
+        ORDER BY count DESC 
+        LIMIT $limit;" 2>/dev/null | while IFS=$'\t' read -r prefix count; do
+        printf "  %-15s %s\n" "$prefix" "$count"
+    done
+}
+
+#
+# Verify if a repository exists
+# Usage: verify_repo <full_name>
+# Returns: 0 if exists, 1 if not
+#
+verify_repo() {
+    local full_name="$1"
+    gh repo view "$full_name" &>/dev/null
+    return $?
+}
+
+#
+# Verify all referenced repositories in a file
+# Usage: verify_repos_in_file <file> [--fix]
+#
+verify_repos_in_file() {
+    local file="$1"
+    local fix="${2:-}"
+    local refs total=0 valid=0 invalid=0
+    
+    # Extract ASU/repo-name references
+    refs=$(grep -oE 'ASU/[a-zA-Z0-9_-]+' "$file" 2>/dev/null | sort -u)
+    
+    for repo in $refs; do
+        ((total++))
+        if verify_repo "$repo"; then
+            ((valid++))
+        else
+            echo "INVALID: $repo"
+            ((invalid++))
+        fi
+    done
+    
+    echo ""
+    echo "Total: $total, Valid: $valid, Invalid: $invalid"
+    
+    [[ $invalid -eq 0 ]]
+}

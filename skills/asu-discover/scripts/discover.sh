@@ -23,6 +23,11 @@ DOMAINS_FILE="$CONFIG_DIR/domains.yaml"
 # Source database helpers
 source "$LIB_DIR/db.sh"
 
+# Source YAML parsing helpers
+if [[ -f "$LIB_DIR/yaml.sh" ]]; then
+    source "$LIB_DIR/yaml.sh"
+fi
+
 # Source DNS scaffolding helpers
 if [[ -f "$LIB_DIR/dns.sh" ]]; then
     source "$LIB_DIR/dns.sh"
@@ -50,7 +55,7 @@ usage() {
     cat << 'EOF'
 Usage: discover.sh <action> [options]
 
-ASU Domain Discovery - Smart search across 760+ ASU repositories
+ASU Domain Discovery - Smart search across ASU repositories
 
 ACTIONS:
   search            Search repos and code with domain-aware expansion
@@ -65,7 +70,8 @@ ACTIONS:
 INDEX SUBCOMMANDS:
   index build       Build full index from scratch (~30s)
   index refresh     Incremental update (repos changed since last run)
-  index stats       Show index statistics
+  index stats       Show index statistics and counts
+  index verify      Check if referenced repos still exist
   index classify    Re-run domain classification
 
 PATTERN SUBCOMMANDS:
@@ -73,7 +79,7 @@ PATTERN SUBCOMMANDS:
   pattern --name eel                Show EEL pattern overview
   pattern --name eel --type publisher   Find publisher examples
   pattern --name eel --type subscriber  Find subscriber examples
-  pattern --name eel --type boilerplate Show boilerplate repo
+  pattern --name eel --brief        Show condensed output
 
 COMMON OPTIONS:
   --query QUERY     Search query (natural language or keywords)
@@ -83,6 +89,7 @@ COMMON OPTIONS:
   --type TYPE       Pattern type: publisher, subscriber, boilerplate
   --language LANG   Filter by programming language
   --limit N         Maximum results (default: 30)
+  --brief           Show condensed output (patterns only)
   --no-expand       Disable keyword expansion
   --local-only      Only search local index (no API calls)
   --cached-only     Only use cached code search results
@@ -112,10 +119,12 @@ EXAMPLES:
   # Show EEL design pattern
   discover.sh pattern --name eel
   discover.sh pattern --name eel --type publisher
+  discover.sh pattern --name vault --brief
   
   # Build/refresh the local index
   discover.sh index build
   discover.sh index stats
+  discover.sh index verify
 
 DOMAINS:
   peoplesoft, edna, dpl, serviceauth, auth, identity, salesforce,
@@ -219,6 +228,7 @@ parse_args() {
             --cached-only) CACHED_ONLY=true; shift ;;
             --json) JSON_OUTPUT=true; shift ;;
             --verbose) VERBOSE=true; shift ;;
+            --brief) BRIEF=true; shift ;;
             --origin) ORIGIN="$2"; shift 2 ;;
             --pattern) PATTERN="$2"; shift 2 ;;
             --check-dns) CHECK_DNS=true; shift ;;
@@ -464,9 +474,66 @@ action_index_refresh() {
 #
 action_index_stats() {
     ensure_index
-    db_stats
+    echo -e "${BOLD}=== Index Statistics ===${NC}"
+    echo ""
+    # Use new dynamic count functions from db.sh
+    get_index_stats
+    echo ""
+    echo -e "${BOLD}Top Prefixes:${NC}"
+    get_prefix_stats 10
     echo ""
     cache_stats
+}
+
+#
+# ACTION: Verify - Check if referenced repos still exist
+#
+action_index_verify() {
+    echo -e "${BOLD}=== Verifying Referenced Repositories ===${NC}"
+    echo ""
+    echo "Checking repositories referenced in domains.yaml..."
+    echo "(This may take a minute due to API rate limits)"
+    echo ""
+    
+    # Extract all ASU/repo-name references from domains.yaml
+    local refs
+    refs=$(grep -oE 'ASU/[a-zA-Z0-9_-]+' "$DOMAINS_FILE" 2>/dev/null | sort -u)
+    
+    local total=0 valid=0 invalid=0
+    local invalid_repos=""
+    
+    for repo in $refs; do
+        ((total++))
+        printf "\rChecking: %s" "$repo"
+        
+        if gh repo view "$repo" &>/dev/null; then
+            ((valid++))
+        else
+            ((invalid++))
+            invalid_repos="$invalid_repos\n  - $repo"
+        fi
+        
+        # Brief rate limit protection
+        sleep 0.1
+    done
+    
+    printf "\r%-60s\n" ""  # Clear line
+    echo ""
+    
+    if [[ $invalid -gt 0 ]]; then
+        echo -e "${YELLOW}Invalid/Missing Repositories:${NC}"
+        echo -e "$invalid_repos"
+        echo ""
+    fi
+    
+    echo -e "${BOLD}Summary:${NC}"
+    echo "  Total referenced: $total"
+    echo -e "  Valid: ${GREEN}$valid${NC}"
+    if [[ $invalid -gt 0 ]]; then
+        echo -e "  Invalid: ${RED}$invalid${NC}"
+    else
+        echo -e "  Invalid: ${GREEN}0${NC}"
+    fi
 }
 
 #
@@ -1001,6 +1068,79 @@ detect_patterns() {
 }
 
 #
+# Show pattern from markdown file
+# Usage: show_pattern <pattern> [subtype]
+#
+show_pattern() {
+    local pattern="$1"
+    local subtype="${2:-}"
+    local brief="${BRIEF:-false}"
+    local pattern_file="${SCRIPT_DIR}/../patterns/${pattern}.md"
+    
+    if [[ ! -f "$pattern_file" ]]; then
+        error "Pattern file not found: $pattern_file"
+    fi
+    
+    # Extract title from frontmatter
+    local title
+    title=$(grep -m1 '^title:' "$pattern_file" | sed 's/title: *//' | tr -d '"')
+    
+    if [[ "$brief" == "true" ]]; then
+        # Brief mode: show title and description only
+        echo -e "${BOLD}=== ${title} ===${NC}"
+        echo ""
+        grep -m1 '^description:' "$pattern_file" | sed 's/description: *//' | tr -d '"'
+        echo ""
+        # Show first few lines after frontmatter
+        awk '/^---$/{n++; next} n==2{print; if(++c>=10) exit}' "$pattern_file"
+        echo ""
+        echo -e "${CYAN}Use without --brief for full details${NC}"
+        return
+    fi
+    
+    if [[ -n "$subtype" ]]; then
+        # Show specific subtype section
+        echo -e "${BOLD}=== ${title}: ${subtype} ===${NC}"
+        echo ""
+        
+        # Extract section for subtype using awk (case-insensitive)
+        awk -v subtype="$subtype" '
+            BEGIN { IGNORECASE=1; in_section=0; found=0 }
+            /^---$/ { frontmatter++; next }
+            frontmatter < 2 { next }
+            /^## / {
+                if (in_section) exit
+                if (tolower($0) ~ tolower(subtype)) {
+                    in_section=1
+                    found=1
+                    print
+                    next
+                }
+            }
+            in_section { print }
+            END { if (!found) exit 1 }
+        ' "$pattern_file"
+        
+        if [[ $? -ne 0 ]]; then
+            echo -e "${YELLOW}Subtype '$subtype' not found in pattern.${NC}"
+            echo ""
+            echo "Available subtypes:"
+            grep -E '^  - ' "$pattern_file" | head -10 | sed 's/^  //'
+        fi
+    else
+        # Show full pattern (skip frontmatter)
+        echo -e "${BOLD}=== ${title} ===${NC}"
+        echo ""
+        
+        # Skip YAML frontmatter and display content
+        awk '
+            /^---$/ { frontmatter++; next }
+            frontmatter >= 2 { print }
+        ' "$pattern_file"
+    fi
+}
+
+#
 # ACTION: Pattern - Show design pattern details
 #
 action_pattern() {
@@ -1041,22 +1181,29 @@ action_pattern() {
     
     local pattern="$PATTERN_NAME"
     local ptype="${PATTERN_TYPE:-}"
+    local pattern_file="${SCRIPT_DIR}/../patterns/${pattern}.md"
     
-    # Validate pattern exists
-    local pattern_name
-    pattern_name=$(yaml_get_pattern_simple "$DOMAINS_FILE" "$pattern" "name")
-    [[ -z "$pattern_name" ]] && error "Unknown pattern: $pattern. Use --list to see available patterns."
-    
-    # Route to pattern-specific handlers
-    case "$pattern" in
-        eel) show_pattern_eel "$ptype" ;;
-        cicd) show_pattern_cicd "$ptype" ;;
-        terraform-modules) show_pattern_terraform "$ptype" ;;
-        vault) show_pattern_vault "$ptype" ;;
-        observability) show_pattern_observability "$ptype" ;;
-        dns) show_pattern_dns "$ptype" ;;
-        *) show_pattern_generic "$pattern" "$ptype" ;;
-    esac
+    # Check if pattern markdown file exists
+    if [[ -f "$pattern_file" ]]; then
+        # Use markdown-based pattern loader
+        show_pattern "$pattern" "$ptype"
+    else
+        # Validate pattern exists in YAML
+        local pattern_name
+        pattern_name=$(yaml_get_pattern_simple "$DOMAINS_FILE" "$pattern" "name")
+        [[ -z "$pattern_name" ]] && error "Unknown pattern: $pattern. Use --list to see available patterns."
+        
+        # Fallback to legacy handlers for patterns without markdown files
+        case "$pattern" in
+            eel) show_pattern_eel "$ptype" ;;
+            cicd) show_pattern_cicd "$ptype" ;;
+            terraform-modules) show_pattern_terraform "$ptype" ;;
+            vault) show_pattern_vault "$ptype" ;;
+            observability) show_pattern_observability "$ptype" ;;
+            dns) show_pattern_dns "$ptype" ;;
+            *) show_pattern_generic "$pattern" "$ptype" ;;
+        esac
+    fi
 }
 
 #
@@ -2366,12 +2513,13 @@ main() {
             build) action_index_build ;;
             refresh) action_index_refresh ;;
             stats) action_index_stats ;;
+            verify) action_index_verify ;;
             classify) 
                 ensure_index
                 action_index_classify_internal
                 success "Domain classification complete"
                 ;;
-            *) error "Unknown index subcommand: $subaction" ;;
+            *) error "Unknown index subcommand: $subaction. Use: build, refresh, stats, verify, classify" ;;
         esac
         return
     fi
