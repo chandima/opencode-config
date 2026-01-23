@@ -1,5 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "plugin": ["@zenobius/opencode-skillful"],
   "provider": {
     "litellm": {
       "npm": "@ai-sdk/openai-compatible",
@@ -8,11 +9,13 @@
         "baseURL": "https://litellm.sandbox.iamzone.dev/v1"
       },
       "models": {
-        "my-model-name": {
+        "gpt-5.1-codex": {
           "name": "gpt-5.1-codex"
+        },
+        "kimi-k2-thinking": {
+          "name": "kimi-k2-thinking"
         }
       }
     }
-  },
-  "plugin": ["opencode-skillful"]
+  }
 }
