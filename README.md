@@ -82,7 +82,11 @@ git pull
 
 This config uses the following plugins:
 
-- **opencode-skillful** - Provides additional skill management capabilities
+| Plugin | Purpose |
+|--------|---------|
+| `@tarquinen/opencode-dcp` | Dynamic context pruning - reduces token bloat |
+| `opencode-notify` | Desktop notifications for long-running tasks |
+| `opencode-worktree` | Git worktree management tools |
 
 ## Adding Skills
 
