@@ -127,12 +127,15 @@ Design patterns are architectural templates with implementation guidance. They g
 ./scripts/discover.sh pattern --name cicd
 ./scripts/discover.sh pattern --name terraform-modules
 ./scripts/discover.sh pattern --name vault
+./scripts/discover.sh pattern --name observability
 
 # Get specific pattern types
 ./scripts/discover.sh pattern --name eel --type publisher
 ./scripts/discover.sh pattern --name cicd --type jenkins
 ./scripts/discover.sh pattern --name terraform-modules --type database
-./scripts/discover.sh pattern --name vault --type python
+./scripts/discover.sh pattern --name vault --type typescript
+./scripts/discover.sh pattern --name observability --type datadog
+./scripts/discover.sh pattern --name observability --type logging-lake
 ```
 
 The `context` action auto-suggests relevant patterns when your query matches pattern triggers.
@@ -252,11 +255,22 @@ Patterns for accessing secrets from Vault and syncing to AWS.
 | Infrastructure | `ASU/caas-caas-vault`, `ASU/authn-ops-vault` |
 
 **When to use:**
-- Reading secrets in Python/Java/JS applications
+- Reading secrets in TypeScript/Python/Java applications
 - Syncing Vault secrets to AWS Secrets Manager
 - Syncing Vault secrets to SSM Parameter Store
 - Setting up Jenkins CI/CD with Vault integration
 - Configuring AWS Lambda/EC2 to authenticate with Vault
+
+**TypeScript/Node.js Pattern (AWS SDK - RECOMMENDED):**
+```typescript
+import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
+
+const client = new SecretsManagerClient({ region: 'us-west-2' });
+const secret = await client.send(
+  new GetSecretValueCommand({ SecretId: 'my-secret' })
+);
+const data = JSON.parse(secret.SecretString!);
+```
 
 **Python Pattern (hvac):**
 ```python
@@ -290,6 +304,70 @@ secret/services/{org}/{team}/{app}/{environment}/{component}
 ```
 
 **Pattern triggers:** `vault`, `hvac`, `secret`, `getVaultSecret`, `secretsmanager`, `approle`
+
+---
+
+### Observability Stack
+
+ASU's observability stack for monitoring, logging, and tracing. Primary tools: Datadog (APM/RUM), Cribl/Logging Lake (logs), CloudWatch (AWS metrics), OpenTelemetry (K8s).
+
+| Aspect | Details |
+|--------|---------|
+| APM | Datadog (dd-trace, ddtrace, dd-java-agent) |
+| RUM | Datadog Browser RUM (@datadog/browser-rum) |
+| Logs | Cribl Stream → S3 → OpenSearch (Logging Lake) |
+| Metrics | CloudWatch, Datadog |
+| Tracing | Datadog APM, OpenTelemetry |
+
+**IMPORTANT:** Splunk is DEPRECATED. All new implementations MUST use Logging Lake.
+
+**When to use:**
+- Setting up APM for TypeScript/Python/Java services
+- Adding Real User Monitoring (RUM) to React apps
+- Configuring log pipelines and aggregation
+- Setting up CloudWatch alarms and routing
+- Migrating from Splunk to Logging Lake
+
+**Datadog APM (TypeScript):**
+```typescript
+import tracer from 'dd-trace';
+tracer.init({ service: 'my-service' });
+```
+
+**Datadog RUM (React):**
+```typescript
+import { datadogRum } from '@datadog/browser-rum';
+datadogRum.init({
+  applicationId: 'xxx',
+  clientToken: 'xxx',
+  site: 'datadoghq.com',
+  service: 'my-app',
+  env: process.env.NODE_ENV
+});
+```
+
+**Key Repositories:**
+
+| Type | Repository | Description |
+|------|------------|-------------|
+| Logging Platform | `eli5-observability-pipeline-platform` | Cribl Stream on EKS |
+| Kafka Bridge | `eli5-kafkabahn` | Kafka to logging pipeline |
+| OSIS Pipelines | `eli5-osis-pipelines` | OpenSearch Ingestion Service |
+
+**Terraform Modules:**
+- `cloudwatch-logs-to-datadog` - CloudWatch to Datadog
+- `cloudwatch-logs-to-log-lake` - CloudWatch to S3 data lake
+- `datadog-lambda-forwarder` - Datadog Lambda forwarder
+- `datadog-logs-firehose-forwarder` - Datadog Kinesis Firehose
+
+**Splunk Migration Path:**
+1. Identify current Splunk sources
+2. Configure Cribl Stream inputs
+3. Update Terraform to use cloudwatch-logs-to-log-lake
+4. Migrate dashboards to OpenSearch
+5. Decommission Splunk forwarders
+
+**Pattern triggers:** `datadog`, `logging`, `cribl`, `cloudwatch`, `otel`, `opentelemetry`, `metrics`, `monitoring`, `apm`, `rum`, `tracing`, `observability`, `splunk`
 
 ## Domains
 

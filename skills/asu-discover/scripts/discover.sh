@@ -122,6 +122,7 @@ DESIGN PATTERNS:
   cicd             - CI/CD Pipelines (Jenkins shared library, GitHub Actions)
   terraform-modules - ASU Terraform Modules (dco-terraform on JFrog)
   vault            - HashiCorp Vault Secrets (read/sync patterns)
+  observability    - Observability Stack (Datadog, Logging Lake, CloudWatch)
 
 TEAM PREFIXES:
   crm (66), eadv (38), authn (15), aiml (12), edna (11), iden (10),
@@ -227,7 +228,7 @@ detect_domains() {
     done
     
     # Deduplicate and trim
-    echo "$detected" | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ' | sed 's/ $//'
+    echo "$detected" | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ' | sed 's/ $//' || true
 }
 
 #
@@ -747,10 +748,22 @@ action_context() {
                     echo -e "${YELLOW}${BOLD}=== Suggested Pattern: Vault Secrets ===${NC}"
                     echo ""
                     echo "For secrets management:"
+                    echo "  TypeScript: AWS SDK (@aws-sdk/client-secrets-manager)"
                     echo "  Python:    ASU/edna-rmi-linux (hvac + token file)"
                     echo "  Terraform: ASU/wflow-kuali-approver-service (Vault→Secrets Manager)"
                     echo "  Jenkins:   vaultLogin, getVaultSecret, getVaultAppRoleToken"
                     echo "  Run: discover.sh pattern --name vault"
+                    echo ""
+                    ;;
+                observability)
+                    echo -e "${YELLOW}${BOLD}=== Suggested Pattern: Observability ===${NC}"
+                    echo ""
+                    echo "For monitoring, logging, and tracing:"
+                    echo "  Datadog:      APM (dd-trace), RUM (@datadog/browser-rum)"
+                    echo "  Logging Lake: Cribl → S3 → OpenSearch (RECOMMENDED for logs)"
+                    echo "  CloudWatch:   Alarms, routing to Datadog or Logging Lake"
+                    echo -e "  ${YELLOW}Splunk:       DEPRECATED - migrate to Logging Lake${NC}"
+                    echo "  Run: discover.sh pattern --name observability"
                     echo ""
                     ;;
             esac
@@ -936,8 +949,17 @@ detect_patterns() {
         fi
     done
     
+    # Observability pattern triggers
+    local obs_triggers="datadog logging cribl cloudwatch otel opentelemetry metrics monitoring apm rum tracing observability eli5 logging-lake dd-trace ddtrace splunk"
+    for trigger in $obs_triggers; do
+        if [[ "$query_lower" == *"$trigger"* ]]; then
+            detected="$detected observability"
+            break
+        fi
+    done
+    
     # Deduplicate and trim
-    echo "$detected" | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ' | sed 's/ $//'
+    echo "$detected" | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ' | sed 's/ $//' || true
 }
 
 #
@@ -964,6 +986,10 @@ action_pattern() {
         echo "     Patterns for reading secrets and syncing to AWS"
         echo "     Python hvac, Terraform, Jenkins integration"
         echo ""
+        echo -e "${GREEN}observability${NC} - Observability Stack"
+        echo "     Datadog APM/RUM, Cribl/Logging Lake, CloudWatch, OpenTelemetry"
+        echo -e "     ${YELLOW}Splunk is DEPRECATED${NC} - use Logging Lake instead"
+        echo ""
         echo "Usage: discover.sh pattern --name <pattern>"
         echo "       discover.sh pattern --name <pattern> --type <type>"
         return
@@ -985,6 +1011,7 @@ action_pattern() {
         cicd) show_pattern_cicd "$ptype" ;;
         terraform-modules) show_pattern_terraform "$ptype" ;;
         vault) show_pattern_vault "$ptype" ;;
+        observability) show_pattern_observability "$ptype" ;;
         *) show_pattern_generic "$pattern" "$ptype" ;;
     esac
 }
@@ -1411,6 +1438,44 @@ show_pattern_vault() {
     
     if [[ -n "$ptype" ]]; then
         case "$ptype" in
+            typescript|node|nodejs)
+                echo -e "${BOLD}=== Vault - TypeScript/Node.js Patterns ===${NC}"
+                echo ""
+                echo -e "${YELLOW}RECOMMENDED: Use AWS SDK instead of direct Vault access${NC}"
+                echo ""
+                echo -e "${GREEN}AWS Secrets Manager (Preferred):${NC}"
+                echo "  Package: @aws-sdk/client-secrets-manager"
+                echo "  Example: ASU/lms-canvas-enrollment-system"
+                echo ""
+                echo "  import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';"
+                echo ""
+                echo "  const client = new SecretsManagerClient({ region: 'us-west-2' });"
+                echo "  const secret = await client.send("
+                echo "    new GetSecretValueCommand({ SecretId: 'my-secret' })"
+                echo "  );"
+                echo "  const data = JSON.parse(secret.SecretString!);"
+                echo ""
+                echo -e "${GREEN}SSM Parameter Store:${NC}"
+                echo "  Package: @aws-sdk/client-ssm"
+                echo "  Example: ASU/cremo-cmidp-course-requisite-api"
+                echo ""
+                echo "  import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm';"
+                echo ""
+                echo "  const client = new SSMClient({ region: 'us-west-2' });"
+                echo "  const param = await client.send("
+                echo "    new GetParameterCommand({ Name: '/my/param', WithDecryption: true })"
+                echo "  );"
+                echo ""
+                echo -e "${GREEN}Terraform Pattern (Vault → Secrets Manager):${NC}"
+                echo "  Sync Vault secrets to AWS at deploy time"
+                echo "  See: discover.sh pattern --name vault --type terraform"
+                echo ""
+                echo -e "${GREEN}Example Repos:${NC}"
+                echo "  ASU/lms-canvas-enrollment-system"
+                echo "  ASU/cremo-cmidp-course-requisite-api"
+                echo "  ASU/iden-universal-service-provisioner"
+                ;;
+                
             python)
                 echo -e "${BOLD}=== Vault - Python Patterns ===${NC}"
                 echo ""
@@ -1509,7 +1574,7 @@ show_pattern_vault() {
                 ;;
                 
             *)
-                error "Unknown type: $ptype. Use: python, terraform, auth, or jenkins"
+                error "Unknown type: $ptype. Use: typescript, python, terraform, auth, or jenkins"
                 ;;
         esac
         return
@@ -1526,6 +1591,12 @@ show_pattern_vault() {
     echo -e "${BOLD}Vault Clusters:${NC}"
     echo "  CaaS Vault: vault.caas-{env}.asu.edu"
     echo "  Ops Vault:  ops-vault-prod.opsprod.asu.edu"
+    echo ""
+    
+    echo -e "${BOLD}TypeScript/Node.js (RECOMMENDED):${NC}"
+    echo "  Use AWS SDK: @aws-sdk/client-secrets-manager, @aws-sdk/client-ssm"
+    echo "  Example: ASU/lms-canvas-enrollment-system"
+    echo "  Sync Vault→AWS at deploy time via Terraform"
     echo ""
     
     echo -e "${BOLD}Python (hvac):${NC}"
@@ -1554,11 +1625,220 @@ show_pattern_vault() {
     echo ""
     
     echo -e "${BOLD}Related Commands:${NC}"
+    echo "  discover.sh pattern --name vault --type typescript"
     echo "  discover.sh pattern --name vault --type python"
     echo "  discover.sh pattern --name vault --type terraform"
     echo "  discover.sh pattern --name vault --type auth"
     echo "  discover.sh pattern --name vault --type jenkins"
     echo "  discover.sh repos --domain vault"
+}
+
+#
+# Show Observability pattern details
+#
+show_pattern_observability() {
+    local ptype="$1"
+    
+    if [[ -n "$ptype" ]]; then
+        case "$ptype" in
+            datadog)
+                echo -e "${BOLD}=== Observability - Datadog ===${NC}"
+                echo ""
+                echo -e "${GREEN}TypeScript/Node.js APM:${NC}"
+                echo "  Package: dd-trace"
+                echo "  Example: ASU/lms-canvas-enrollment-system"
+                echo ""
+                echo "  import tracer from 'dd-trace';"
+                echo "  tracer.init({ service: 'my-service' });"
+                echo ""
+                echo -e "${GREEN}TypeScript/React RUM:${NC}"
+                echo "  Package: @datadog/browser-rum"
+                echo "  Example: ASU/cremo-cmidp-course-requisite-api (frontend)"
+                echo ""
+                echo "  import { datadogRum } from '@datadog/browser-rum';"
+                echo "  datadogRum.init({"
+                echo "    applicationId: 'xxx',"
+                echo "    clientToken: 'xxx',"
+                echo "    site: 'datadoghq.com',"
+                echo "    service: 'my-app',"
+                echo "    env: process.env.NODE_ENV"
+                echo "  });"
+                echo ""
+                echo -e "${GREEN}Python APM:${NC}"
+                echo "  Package: ddtrace"
+                echo "  Example: ASU/iden-universal-service-provisioner"
+                echo ""
+                echo "  from ddtrace import tracer"
+                echo "  @tracer.wrap(service='my-service')"
+                echo "  def my_function():"
+                echo "      pass"
+                echo ""
+                echo -e "${GREEN}Java APM:${NC}"
+                echo "  Agent: dd-java-agent.jar"
+                echo "  Example: ASU/edna"
+                echo ""
+                echo "  java -javaagent:/path/to/dd-java-agent.jar \\"
+                echo "       -Ddd.service=my-service \\"
+                echo "       -Ddd.env=prod \\"
+                echo "       -jar app.jar"
+                echo ""
+                echo -e "${GREEN}Jenkins Deployment Events:${NC}"
+                echo "  Function: datadogDeployment()"
+                echo "  Repo: ASU/devops-jenkins-pipeline-library"
+                echo ""
+                echo "  datadogDeployment("
+                echo "    serviceName: 'my-service',"
+                echo "    env: 'prod'"
+                echo "  )"
+                ;;
+                
+            logging-lake|cribl|logging)
+                echo -e "${BOLD}=== Observability - Logging Lake (RECOMMENDED) ===${NC}"
+                echo ""
+                echo -e "${YELLOW}This is the RECOMMENDED destination for all logs.${NC}"
+                echo ""
+                echo -e "${GREEN}Architecture:${NC}"
+                echo "  Cribl Stream (EKS) → S3 → OpenSearch"
+                echo "  OSIS (OpenSearch Ingestion Service) pipelines"
+                echo ""
+                echo -e "${GREEN}Key Repositories:${NC}"
+                echo "  Platform:     ASU/eli5-observability-pipeline-platform"
+                echo "  Kafka Bridge: ASU/eli5-kafkabahn"
+                echo "  OSIS:         ASU/eli5-osis-pipelines"
+                echo ""
+                echo -e "${GREEN}Team Prefix:${NC} eli5"
+                echo ""
+                echo -e "${GREEN}Terraform Modules:${NC}"
+                echo "  cloudwatch-logs-to-log-lake  - CloudWatch to S3 data lake"
+                echo "  cloudflare-zone-logpush-logging-lake - Cloudflare to data lake"
+                echo ""
+                echo -e "${GREEN}Migration from Splunk:${NC}"
+                echo "  1. Update log shippers to point to Cribl"
+                echo "  2. Use OSIS pipelines for OpenSearch ingestion"
+                echo "  3. Decommission Splunk forwarders"
+                ;;
+                
+            cloudwatch)
+                echo -e "${BOLD}=== Observability - CloudWatch ===${NC}"
+                echo ""
+                echo -e "${GREEN}CloudWatch Alarm Patterns:${NC}"
+                echo "  Lambda errors, API Gateway 5xx, ECS task failures"
+                echo ""
+                echo -e "${GREEN}Routing Options:${NC}"
+                echo "  To Datadog:      cloudwatch-logs-to-datadog"
+                echo "  To Logging Lake: cloudwatch-logs-to-log-lake"
+                echo "  To Splunk:       cloudwatch-to-splunk ${YELLOW}(DEPRECATED)${NC}"
+                echo ""
+                echo -e "${GREEN}Terraform Modules:${NC}"
+                echo "  Source: jfrog-cloud.devops.asu.edu/asu-terraform-modules__dco-terraform"
+                echo ""
+                echo "  cloudwatch-logs-to-datadog"
+                echo "  cloudwatch-logs-to-log-lake"
+                echo "  datadog-lambda-forwarder"
+                echo "  datadog-logs-firehose-forwarder"
+                ;;
+                
+            opentelemetry|otel)
+                echo -e "${BOLD}=== Observability - OpenTelemetry ===${NC}"
+                echo ""
+                echo -e "${GREEN}Architecture:${NC}"
+                echo "  K8s OTEL Collector → OSIS → OpenSearch"
+                echo ""
+                echo -e "${GREEN}Use Cases:${NC}"
+                echo "  - Kubernetes workloads on EKS"
+                echo "  - Vendor-neutral instrumentation"
+                echo "  - Custom metrics and traces"
+                echo ""
+                echo -e "${GREEN}Integration Points:${NC}"
+                echo "  - OSIS pipelines (ASU/eli5-osis-pipelines)"
+                echo "  - OpenSearch dashboards"
+                echo ""
+                echo -e "${GREEN}Note:${NC}"
+                echo "  For APM, Datadog is preferred for most use cases."
+                echo "  Use OTEL when vendor neutrality is required."
+                ;;
+                
+            splunk)
+                echo -e "${BOLD}=== Observability - Splunk (DEPRECATED) ===${NC}"
+                echo ""
+                echo -e "${YELLOW}⚠️  SPLUNK IS DEPRECATED${NC}"
+                echo ""
+                echo "Splunk is being phased out at ASU."
+                echo "All new implementations MUST use Logging Lake instead."
+                echo ""
+                echo -e "${BOLD}Migration Path:${NC}"
+                echo "  FROM: Splunk Universal Forwarder / HEC"
+                echo "  TO:   Cribl Stream → S3 → OpenSearch"
+                echo ""
+                echo -e "${BOLD}Steps to Migrate:${NC}"
+                echo "  1. Identify current Splunk sources"
+                echo "  2. Configure Cribl Stream inputs"
+                echo "  3. Update Terraform to use cloudwatch-logs-to-log-lake"
+                echo "  4. Migrate dashboards to OpenSearch"
+                echo "  5. Decommission Splunk forwarders"
+                echo ""
+                echo -e "${BOLD}Contact:${NC}"
+                echo "  Team: eli5 (Enterprise Logging Infrastructure)"
+                echo "  Repo: ASU/eli5-observability-pipeline-platform"
+                echo ""
+                echo -e "${BOLD}Recommended:${NC}"
+                echo "  discover.sh pattern --name observability --type logging-lake"
+                ;;
+                
+            *)
+                error "Unknown type: $ptype. Use: datadog, logging-lake, cloudwatch, opentelemetry, or splunk"
+                ;;
+        esac
+        return
+    fi
+    
+    # Full overview
+    echo -e "${BOLD}=== Design Pattern: Observability Stack ===${NC}"
+    echo ""
+    echo "ASU's observability stack for monitoring, logging, and tracing."
+    echo "Primary tools: Datadog (APM/RUM), Cribl/Logging Lake (logs),"
+    echo "CloudWatch (AWS metrics), OpenTelemetry (K8s)."
+    echo ""
+    echo -e "${YELLOW}⚠️  Splunk is DEPRECATED - use Logging Lake instead${NC}"
+    echo ""
+    
+    echo -e "${BOLD}Datadog (APM & RUM):${NC}"
+    echo "  TypeScript: dd-trace, @datadog/browser-rum"
+    echo "  Python:     ddtrace"
+    echo "  Java:       dd-java-agent.jar"
+    echo "  Jenkins:    datadogDeployment()"
+    echo ""
+    
+    echo -e "${BOLD}Logging Lake (RECOMMENDED for logs):${NC}"
+    echo "  Platform:   Cribl Stream on EKS"
+    echo "  Storage:    S3 → OpenSearch"
+    echo "  Team:       eli5"
+    echo "  Repos:      eli5-observability-pipeline-platform, eli5-kafkabahn"
+    echo ""
+    
+    echo -e "${BOLD}CloudWatch:${NC}"
+    echo "  Alarms:     Lambda errors, API Gateway 5xx, ECS failures"
+    echo "  Routing:    To Datadog or Logging Lake"
+    echo ""
+    
+    echo -e "${BOLD}OpenTelemetry:${NC}"
+    echo "  K8s:        OTEL Collector → OSIS → OpenSearch"
+    echo "  Use when:   Vendor neutrality required"
+    echo ""
+    
+    echo -e "${BOLD}Terraform Modules:${NC}"
+    echo "  cloudwatch-logs-to-datadog"
+    echo "  cloudwatch-logs-to-log-lake"
+    echo "  datadog-lambda-forwarder"
+    echo "  datadog-logs-firehose-forwarder"
+    echo ""
+    
+    echo -e "${BOLD}Related Commands:${NC}"
+    echo "  discover.sh pattern --name observability --type datadog"
+    echo "  discover.sh pattern --name observability --type logging-lake"
+    echo "  discover.sh pattern --name observability --type cloudwatch"
+    echo "  discover.sh pattern --name observability --type opentelemetry"
+    echo "  discover.sh pattern --name observability --type splunk"
 }
 
 #

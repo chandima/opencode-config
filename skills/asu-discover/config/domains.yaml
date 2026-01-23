@@ -547,6 +547,8 @@ domains:
       - opensearch
       - elk
       - kafkabahn
+      - "logging lake"
+      - datadog
     synonyms:
       - logging
       - observability
@@ -555,8 +557,10 @@ domains:
       - Elasticsearch
       - Kafkabahn
       - log aggregation
+      - Datadog
+      - "Logging Lake"
     file_hints:
-      extensions: ["py", "yaml", "json"]
+      extensions: ["py", "yaml", "json", "tf"]
       paths: ["logging/", "observability/", "cribl/"]
     repos:
       - eli5-kafkabahn
@@ -565,9 +569,16 @@ domains:
       - eli5-observability-pipeline-platform-cribl-config
       - eli5-observability-pipeline-platform-cribl-pack-linux
       - eli5-observability-pipeline-platform-cribl-pack-kubernetes
+      - eli5-observability-pipeline-platform-cribl-pack-windows
       - eli5-logging-lake-lighthouse
       - eli5-logging-lake-osis
-    prefixes: [eli5]
+      - mom-datadog
+    prefixes: [eli5, mom]
+    # For comprehensive observability patterns, see:
+    # ./discover.sh pattern --name observability
+    see_also:
+      pattern: observability
+      note: "Use 'discover.sh pattern --name observability' for full observability stack guidance"
 
   vault:
     triggers:
@@ -579,6 +590,9 @@ domains:
       - secretsmanager
       - approle
       - "vault login"
+      - ssm parameter
+      - "@aws-sdk/client-secrets-manager"
+      - "@aws-sdk/client-ssm"
     synonyms:
       - vault
       - hvac
@@ -589,14 +603,21 @@ domains:
       - vault_generic_secret
       - aws_secretsmanager
       - AppRole
+      - SecretsManagerClient
+      - SSMClient
+      - GetSecretValueCommand
+      - GetParameterCommand
     file_hints:
-      extensions: ["py", "tf", "groovy", "java"]
-      paths: ["vault/", "secrets/", "auth/"]
+      extensions: ["py", "tf", "groovy", "java", "ts", "js"]
+      paths: ["vault/", "secrets/", "auth/", "clients/"]
     repos:
       - caas-caas-vault
       - dco-lead-vault
       - authn-ops-vault
       - devops-jenkins-pipeline-library
+      - lms-canvas-enrollment-system
+      - cremo-cmidp-course-requisite-api
+      - iden-universal-service-provisioner
     prefixes: [authn, caas]
 
   devops:
@@ -1177,9 +1198,13 @@ design_patterns:
       Patterns for accessing secrets from HashiCorp Vault and syncing to AWS.
       ASU uses multiple Vault clusters (CaaS, DCO, Ops) with various auth
       methods including AppRole, AWS IAM, Kubernetes, and OIDC.
+      
+      NOTE: TypeScript/Node.js services at ASU typically use AWS Secrets Manager
+      or SSM Parameter Store rather than direct Vault access. Vault secrets are
+      synced to AWS at the Terraform level.
     
     when_to_use:
-      - Reading secrets in Python/Java/JS applications
+      - Reading secrets in Python/Java/TypeScript/Node.js applications
       - Syncing Vault secrets to AWS Secrets Manager
       - Syncing Vault secrets to SSM Parameter Store
       - Setting up Jenkins CI/CD with Vault integration
@@ -1195,6 +1220,55 @@ design_patterns:
       - repo: "ASU/authn-ops-vault"
         description: "Operations Vault configuration"
         environment: "ops-vault-prod.opsprod.asu.edu"
+    
+    typescript_patterns:
+      note: |
+        Node.js services at ASU use AWS Secrets Manager or SSM Parameter Store
+        rather than direct Vault access. Vault secrets are synced to AWS at the
+        Terraform level using vault_generic_secret → aws_secretsmanager_secret.
+      
+      secrets_manager:
+        description: "For sensitive credentials (API keys, DB passwords)"
+        example_repos:
+          - "ASU/lms-canvas-enrollment-system"
+          - "ASU/meho-digital-learner-portfolio"
+          - "ASU/crm-salesforce-apis-salesforce-connector"
+          - "ASU/meho-asu-media-services-platform"
+        packages:
+          - "@aws-sdk/client-secrets-manager"
+        code_snippet: |
+          import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
+          
+          const client = new SecretsManagerClient({ region: process.env.AWS_REGION });
+          
+          export async function getSecret(secretId: string): Promise<Record<string, string>> {
+            const command = new GetSecretValueCommand({ SecretId: secretId });
+            const response = await client.send(command);
+            return JSON.parse(response.SecretString!);
+          }
+      
+      ssm_parameter:
+        description: "For configuration and encrypted parameters"
+        example_repos:
+          - "ASU/cremo-cmidp-course-requisite-api"
+          - "ASU/iden-universal-service-provisioner"
+          - "ASU/eadv-dars-uachieve-execute-locked-report"
+          - "ASU/epo-core"
+        packages:
+          - "@aws-sdk/client-ssm"
+        code_snippet: |
+          import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm';
+          
+          const client = new SSMClient({ region: process.env.AWS_REGION });
+          
+          export async function getParameter(name: string): Promise<string> {
+            const command = new GetParameterCommand({
+              Name: name,
+              WithDecryption: true,
+            });
+            const response = await client.send(command);
+            return response.Parameter?.Value ?? '';
+          }
     
     python_patterns:
       token_file:
@@ -1318,6 +1392,8 @@ design_patterns:
       - dco
     
     best_practices:
+      - "For TypeScript/Node.js: Use AWS Secrets Manager or SSM (not direct Vault)"
+      - "Sync Vault secrets to AWS at Terraform level"
       - "Store token files at /var/run/vault-token"
       - "Always call client.logout() after secret retrieval"
       - "Use AWS IAM auth for Lambda/EC2 workloads"
@@ -1337,6 +1413,376 @@ design_patterns:
       - "getVaultSecret"
       - "aws_secretsmanager_secret"
       - "vaultLogin"
+      - "SecretsManagerClient"
+      - "SSMClient"
+      - "@aws-sdk/client-secrets-manager"
+
+  # ===========================================================================
+  # Observability Pattern
+  # ===========================================================================
+  observability:
+    name: "Observability Stack"
+    description: |
+      Full-stack observability: Datadog APM/RUM, Cribl/Logging Lake, CloudWatch, OpenTelemetry.
+      
+      IMPORTANT: Splunk is DEPRECATED at ASU. Use:
+        - Logging Lake (Cribl → S3 + OpenSearch) for log storage/search
+        - Datadog for APM, metrics, and dashboards
+    
+    when_to_use:
+      - Setting up application monitoring (APM, traces, metrics)
+      - Forwarding logs from CloudWatch to centralized storage
+      - Configuring Datadog RUM for frontend performance
+      - Setting up Kubernetes log collection with OpenTelemetry
+      - Migrating from Splunk to Logging Lake
+    
+    types:
+      datadog:
+        name: "Datadog Integration"
+        status: "ACTIVE"
+        description: "APM, monitors, dashboards, RUM, deployment tracking"
+        
+        repos:
+          config: "ASU/mom-datadog"
+          jenkins: "ASU/devops-jenkins-pipeline-library"
+        
+        terraform_modules:
+          - iam-role-datadog
+          - cloudwatch-logs-to-datadog
+          - datadog-lambda-forwarder
+          - datadog-logs-firehose-forwarder
+          - datadog-mule-monitors
+        
+        apm:
+          typescript:
+            description: "dd-trace for Node.js/TypeScript servers"
+            packages:
+              - "dd-trace (^5.x)"
+            example_repos:
+              - "ASU/iden-enterprise-identity-cloud"
+              - "ASU/iden-fraud-watchdog-orchestrator"
+              - "ASU/iden-universal-service-provisioner"
+              - "ASU/eadv-class-search"
+            init_simple: |
+              // Must be the FIRST import in your entry file
+              import "dd-trace/init.js";
+              import { ApolloServer } from "@apollo/server";
+              // ... rest of your imports
+            init_configured: |
+              import tracer from 'dd-trace';
+              
+              tracer.init({
+                service: process.env.DD_SERVICE || 'my-service',
+                env: process.env.DD_ENV || 'development',
+                version: process.env.DD_VERSION || '1.0.0',
+                logInjection: true,  // Correlate logs with traces
+              });
+              
+              export { tracer };
+            wrapper_pattern: |
+              // Wrap handlers for custom spans
+              import tracer from "dd-trace";
+              
+              const handler = tracer.wrap(
+                'my-handler',
+                { resource: 'handlers:my-handler' },
+                originalHandler,
+              );
+          
+          python:
+            description: "ddtrace for Python services"
+            packages:
+              - "ddtrace"
+            init_pattern: |
+              from ddtrace import tracer, patch_all
+              patch_all()
+          
+          java:
+            description: "Datadog Java agent (JVM attachment)"
+            method: "Add -javaagent:/path/to/dd-java-agent.jar to JVM args"
+            env_vars:
+              - "DD_SERVICE=my-service"
+              - "DD_ENV=production"
+              - "DD_VERSION=1.0.0"
+        
+        rum:
+          typescript:
+            description: "Browser RUM for React/Vue/Angular frontends"
+            packages:
+              - "@datadog/browser-rum (^6.x)"
+              - "@datadog/browser-rum-react (for React)"
+            example_repos:
+              - "ASU/cremo-interactive-degree-planner"
+              - "ASU/appss-enterprise-feature-flags"
+              - "ASU/sso-enterprise-authentication-service"
+              - "ASU/adms-admissions-application-ui"
+              - "ASU/eadv-class-search"
+            init_pattern: |
+              import { datadogRum } from '@datadog/browser-rum';
+              import { reactPlugin } from '@datadog/browser-rum-react';
+              
+              // Only init in non-local environments
+              if (process.env.NODE_ENV !== 'development') {
+                datadogRum.init({
+                  applicationId: 'YOUR_APP_ID',
+                  clientToken: 'YOUR_CLIENT_TOKEN',
+                  site: 'datadoghq.com',
+                  service: 'my-frontend',
+                  env: process.env.NODE_ENV,
+                  sessionSampleRate: 100,
+                  sessionReplaySampleRate: 20,
+                  defaultPrivacyLevel: 'mask-user-input',
+                  plugins: [reactPlugin({ router: true })],
+                });
+              }
+        
+        jenkins_functions:
+          - name: datadogDeployment
+            description: "Track deployments in Datadog"
+            usage: |
+              datadogDeployment(
+                service: 'my-service',
+                environment: env.DEPLOY_ENV,
+                version: env.BUILD_TAG,
+                status: 'success'  // or 'started', 'failure'
+              )
+        
+        env_vars:
+          - "DD_SERVICE - Service name"
+          - "DD_ENV - Environment (dev, staging, prod)"
+          - "DD_VERSION - Application version"
+          - "DD_AGENT_HOST - Datadog agent host (optional)"
+          - "DD_TRACE_ENABLED - Enable/disable tracing"
+        
+        best_practices:
+          - "Set DD_SERVICE, DD_ENV, DD_VERSION environment variables"
+          - "Use datadogDeployment() in Jenkins for deployment tracking"
+          - "Enable logInjection for APM-log correlation"
+          - "Use RUM for frontend performance monitoring"
+          - "Sample session replays at 20% in production"
+      
+      logging-lake:
+        name: "Logging Lake / Cribl"
+        status: "RECOMMENDED"
+        description: |
+          Enterprise log aggregation - PRIMARY log destination (replaces Splunk).
+          Built on Cribl Stream (EKS) routing to S3 and OpenSearch.
+        
+        repos:
+          - "ASU/eli5-logging-lake"
+          - "ASU/eli5-observability-pipeline-platform"
+          - "ASU/eli5-observability-pipeline-platform-cribl-config"
+          - "ASU/eli5-observability-pipeline-platform-cribl-pack-kubernetes"
+          - "ASU/eli5-observability-pipeline-platform-cribl-pack-linux"
+          - "ASU/eli5-observability-pipeline-platform-cribl-pack-windows"
+          - "ASU/eli5-logging-lake-osis"
+          - "ASU/eli5-logging-lake-lighthouse"
+          - "ASU/eli5-kafkabahn"
+        
+        terraform_modules:
+          - cloudwatch-logs-to-log-lake
+          - cloudflare-zone-logpush-logging-lake
+        
+        architecture:
+          deployment: "Cribl Stream on EKS (Helm charts: logstream-leader, logstream-workergroup)"
+          workers: "8-16 pods, autoscaled at 60% CPU / 85% memory"
+          storage: "S3 buckets (80+ source types, 365-day retention)"
+          analytics: "OpenSearch (6x or2.4xlarge data + 9x warm + cold storage)"
+          ingestion: "OSIS pipelines for K8s, Cloudflare, VPC Flow Logs"
+        
+        ports:
+          - "9997 - Splunk S2S (legacy ingest)"
+          - "8088 - HTTP Event Collector (HEC)"
+          - "5140 - Syslog UDP"
+          - "6514 - Syslog TLS"
+          - "10001 - TCP JSON"
+          - "10200 - Cribl HTTP"
+          - "10300 - Cribl TCP"
+        
+        s3_bucket_naming: "ELI5-LOGL-{env}-log-lake-{source_key}"
+        retention: "365 days default, 7 days for noncurrent versions"
+        
+        cribl_packs:
+          kubernetes:
+            repo: "ASU/eli5-observability-pipeline-platform-cribl-pack-kubernetes"
+            pipelines:
+              - kubernetes_default
+              - nginx
+              - sso_cas
+              - tomcat
+              - eli5_opp
+          linux:
+            repo: "ASU/eli5-observability-pipeline-platform-cribl-pack-linux"
+          windows:
+            repo: "ASU/eli5-observability-pipeline-platform-cribl-pack-windows"
+        
+        team: "eli5"
+      
+      cloudwatch:
+        name: "CloudWatch"
+        status: "ACTIVE"
+        description: "AWS native logging/metrics - route to Datadog or Logging Lake"
+        
+        terraform_modules:
+          routing:
+            - cloudwatch-logs-to-datadog
+            - cloudwatch-logs-to-log-lake
+          legacy:
+            - cloudwatch-to-splunk (DEPRECATED - use cloudwatch-logs-to-log-lake)
+        
+        alarm_example: |
+          resource "aws_cloudwatch_metric_alarm" "high_cpu" {
+            alarm_name          = "${var.service}-high-cpu"
+            comparison_operator = "GreaterThanThreshold"
+            evaluation_periods  = 2
+            metric_name         = "CPUUtilization"
+            namespace           = "AWS/ECS"
+            period              = 300
+            statistic           = "Average"
+            threshold           = 80
+            alarm_actions       = [aws_sns_topic.alerts.arn]
+            ok_actions          = [aws_sns_topic.alerts.arn]
+            treat_missing_data  = "notBreaching"
+          }
+        
+        log_routing_example: |
+          # Route CloudWatch logs to Logging Lake
+          module "logs_to_lake" {
+            source = "jfrog-cloud.devops.asu.edu/asu-terraform-modules__dco-terraform/cloudwatch-logs-to-log-lake/aws"
+            version = ">= 1.0"
+            
+            log_group_name = aws_cloudwatch_log_group.app.name
+          }
+        
+        routing_guidance:
+          metrics: "Forward to Datadog via datadog-lambda-forwarder"
+          logs: "Forward to Logging Lake via cloudwatch-logs-to-log-lake"
+          alarms: "Use SNS → Datadog integration for alerting"
+      
+      opentelemetry:
+        name: "OpenTelemetry"
+        status: "ACTIVE"
+        description: "K8s container logs and distributed tracing correlation"
+        
+        repos:
+          - "ASU/eli5-logging-lake-osis"
+        
+        pipeline: "OTEL Collector → OSIS → OpenSearch + S3"
+        index: "logs-kubernetes_otel"
+        
+        metadata_extracted:
+          - kube_namespace
+          - kube_pod
+          - kube_container
+          - kube_pod_labels
+          - trace_id
+        
+        osis_config_example: |
+          eli5-logl-osis-k8s:
+            source:
+              otel_logs_source:
+                path: "/${pipelineName}/v1/logs"
+            processor:
+              - date:
+                  destination: "@timestamp"
+              - add_entries:
+                  entries:
+                    - key: "sourcetype"
+                      value: "kubernetes"
+              - rename_keys:
+                  entries:
+                    - from_key: "body"
+                      to_key: "message"
+                    - from_key: "/attributes/resource.attributes.k8s@namespace@name"
+                      to_key: "kube_namespace"
+            sink:
+              - opensearch:
+                  hosts: ["https://opensearch.example.com"]
+                  index: "logs-kubernetes_otel"
+              - s3:
+                  bucket: "logging-lake-archive"
+                  object_key:
+                    path_prefix: "opentelemetry-collector/${/sourcetype}/${/kube_namespace}/"
+        
+        best_practices:
+          - "Include trace_id for distributed tracing correlation"
+          - "Extract K8s metadata (namespace, pod, container) for filtering"
+          - "Dual-sink to OpenSearch + S3 archive for durability"
+          - "Use structured logging (JSON) for better parsing"
+      
+      splunk:
+        name: "Splunk (DEPRECATED)"
+        status: "DEPRECATED"
+        description: "Legacy - migrate to Logging Lake"
+        
+        migration_note: |
+          ╔══════════════════════════════════════════════════════════════════════╗
+          ║                    SPLUNK IS DEPRECATED AT ASU                        ║
+          ╠══════════════════════════════════════════════════════════════════════╣
+          ║  New integrations should use:                                         ║
+          ║                                                                        ║
+          ║  FOR LOGS:                                                             ║
+          ║    → Logging Lake (Cribl → S3 + OpenSearch)                           ║
+          ║    → Terraform: cloudwatch-logs-to-log-lake                           ║
+          ║                                                                        ║
+          ║  FOR METRICS/APM:                                                      ║
+          ║    → Datadog                                                           ║
+          ║    → Terraform: cloudwatch-logs-to-datadog, datadog-lambda-forwarder  ║
+          ╚══════════════════════════════════════════════════════════════════════╝
+        
+        migration_path:
+          step_1: "Update Terraform: Replace cloudwatch-to-splunk with cloudwatch-logs-to-log-lake"
+          step_2: "Reconfigure Cribl routes: Send to S3/OpenSearch instead of Splunk HEC"
+          step_3: "Recreate dashboards/alerts in OpenSearch or Datadog"
+          step_4: "Validate log ingestion in Logging Lake (check S3 bucket and OpenSearch)"
+          step_5: "Decommission Splunk forwarders after 30-day validation period"
+        
+        legacy_modules:
+          - name: iam-role-splunk
+            note: "DO NOT USE for new projects"
+          - name: cloudwatch-to-splunk
+            note: "DO NOT USE - use cloudwatch-logs-to-log-lake instead"
+        
+        replacement_commands:
+          logs: "discover.sh pattern --name observability --type logging-lake"
+          metrics: "discover.sh pattern --name observability --type datadog"
+    
+    team_prefixes:
+      eli5: "logging/observability (Logging Lake, Cribl, OpenSearch)"
+      mom: "monitoring/operations (Datadog)"
+    
+    triggers:
+      - datadog
+      - observability
+      - logging
+      - cribl
+      - cloudwatch
+      - opentelemetry
+      - otel
+      - metrics
+      - monitoring
+      - tracing
+      - apm
+      - rum
+      - "logging lake"
+      - eli5
+      - dd-trace
+      - ddtrace
+      - splunk
+    
+    related_domains:
+      - logging
+      - aws
+      - cicd
+    
+    code_search_queries:
+      - "dd-trace"
+      - "datadogRum"
+      - "@datadog/browser-rum"
+      - "cribl"
+      - "eli5-logging-lake"
+      - "cloudwatch-logs-to-datadog"
+      - "datadogDeployment"
 
 # =============================================================================
 # Search configuration
