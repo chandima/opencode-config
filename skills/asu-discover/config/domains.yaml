@@ -1,0 +1,511 @@
+# ASU Domain Taxonomy for Smart Keyword Expansion
+# Used by discover.sh to expand queries with domain-specific synonyms
+#
+# Structure:
+#   domain_name:
+#     triggers: words that activate this domain
+#     synonyms: terms to include in expanded search
+#     file_hints: path/extension filters
+#     repos: known key repositories
+#     prefixes: team prefixes associated with this domain
+
+# Team prefix to domain mapping
+# Based on ASU org analysis: 760 repos with these common prefixes
+team_prefixes:
+  crm: salesforce      # 66 repos - CRM/Salesforce team
+  eadv: edna           # 38 repos - EDNA Advocacy
+  aiml: ml             # 12 repos - AI/ML team
+  edna: edna           # 11 repos - EDNA core
+  iden: identity       # 10 repos - Identity services
+  authn: auth          # 15 repos - Authentication
+  infra: infrastructure # Infrastructure team
+  tf: terraform        # Terraform prefix
+  dpl: dpl             # Data Potluck
+  ps: peoplesoft       # PeopleSoft integrations
+  sf: salesforce       # Salesforce
+  cf: cloudflare       # Cloudflare
+  unity: unity         # Unity ID platform
+
+domains:
+  peoplesoft:
+    triggers:
+      - peoplesoft
+      - ps
+      - psft
+      - "integration broker"
+      - ib
+      - "component interface"
+      - peoplecode
+      - rowset
+    synonyms:
+      - peoplesoft
+      - "integration broker"
+      - IB_CONNECTOR
+      - ServiceOperation
+      - IBRequest
+      - IBResponse
+      - "Component Interface"
+      - CI_
+      - PeopleCode
+      - RowSet
+      - IntBroker
+      - psft
+      - HRMS
+      - Campus Solutions
+    file_hints:
+      extensions: ["py", "go", "java"]
+      paths: ["ib/", "peoplesoft/", "integration/"]
+    repos:
+      - aiml-peoplesoft-ib
+      - ps-integration-service
+      - peoplesoft-connector
+    prefixes: [ps, aiml]
+
+  edna:
+    triggers:
+      - edna
+      - entitlement
+      - "check access"
+      - checkaccess
+      - permission
+      - authorization
+      - authz
+      - policy
+      - eadv
+    synonyms:
+      - edna
+      - checkAccess
+      - hasPermission
+      - getEntitlements
+      - EdnaClient
+      - entitlement
+      - authorization
+      - permission
+      - role
+      - policy
+      - EDNA_
+      - edna-client
+    file_hints:
+      extensions: ["py", "go", "ts", "js", "java"]
+      paths: ["edna/", "auth/", "authz/", "middleware/", "entitlement/"]
+    repos:
+      - edna-sdk
+      - edna-python-client
+      - edna-go-client
+      - edna-js-client
+    prefixes: [edna, eadv]
+
+  dpl:
+    triggers:
+      - dpl
+      - "data potluck"
+      - datapotluck
+      - principal
+      - emplid
+      - asurite
+      - identity
+      - affiliation
+      - person
+    synonyms:
+      - dpl
+      - "data potluck"
+      - getPrincipal
+      - DplClient
+      - EMPLID
+      - ASURITE
+      - principal
+      - affiliation
+      - identity
+      - person
+      - dpl-client
+      - data-potluck
+    file_hints:
+      extensions: ["py", "go", "ts", "java"]
+      paths: ["dpl/", "principal/", "identity/"]
+    repos:
+      - dpl-python-sdk
+      - dpl-client
+      - principal-service
+      - data-potluck-client
+    prefixes: [dpl]
+
+  serviceauth:
+    triggers:
+      - serviceauth
+      - "service auth"
+      - jwt
+      - token
+      - "service account"
+      - "client credentials"
+      - oauth
+      - bearer
+    synonyms:
+      - serviceauth
+      - serviceauth-client
+      - ServiceAuthClient
+      - getToken
+      - validateToken
+      - refreshToken
+      - JWT
+      - Bearer
+      - OAuth
+      - client_credentials
+      - "@asu/serviceauth"
+    file_hints:
+      extensions: ["ts", "js", "py", "java"]
+      paths: ["auth/", "middleware/", "lib/"]
+    repos:
+      - serviceauth-client
+      - service-auth-js
+      - jwt-validator
+    prefixes: [authn, auth]
+
+  auth:
+    triggers:
+      - authn
+      - authentication
+      - login
+      - sso
+      - saml
+      - oidc
+      - cas
+      - shibboleth
+    synonyms:
+      - authentication
+      - login
+      - SSO
+      - SAML
+      - OIDC
+      - OpenID
+      - CAS
+      - Shibboleth
+      - WebAuth
+      - session
+    file_hints:
+      extensions: ["ts", "js", "py", "java", "xml"]
+      paths: ["auth/", "sso/", "login/"]
+    repos:
+      - auth-service
+      - sso-proxy
+      - cas-client
+    prefixes: [authn, auth, iden]
+
+  identity:
+    triggers:
+      - identity
+      - iden
+      - unity
+      - unityid
+      - "unity id"
+      - account
+      - profile
+    synonyms:
+      - identity
+      - UnityID
+      - account
+      - profile
+      - user
+      - ASURITE
+      - affiliate
+      - employee
+      - student
+    file_hints:
+      extensions: ["ts", "js", "py", "java"]
+      paths: ["identity/", "profile/", "account/"]
+    repos:
+      - unity-identity
+      - identity-service
+      - profile-service
+    prefixes: [iden, unity]
+
+  salesforce:
+    triggers:
+      - salesforce
+      - crm
+      - sfdc
+      - sf
+      - apex
+      - soql
+      - lightning
+      - lwc
+    synonyms:
+      - Salesforce
+      - CRM
+      - SFDC
+      - Apex
+      - SOQL
+      - Lightning
+      - LWC
+      - Force.com
+      - Visualforce
+      - sObject
+      - Trigger
+    file_hints:
+      extensions: ["cls", "trigger", "js", "html", "xml"]
+      paths: ["force-app/", "salesforce/", "crm/"]
+    repos:
+      - salesforce-integrations
+      - crm-connectors
+      - sf-data-sync
+    prefixes: [crm, sf]
+
+  ml:
+    triggers:
+      - ml
+      - "machine learning"
+      - ai
+      - model
+      - prediction
+      - inference
+      - training
+      - neural
+      - deep learning
+    synonyms:
+      - "machine learning"
+      - ML
+      - AI
+      - model
+      - prediction
+      - inference
+      - training
+      - PyTorch
+      - TensorFlow
+      - sklearn
+      - pandas
+      - numpy
+    file_hints:
+      extensions: ["py", "ipynb", "pkl", "h5"]
+      paths: ["models/", "ml/", "ai/", "notebooks/"]
+    repos:
+      - ml-models
+      - ai-services
+      - prediction-engine
+    prefixes: [aiml, ml, ai]
+
+  terraform:
+    triggers:
+      - terraform
+      - tf
+      - iac
+      - infrastructure
+      - infra
+      - module
+      - hcl
+      - provider
+    synonyms:
+      - terraform
+      - module
+      - resource
+      - provider
+      - variable
+      - output
+      - HCL
+      - tfstate
+      - tfvars
+      - plan
+      - apply
+    file_hints:
+      extensions: ["tf", "tfvars", "hcl"]
+      paths: ["modules/", "terraform/", "infra/", "infrastructure/"]
+    repos:
+      - terraform-aws-lambda
+      - terraform-modules
+      - infrastructure
+      - tf-aws-modules
+    prefixes: [tf, infra]
+
+  cicd:
+    triggers:
+      - cicd
+      - ci/cd
+      - pipeline
+      - workflow
+      - "github actions"
+      - actions
+      - deploy
+      - deployment
+      - jenkins
+      - build
+    synonyms:
+      - workflow
+      - pipeline
+      - deploy
+      - build
+      - test
+      - release
+      - "github actions"
+      - CI
+      - CD
+      - artifact
+      - runner
+    file_hints:
+      extensions: ["yml", "yaml"]
+      paths: [".github/workflows/", ".github/actions/", "jenkins/"]
+    repos:
+      - github-actions
+      - reusable-workflows
+      - deployment-templates
+      - ci-templates
+    prefixes: [cicd, devops]
+
+  cloudflare:
+    triggers:
+      - cloudflare
+      - cf
+      - worker
+      - workers
+      - pages
+      - waf
+      - dns
+      - r2
+      - d1
+      - kv
+    synonyms:
+      - cloudflare
+      - worker
+      - wrangler
+      - pages
+      - dns
+      - waf
+      - access
+      - R2
+      - D1
+      - KV
+      - Durable Objects
+    file_hints:
+      extensions: ["js", "ts", "toml"]
+      paths: ["workers/", "functions/", "pages/"]
+    repos:
+      - cloudflare-workers
+      - cf-dns-automation
+      - cf-access
+    prefixes: [cf, cloudflare]
+
+  infoblox:
+    triggers:
+      - infoblox
+      - ipam
+      - dns
+      - dhcp
+      - nios
+      - "ip address"
+    synonyms:
+      - infoblox
+      - NIOS
+      - ipam
+      - dns
+      - dhcp
+      - "network automation"
+      - WAPI
+      - grid
+    file_hints:
+      extensions: ["py", "go"]
+      paths: ["infoblox/", "network/", "ipam/"]
+    repos:
+      - infoblox-client
+      - network-automation
+      - ipam-integration
+    prefixes: [infoblox, network]
+
+  aws:
+    triggers:
+      - aws
+      - amazon
+      - lambda
+      - s3
+      - ec2
+      - dynamodb
+      - sqs
+      - sns
+      - cloudwatch
+      - iam
+    synonyms:
+      - AWS
+      - Lambda
+      - S3
+      - EC2
+      - DynamoDB
+      - SQS
+      - SNS
+      - CloudWatch
+      - IAM
+      - boto3
+      - CDK
+    file_hints:
+      extensions: ["py", "ts", "js", "tf"]
+      paths: ["lambda/", "aws/", "cdk/"]
+    repos:
+      - aws-infrastructure
+      - lambda-functions
+      - aws-cdk-constructs
+    prefixes: [aws, cloud]
+
+  api:
+    triggers:
+      - api
+      - rest
+      - graphql
+      - openapi
+      - swagger
+      - endpoint
+      - gateway
+    synonyms:
+      - API
+      - REST
+      - GraphQL
+      - OpenAPI
+      - Swagger
+      - endpoint
+      - gateway
+      - route
+      - handler
+      - controller
+    file_hints:
+      extensions: ["yaml", "json", "ts", "py", "java"]
+      paths: ["api/", "routes/", "handlers/", "controllers/"]
+    repos:
+      - api-gateway
+      - openapi-specs
+      - graphql-server
+    prefixes: [api, gateway]
+
+# Search configuration
+search:
+  default_limit: 50
+  max_results: 200
+  rate_limit_delay_ms: 6000   # 6 seconds = 10 req/min for code search
+  cache_ttl_hours: 24
+  org: ASU
+  
+# Query expansion rules
+expansion:
+  # Add language filter if code-related
+  auto_language: true
+  # Include repo name matches
+  search_repo_names: true
+  # Search in specific paths first
+  prioritize_paths: true
+  # Maximum terms in expanded query
+  max_expansion_terms: 8
+
+# Priority languages for ASU org (based on analysis)
+# HCL: 335, Python: 64, Java: 47, JavaScript: 38, TypeScript: 17
+priority_languages:
+  - HCL
+  - Python
+  - Java
+  - JavaScript
+  - TypeScript
+  - Go
+  - Shell
+
+# Domain classification rules
+# Used when building the index to auto-classify repos
+classification:
+  # Minimum confidence to assign domain
+  min_confidence: 0.5
+  # Weight for name match vs description match
+  name_weight: 0.7
+  description_weight: 0.3
+  # Classify by prefix first (highest confidence)
+  use_prefix_classification: true
