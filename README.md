@@ -5,18 +5,19 @@ Centralized OpenCode configuration for syncing across multiple machines.
 ## Structure
 
 ```
-~/opencode-config/                   # This git repo (your config)
+opencode-config/                      # This git repo (your config)
 ├── .gitignore
 ├── README.md
-├── opencode.json                    # Main config file (tracked)
-└── skills/                          # Custom skills (tracked)
+├── setup.sh                          # Setup script for symlinks
+├── opencode.json                     # Main config file (tracked)
+└── skills/                           # Custom skills (tracked)
 
-~/.config/opencode/                  # OpenCode runtime directory
-├── opencode.json -> ~/opencode-config/opencode.json  # Symlink
-├── skills/ -> ~/opencode-config/skills/              # Symlink
-├── node_modules/                    # Runtime (not tracked)
-├── package.json                     # Runtime (not tracked)
-└── bun.lock                         # Runtime (not tracked)
+~/.config/opencode/                   # OpenCode runtime directory
+├── opencode.json -> <repo>/opencode.json    # Symlink
+├── skills/ -> <repo>/skills/                # Symlink
+├── node_modules/                     # Runtime (not tracked)
+├── package.json                      # Runtime (not tracked)
+└── bun.lock                          # Runtime (not tracked)
 ```
 
 ## Setup on a New Machine
@@ -24,34 +25,39 @@ Centralized OpenCode configuration for syncing across multiple machines.
 ### 1. Clone this repository
 
 ```bash
-git clone <your-repo-url> ~/opencode-config
+git clone <your-repo-url>
+cd opencode-config
 ```
 
-### 2. Ensure config directory exists
+### 2. Run setup script
+
+```bash
+./setup.sh
+```
+
+This creates the `~/.config/opencode/` directory and symlinks config files.
+The script will warn if it's replacing existing symlinks or files.
+
+<details>
+<summary>Manual alternative (without script)</summary>
 
 ```bash
 mkdir -p ~/.config/opencode
+ln -sf "$(pwd)/opencode.json" ~/.config/opencode/opencode.json
+ln -sfn "$(pwd)/skills" ~/.config/opencode/skills
 ```
 
-### 3. Create symlinks for config files
-
-```bash
-# Symlink the main config file
-ln -sf ~/opencode-config/opencode.json ~/.config/opencode/opencode.json
-
-# Symlink the skills directory
-ln -sfn ~/opencode-config/skills ~/.config/opencode/skills
-```
+</details>
 
 > **Note:** We symlink individual files rather than the entire directory because
 > `~/.config/opencode` also contains runtime files (`node_modules/`, `package.json`, etc.)
 > that OpenCode generates and manages separately.
 
-### 4. Verify
+### 3. Verify
 
 ```bash
 ls -la ~/.config/opencode/
-# opencode.json and skills/ should be symlinks pointing to ~/opencode-config/
+# opencode.json and skills/ should be symlinks pointing to this repo
 # Other files (node_modules/, package.json, etc.) remain as regular files/dirs
 ```
 
@@ -60,7 +66,6 @@ ls -la ~/.config/opencode/
 Changes are instant since we use symlinks. Just edit and sync via git:
 
 ```bash
-cd ~/opencode-config
 git add .
 git commit -m "Update config"
 git push
@@ -69,7 +74,6 @@ git push
 On other machines:
 
 ```bash
-cd ~/opencode-config
 git pull
 # Changes are immediately available - no copy/sync needed
 ```
