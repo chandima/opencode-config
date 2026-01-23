@@ -1,6 +1,11 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["@zenobius/opencode-skillful"],
+  "plugin": [
+    "@zenobius/opencode-skillful",
+    "@tarquinen/opencode-dcp",
+    "opencode-notify",
+    "opencode-worktree"
+  ],
   "provider": {
     "litellm": {
       "npm": "@ai-sdk/openai-compatible",
