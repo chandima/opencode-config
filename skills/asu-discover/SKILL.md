@@ -1,6 +1,6 @@
 ---
 name: asu-discover
-description: "Smart discovery across ASU's 760+ GitHub repositories. Use for finding ASU repos, code patterns, integrations, and SDKs. Domains: PeopleSoft, EDNA, DPL, Terraform, Salesforce, Auth, CI/CD. Use BEFORE starting ASU integration tasks."
+description: "Smart discovery across ASU's 760+ GitHub repositories. ONLY use when active repo is in ASU org (github.com/ASU). Use for finding ASU repos, code patterns, integrations, and SDKs. Domains: PeopleSoft, EDNA, DPL, Terraform, Salesforce, Auth, CI/CD. Use BEFORE starting ASU integration tasks."
 allowed-tools: Bash(gh:*) Bash(./scripts/*) Read Glob Grep
 context: fork
 ---
@@ -8,6 +8,8 @@ context: fork
 # ASU Domain Discovery Skill
 
 Intelligent search and discovery across Arizona State University's GitHub organization (760+ repositories). This skill provides domain-aware search with local caching to work within GitHub's rate limits.
+
+**Prerequisite:** The active repository must be in the [ASU GitHub organization](https://github.com/ASU). ASU org repos integrate with ASU infrastructure (EDNA, DPL, PeopleSoft, Vault, etc.).
 
 **Requirements:** `gh` CLI authenticated with access to ASU org (`gh auth login`)
 
@@ -510,4 +512,4 @@ Try broader terms or check domain spelling:
 
 ---
 
-**Note:** This skill is optimized for ASU's GitHub organization. For general GitHub operations, use the `github-ops` skill instead.
+**Note:** This skill is ONLY useful when working in a repository within the [ASU GitHub organization](https://github.com/ASU). ASU org repos integrate with ASU infrastructure. For general GitHub operations, use the `github-ops` skill instead.
