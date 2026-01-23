@@ -55,6 +55,19 @@ set -euo pipefail
 - Use functions for complex logic
 - Add `|| true` to grep commands that may have no matches
 
+### Testing
+
+Skills with a `tests/` directory must have smoke tests run after modifications:
+
+```bash
+# Run smoke tests for a skill
+./skills/<skill-name>/tests/smoke.sh
+```
+
+- Run smoke tests after any changes to skill scripts or configuration
+- All tests must pass before committing
+- Smoke tests should complete in <30 seconds
+
 ## Available Commands
 
 | Command | Purpose |
