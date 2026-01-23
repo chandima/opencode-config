@@ -124,18 +124,18 @@ Design patterns are architectural templates with implementation guidance. They g
 
 # Show full pattern overview
 ./scripts/discover.sh pattern --name eel
+./scripts/discover.sh pattern --name cicd
+./scripts/discover.sh pattern --name terraform-modules
+./scripts/discover.sh pattern --name vault
 
-# Get publisher examples by language
+# Get specific pattern types
 ./scripts/discover.sh pattern --name eel --type publisher
-
-# Get subscriber examples
-./scripts/discover.sh pattern --name eel --type subscriber
-
-# Get boilerplate repo for starting a new handler
-./scripts/discover.sh pattern --name eel --type boilerplate
+./scripts/discover.sh pattern --name cicd --type jenkins
+./scripts/discover.sh pattern --name terraform-modules --type database
+./scripts/discover.sh pattern --name vault --type python
 ```
 
-The `context` action auto-suggests relevant patterns when your query matches pattern triggers (e.g., "real-time", "event-driven", "publish", "kafka").
+The `context` action auto-suggests relevant patterns when your query matches pattern triggers.
 
 ## Design Patterns
 
@@ -155,7 +155,6 @@ ASU's real-time, Kafka-based event-driven architecture backbone. Use for decoupl
 - Loose coupling (publishers don't know subscribers)
 - Event-driven workflows and notifications
 - Fan-out scenarios (one event, many consumers)
-- Audit trails and event sourcing
 
 **Key Repositories:**
 
@@ -164,12 +163,133 @@ ASU's real-time, Kafka-based event-driven architecture backbone. Use for decoupl
 | Boilerplate | `evbr-enterprise-event-lake-event-handler-boilerplate` | Start here for new handlers |
 | Java Publisher | `edna` → `EELClient.java` | Identity/entitlement events |
 | Python Publisher | `iden-identity-resolution-service-api` → `eel_client.py` | Lambda-based publishing |
-| JS Publisher | `cremo-credid` | JavaScript integration example |
 | Python Subscriber | `sisfa-peoplesoft-financial-aid-module-event-listeners` | Financial Aid events |
-| Python Subscriber | `siscc-peoplesoft-campus-community-module-event-listeners` | Campus Community events |
 
-**Pattern triggers** (auto-detected in `context` action):
-`event-driven`, `real-time`, `publish`, `subscribe`, `kafka`, `confluent`, `avro`, `async`, `decoupled`, `fanout`
+**Pattern triggers:** `event-driven`, `real-time`, `publish`, `subscribe`, `kafka`, `confluent`, `avro`, `async`, `decoupled`, `fanout`
+
+---
+
+### CI/CD Pipelines
+
+Centralized CI/CD patterns for Jenkins and GitHub Actions. The primary asset is the Jenkins Shared Library with 75+ reusable Groovy functions.
+
+| Aspect | Details |
+|--------|---------|
+| Jenkins Library | `ASU/devops-jenkins-pipeline-library` (75+ functions) |
+| GitHub Actions | `ASU/caas-image-library` (reusable workflows) |
+| Pipeline Templates | `ASU/caas-pipeline-templates`, `ASU/ddt-mulesoft-base-application-template` |
+
+**When to use:**
+- Setting up Jenkins pipelines for new projects
+- Integrating Vault secrets into CI/CD
+- Adding security scanning (Bridgecrew, Docker image scanning)
+- Terraform automation in pipelines
+- ServiceNow change management integration
+
+**Jenkins Shared Library Functions:**
+
+| Category | Functions |
+|----------|-----------|
+| Terraform | `terraformInit`, `terraformPlan`, `terraformApply`, `pipelineTerraformSingleEnvironment` |
+| Vault | `vaultLogin`, `getVaultSecret`, `getVaultToken`, `getVaultAppRoleToken` |
+| Credentials | `setupMavenCredentials`, `setupNpmCredentials`, `setupPipCredentials` |
+| Security | `bridgecrewScan`, `scanDockerImage`, `scanDockerImageWithInspector` |
+| Notifications | `slackNotification`, `datadogDeployment` |
+| ServiceNow | `servicenow_change`, `changeFreezeCheck` |
+
+**Pattern triggers:** `jenkins`, `pipeline`, `shared-library`, `github actions`, `workflow_call`, `terraformApply`, `getVaultSecret`
+
+---
+
+### ASU Terraform Modules
+
+Custom Terraform modules from `dco-terraform` hosted on JFrog Artifactory.
+
+| Aspect | Details |
+|--------|---------|
+| Registry | `jfrog-cloud.devops.asu.edu/asu-terraform-modules__dco-terraform` |
+| Main Repo | `ASU/dco-terraform` |
+| Examples | `ASU/dco-examples` |
+| Requirements | Terraform >= 1.5.6, AWS Provider >= 5.82.0 |
+
+**Module Source Pattern:**
+```hcl
+module "example" {
+  source  = "jfrog-cloud.devops.asu.edu/asu-terraform-modules__dco-terraform/<module>/aws"
+  version = ">= 1.0"
+}
+```
+
+**Module Categories:**
+
+| Category | Key Modules |
+|----------|-------------|
+| Compute | `ec2-instance`, `ec2-windows`, `nutanix-vm` |
+| Database | `aurora`, `aurora-mysql`, `aurora-postgres`, `rds-mssql`, `rds-oracle` |
+| Networking | `vpc-core-v5`, `security-group`, `route53-host` |
+| Kubernetes | `eks-oidc-provider`, `eks-pod-identity-role`, `eks-service-account-role` |
+| Cloudflare | `cloudflare-tunnel`, `cloudflare-access-app`, `cloudflare-access-edna-group` |
+| IAM | `iam-role-github-actions`, `iam-role-vault`, `github-oidc-provider` |
+| Observability | `cloudwatch-logs-to-datadog`, `datadog-lambda-forwarder` |
+| Standards | `product-tags` **(MANDATORY)** |
+
+**Custom Providers:**
+- `terraform-provider-edna` - EDNA resource management
+- `terraform-provider-mandiantasm` - Security scanning
+
+**Pattern triggers:** `terraform module`, `dco-terraform`, `product-tags`, `aurora`, `vpc-core`, `eks-oidc`
+
+---
+
+### HashiCorp Vault Secrets
+
+Patterns for accessing secrets from Vault and syncing to AWS.
+
+| Aspect | Details |
+|--------|---------|
+| CaaS Vault | `vault.caas-{env}.asu.edu` |
+| Ops Vault | `ops-vault-prod.opsprod.asu.edu` |
+| Infrastructure | `ASU/caas-caas-vault`, `ASU/authn-ops-vault` |
+
+**When to use:**
+- Reading secrets in Python/Java/JS applications
+- Syncing Vault secrets to AWS Secrets Manager
+- Syncing Vault secrets to SSM Parameter Store
+- Setting up Jenkins CI/CD with Vault integration
+- Configuring AWS Lambda/EC2 to authenticate with Vault
+
+**Python Pattern (hvac):**
+```python
+import hvac
+with open('/var/run/vault-token') as token:
+    client = hvac.Client(url='https://ops-vault-prod.opsprod.asu.edu', token=token.read())
+secret = client.secrets.kv.v1.read_secret(path='services/...')['data']
+client.logout()
+```
+
+**Terraform Pattern (Vault → Secrets Manager):**
+```hcl
+data "vault_generic_secret" "api_key" {
+  path = "secret/services/dco/jenkins/..."
+}
+resource "aws_secretsmanager_secret_version" "api_key" {
+  secret_id     = aws_secretsmanager_secret.api_key.id
+  secret_string = data.vault_generic_secret.api_key.data["api_key"]
+}
+```
+
+**Authentication Methods:**
+- AppRole - Jenkins CI/CD (30 min TTL)
+- AWS IAM - EC2/Lambda workloads
+- Kubernetes - EKS pods
+- OIDC - Human users (via Cognito)
+
+**Secret Path Convention:**
+```
+secret/services/{org}/{team}/{app}/{environment}/{component}
+```
+
+**Pattern triggers:** `vault`, `hvac`, `secret`, `getVaultSecret`, `secretsmanager`, `approle`
 
 ## Domains
 
@@ -182,12 +302,16 @@ ASU's real-time, Kafka-based event-driven architecture backbone. Use for decoupl
 | `auth` | authn, sso, saml, oidc | authn, auth | auth-service |
 | `identity` | identity, unity, unityid | iden, unity | unity-identity |
 | `salesforce` | salesforce, crm, sfdc, apex | crm, sf | salesforce-integrations |
-| `terraform` | terraform, tf, iac, hcl | tf, infra | terraform-modules |
-| `cicd` | cicd, pipeline, workflow, actions | cicd | reusable-workflows |
-| `cloudflare` | cloudflare, cf, worker | cf | cloudflare-workers |
+| `terraform` | terraform, tf, iac, hcl | tf, infra, dco, ceng | dco-terraform, dco-examples |
+| `cicd` | cicd, pipeline, workflow, actions, jenkins | cicd, devops, dco, caas, dot | devops-jenkins-pipeline-library |
+| `cloudflare` | cloudflare, cf, worker | cf, ewp | cloudflare-workers |
 | `ml` | ml, ai, machine learning, model | aiml | ml-models |
 | `eel` | eel, event lake, kafka, confluent, avro | evbr | evbr-enterprise-event-lake |
-| `logging` | logging, observability, cribl, kafkabahn | eli5 | eli5-kafkabahn |
+| `logging` | logging, observability, cribl, kafkabahn | eli5 | eli5-kafkabahn, eli5-observability-pipeline-platform |
+| `vault` | vault, hvac, secret, hashicorp | authn, caas | caas-caas-vault |
+| `devops` | devops, jenkins, pipeline, shared library | devops, dco | devops-jenkins-pipeline-library |
+| `mulesoft` | mulesoft, mule, anypoint, esb | ddt | ddt-mulesoft-base-application-template |
+| `feature-flags` | feature flag, toggle | appss | appss-enterprise-feature-flags |
 
 ## Team Prefixes
 

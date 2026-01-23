@@ -114,14 +114,19 @@ EXAMPLES:
 
 DOMAINS:
   peoplesoft, edna, dpl, serviceauth, auth, identity, salesforce,
-  ml, terraform, cicd, cloudflare, infoblox, aws, api, eel, logging
+  ml, terraform, cicd, cloudflare, infoblox, aws, api, eel, logging,
+  vault, devops, mulesoft, feature-flags
 
 DESIGN PATTERNS:
-  eel - Enterprise Event Lake (Kafka-based event-driven architecture)
+  eel              - Enterprise Event Lake (Kafka-based event-driven)
+  cicd             - CI/CD Pipelines (Jenkins shared library, GitHub Actions)
+  terraform-modules - ASU Terraform Modules (dco-terraform on JFrog)
+  vault            - HashiCorp Vault Secrets (read/sync patterns)
 
 TEAM PREFIXES:
   crm (66), eadv (38), authn (15), aiml (12), edna (11), iden (10),
-  evbr (2), eli5 (9), infra, tf, dpl, ps, sf, cf, unity
+  evbr, eli5, dco, caas, devops, dot, mom, ceng, ddt, appss, ewp,
+  infra, tf, dpl, ps, sf, cf, unity
 EOF
     exit 0
 }
@@ -205,7 +210,7 @@ detect_domains() {
     local detected=""
     
     # All known domains
-    local all_domains="peoplesoft edna dpl serviceauth auth identity salesforce ml terraform cicd cloudflare infoblox aws api eel logging"
+    local all_domains="peoplesoft edna dpl serviceauth auth identity salesforce ml terraform cicd cloudflare infoblox aws api eel logging vault devops mulesoft feature-flags"
     
     for domain in $all_domains; do
         local triggers
@@ -704,26 +709,52 @@ action_context() {
     echo -e "${BOLD}Detected Domains:${NC} ${detected_domains:-general}"
     echo ""
     
-    # === DESIGN PATTERN SUGGESTION ===
+    # === DESIGN PATTERN SUGGESTIONS ===
     if [[ -n "$detected_patterns" ]]; then
-        echo -e "${YELLOW}${BOLD}=== Suggested Design Pattern: EEL ===${NC}"
-        echo ""
-        echo "For real-time, event-driven integration, consider the Enterprise Event Lake:"
-        echo ""
-        echo -e "  ${GREEN}Boilerplate:${NC}"
-        echo "    ASU/evbr-enterprise-event-lake-event-handler-boilerplate"
-        echo ""
-        echo -e "  ${GREEN}Publisher Examples:${NC}"
-        echo "    Java:       ASU/edna → EELClient.java"
-        echo "    Python:     ASU/iden-identity-resolution-service-api → eel_client.py"
-        echo "    JavaScript: ASU/cremo-credid → enterprise-event-lake/"
-        echo ""
-        echo -e "  ${GREEN}Subscriber Examples:${NC}"
-        echo "    ASU/sisfa-peoplesoft-financial-aid-module-event-listeners"
-        echo "    ASU/siscc-peoplesoft-campus-community-module-event-listeners"
-        echo ""
-        echo "  Run: discover.sh pattern --name eel"
-        echo ""
+        for pattern in $detected_patterns; do
+            case "$pattern" in
+                eel)
+                    echo -e "${YELLOW}${BOLD}=== Suggested Pattern: EEL (Enterprise Event Lake) ===${NC}"
+                    echo ""
+                    echo "For real-time, event-driven integration:"
+                    echo "  Boilerplate: ASU/evbr-enterprise-event-lake-event-handler-boilerplate"
+                    echo "  Publishers:  ASU/edna (Java), ASU/iden-identity-resolution-service-api (Python)"
+                    echo "  Subscribers: ASU/sisfa-peoplesoft-financial-aid-module-event-listeners"
+                    echo "  Run: discover.sh pattern --name eel"
+                    echo ""
+                    ;;
+                cicd)
+                    echo -e "${YELLOW}${BOLD}=== Suggested Pattern: CI/CD Pipelines ===${NC}"
+                    echo ""
+                    echo "For Jenkins/GitHub Actions pipelines:"
+                    echo "  Shared Library: ASU/devops-jenkins-pipeline-library (75+ functions)"
+                    echo "  Key functions:  terraformApply, getVaultSecret, bridgecrewScan"
+                    echo "  GH Actions:     ASU/caas-image-library (reusable workflows)"
+                    echo "  Run: discover.sh pattern --name cicd"
+                    echo ""
+                    ;;
+                terraform-modules)
+                    echo -e "${YELLOW}${BOLD}=== Suggested Pattern: Terraform Modules ===${NC}"
+                    echo ""
+                    echo "For ASU infrastructure provisioning:"
+                    echo "  Registry:  jfrog-cloud.devops.asu.edu/asu-terraform-modules__dco-terraform"
+                    echo "  Modules:   ec2-instance, aurora, vpc-core-v5, eks-oidc-provider"
+                    echo "  REQUIRED:  product-tags (ASU tagging standard)"
+                    echo "  Run: discover.sh pattern --name terraform-modules"
+                    echo ""
+                    ;;
+                vault)
+                    echo -e "${YELLOW}${BOLD}=== Suggested Pattern: Vault Secrets ===${NC}"
+                    echo ""
+                    echo "For secrets management:"
+                    echo "  Python:    ASU/edna-rmi-linux (hvac + token file)"
+                    echo "  Terraform: ASU/wflow-kuali-approver-service (Vault→Secrets Manager)"
+                    echo "  Jenkins:   vaultLogin, getVaultSecret, getVaultAppRoleToken"
+                    echo "  Run: discover.sh pattern --name vault"
+                    echo ""
+                    ;;
+            esac
+        done
     fi
     
     # Show matching repos from local index
@@ -871,15 +902,42 @@ detect_patterns() {
     
     # EEL pattern triggers
     local eel_triggers="event-driven real-time realtime publish subscribe kafka confluent avro event lake async decoupled fanout fan-out"
-    
     for trigger in $eel_triggers; do
         if [[ "$query_lower" == *"$trigger"* ]]; then
-            detected="eel"
+            detected="$detected eel"
             break
         fi
     done
     
-    echo "$detected"
+    # CI/CD pattern triggers
+    local cicd_triggers="jenkins pipeline jenkinsfile shared-library shared library github actions workflow_call reusable workflow terraformapply getvaultsecret bridgecrew"
+    for trigger in $cicd_triggers; do
+        if [[ "$query_lower" == *"$trigger"* ]]; then
+            detected="$detected cicd"
+            break
+        fi
+    done
+    
+    # Terraform modules pattern triggers
+    local tf_triggers="terraform module dco-terraform product-tags aurora vpc-core ec2-instance eks-oidc jfrog-cloud"
+    for trigger in $tf_triggers; do
+        if [[ "$query_lower" == *"$trigger"* ]]; then
+            detected="$detected terraform-modules"
+            break
+        fi
+    done
+    
+    # Vault pattern triggers
+    local vault_triggers="vault hvac secret getvaultsecret vaultlogin secretsmanager approle hashicorp"
+    for trigger in $vault_triggers; do
+        if [[ "$query_lower" == *"$trigger"* ]]; then
+            detected="$detected vault"
+            break
+        fi
+    done
+    
+    # Deduplicate and trim
+    echo "$detected" | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ' | sed 's/ $//'
 }
 
 #
@@ -894,7 +952,20 @@ action_pattern() {
         echo "     Real-time, decoupled, event-driven architecture backbone"
         echo "     Built on Confluent Kafka with Avro schemas"
         echo ""
-        echo "Usage: discover.sh pattern --name eel"
+        echo -e "${GREEN}cicd${NC} - CI/CD Pipelines"
+        echo "     Jenkins shared library (75+ functions) and GitHub Actions"
+        echo "     Terraform, Vault, security scanning, notifications"
+        echo ""
+        echo -e "${GREEN}terraform-modules${NC} - ASU Terraform Modules"
+        echo "     Custom modules from dco-terraform on JFrog"
+        echo "     EC2, Aurora, VPC, EKS, Cloudflare, IAM, Observability"
+        echo ""
+        echo -e "${GREEN}vault${NC} - HashiCorp Vault Secrets"
+        echo "     Patterns for reading secrets and syncing to AWS"
+        echo "     Python hvac, Terraform, Jenkins integration"
+        echo ""
+        echo "Usage: discover.sh pattern --name <pattern>"
+        echo "       discover.sh pattern --name <pattern> --type <type>"
         return
     fi
     
@@ -908,21 +979,37 @@ action_pattern() {
     pattern_name=$(yaml_get_pattern_simple "$DOMAINS_FILE" "$pattern" "name")
     [[ -z "$pattern_name" ]] && error "Unknown pattern: $pattern. Use --list to see available patterns."
     
+    # Route to pattern-specific handlers
+    case "$pattern" in
+        eel) show_pattern_eel "$ptype" ;;
+        cicd) show_pattern_cicd "$ptype" ;;
+        terraform-modules) show_pattern_terraform "$ptype" ;;
+        vault) show_pattern_vault "$ptype" ;;
+        *) show_pattern_generic "$pattern" "$ptype" ;;
+    esac
+}
+
+#
+# Show EEL pattern details
+#
+show_pattern_eel() {
+    local ptype="$1"
+    
     # Show specific type if requested
     if [[ -n "$ptype" ]]; then
         case "$ptype" in
             publisher|publishers)
-                echo -e "${BOLD}=== $pattern_name - Publisher Examples ===${NC}"
+                echo -e "${BOLD}=== Enterprise Event Lake (EEL) - Publisher Examples ===${NC}"
                 echo ""
                 
                 for lang in java python javascript sisint; do
                     local repo path desc language
-                    repo=$(yaml_get_pattern_nested "$DOMAINS_FILE" "$pattern" "publishers" "$lang" "repo")
+                    repo=$(yaml_get_pattern_nested "$DOMAINS_FILE" "eel" "publishers" "$lang" "repo")
                     [[ -z "$repo" ]] && continue
                     
-                    path=$(yaml_get_pattern_nested "$DOMAINS_FILE" "$pattern" "publishers" "$lang" "path")
-                    desc=$(yaml_get_pattern_nested "$DOMAINS_FILE" "$pattern" "publishers" "$lang" "description")
-                    language=$(yaml_get_pattern_nested "$DOMAINS_FILE" "$pattern" "publishers" "$lang" "language")
+                    path=$(yaml_get_pattern_nested "$DOMAINS_FILE" "eel" "publishers" "$lang" "path")
+                    desc=$(yaml_get_pattern_nested "$DOMAINS_FILE" "eel" "publishers" "$lang" "description")
+                    language=$(yaml_get_pattern_nested "$DOMAINS_FILE" "eel" "publishers" "$lang" "language")
                     
                     echo -e "${GREEN}$language:${NC}"
                     echo "  Repo: $repo"
@@ -933,16 +1020,16 @@ action_pattern() {
                 ;;
                 
             subscriber|subscribers)
-                echo -e "${BOLD}=== $pattern_name - Subscriber Examples ===${NC}"
+                echo -e "${BOLD}=== Enterprise Event Lake (EEL) - Subscriber Examples ===${NC}"
                 echo ""
                 
                 for sub in python_peoplesoft_fa python_peoplesoft_cc identity_listener; do
                     local repo desc language
-                    repo=$(yaml_get_pattern_nested "$DOMAINS_FILE" "$pattern" "subscribers" "$sub" "repo")
+                    repo=$(yaml_get_pattern_nested "$DOMAINS_FILE" "eel" "subscribers" "$sub" "repo")
                     [[ -z "$repo" ]] && continue
                     
-                    desc=$(yaml_get_pattern_nested "$DOMAINS_FILE" "$pattern" "subscribers" "$sub" "description")
-                    language=$(yaml_get_pattern_nested "$DOMAINS_FILE" "$pattern" "subscribers" "$sub" "language")
+                    desc=$(yaml_get_pattern_nested "$DOMAINS_FILE" "eel" "subscribers" "$sub" "description")
+                    language=$(yaml_get_pattern_nested "$DOMAINS_FILE" "eel" "subscribers" "$sub" "language")
                     
                     echo -e "${GREEN}${language:-Python}:${NC}"
                     echo "  Repo: $repo"
@@ -952,35 +1039,13 @@ action_pattern() {
                 ;;
                 
             boilerplate)
-                echo -e "${BOLD}=== $pattern_name - Boilerplate ===${NC}"
+                echo -e "${BOLD}=== Enterprise Event Lake (EEL) - Boilerplate ===${NC}"
                 echo ""
-                
-                local repo desc use_for
-                repo=$(yaml_get_pattern_nested "$DOMAINS_FILE" "$pattern" "boilerplate" "" "repo" 2>/dev/null)
-                # Try alternate structure
-                if [[ -z "$repo" ]]; then
-                    repo=$(sed -n "/^design_patterns:/,/^[a-z]/p" "$DOMAINS_FILE" | \
-                           sed -n "/^  $pattern:/,/^  [a-zA-Z]/p" | \
-                           sed -n "/^    boilerplate:/,/^    [a-zA-Z]/p" | \
-                           grep "repo:" | sed 's/.*repo: *//' | tr -d '"')
-                fi
-                desc=$(sed -n "/^design_patterns:/,/^[a-z]/p" "$DOMAINS_FILE" | \
-                       sed -n "/^  $pattern:/,/^  [a-zA-Z]/p" | \
-                       sed -n "/^    boilerplate:/,/^    [a-zA-Z]/p" | \
-                       grep "description:" | sed 's/.*description: *//' | tr -d '"')
-                use_for=$(sed -n "/^design_patterns:/,/^[a-z]/p" "$DOMAINS_FILE" | \
-                          sed -n "/^  $pattern:/,/^  [a-zA-Z]/p" | \
-                          sed -n "/^    boilerplate:/,/^    [a-zA-Z]/p" | \
-                          grep "use_for:" | sed 's/.*use_for: *//' | tr -d '"')
-                
-                echo "Repository: ${repo:-ASU/evbr-enterprise-event-lake-event-handler-boilerplate}"
-                echo "Description: ${desc:-Official boilerplate for creating new EEL event handlers}"
-                echo "Use for: ${use_for:-Starting a new EEL publisher or subscriber}"
+                echo "Repository: ASU/evbr-enterprise-event-lake-event-handler-boilerplate"
+                echo "Description: Official boilerplate for creating new EEL event handlers"
+                echo "Use for: Starting a new EEL publisher or subscriber"
                 echo ""
-                local clone_repo="${repo:-evbr-enterprise-event-lake-event-handler-boilerplate}"
-                # Remove ASU/ prefix if present to avoid ASU/ASU/
-                clone_repo="${clone_repo#ASU/}"
-                echo "Clone: gh repo clone ASU/${clone_repo}"
+                echo "Clone: gh repo clone ASU/evbr-enterprise-event-lake-event-handler-boilerplate"
                 ;;
                 
             *)
@@ -991,6 +1056,521 @@ action_pattern() {
     fi
     
     # Show full pattern overview
+    echo -e "${BOLD}=== Design Pattern: Enterprise Event Lake (EEL) ===${NC}"
+    echo ""
+    echo "Real-time, decoupled, event-driven architectural backbone at ASU."
+    echo "The EEL provides a managed Kafka-based messaging platform for"
+    echo "asynchronous, loosely-coupled communication between services."
+    echo ""
+    
+    echo -e "${BOLD}When to use:${NC}"
+    echo "  - Real-time data synchronization across systems"
+    echo "  - Loose coupling between services (publisher doesn't know subscribers)"
+    echo "  - Event-driven workflows and notifications"
+    echo "  - Async communication with PeopleSoft and other enterprise systems"
+    echo "  - Fan-out scenarios (one event, many consumers)"
+    echo ""
+    
+    echo -e "${BOLD}Architecture:${NC}"
+    echo "  Platform: Confluent Cloud (Managed Apache Kafka)"
+    echo "  Schema Format: Apache Avro"
+    echo "  Delivery: At-least-once"
+    echo ""
+    
+    echo -e "${BOLD}Publishers:${NC}"
+    echo -e "  ${GREEN}Java:${NC}       ASU/edna → EELClient.java"
+    echo -e "  ${GREEN}Python:${NC}     ASU/iden-identity-resolution-service-api → eel_client.py"
+    echo -e "  ${GREEN}JavaScript:${NC} ASU/cremo-credid → enterprise-event-lake/"
+    echo ""
+    
+    echo -e "${BOLD}Subscribers:${NC}"
+    echo "  ASU/sisfa-peoplesoft-financial-aid-module-event-listeners"
+    echo "  ASU/siscc-peoplesoft-campus-community-module-event-listeners"
+    echo ""
+    
+    echo -e "${BOLD}Boilerplate:${NC}"
+    echo "  ASU/evbr-enterprise-event-lake-event-handler-boilerplate"
+    echo ""
+    
+    echo -e "${BOLD}Related Commands:${NC}"
+    echo "  discover.sh pattern --name eel --type publisher"
+    echo "  discover.sh pattern --name eel --type subscriber"
+    echo "  discover.sh search --query \"EelClient\" --domain eel"
+}
+
+#
+# Show CI/CD pattern details
+#
+show_pattern_cicd() {
+    local ptype="$1"
+    
+    if [[ -n "$ptype" ]]; then
+        case "$ptype" in
+            jenkins)
+                echo -e "${BOLD}=== CI/CD - Jenkins Shared Library ===${NC}"
+                echo ""
+                echo "Repository: ASU/devops-jenkins-pipeline-library"
+                echo "Location:   vars/"
+                echo ""
+                echo -e "${BOLD}Terraform Functions:${NC}"
+                echo "  terraformInit, terraformPlan, terraformApply"
+                echo "  terraformPlanV2, terraformV2"
+                echo "  pipelineTerraformSingleEnvironment"
+                echo ""
+                echo -e "${BOLD}Vault Functions:${NC}"
+                echo "  vaultLogin, caasVaultLogin, opsVaultLogin"
+                echo "  getVaultSecret, getVaultToken, getVaultAppRoleToken"
+                echo ""
+                echo -e "${BOLD}Credentials Setup:${NC}"
+                echo "  setupGradleCredentials, setupMavenCredentials"
+                echo "  setupNpmCredentials, setupPipCredentials"
+                echo "  setupPoetryCredentials, setupUvCredentials"
+                echo ""
+                echo -e "${BOLD}Security Scanning:${NC}"
+                echo "  bridgecrewScan, scanDockerImage, scanDockerImageWithInspector"
+                echo ""
+                echo -e "${BOLD}Notifications:${NC}"
+                echo "  slackNotification, botNotification, datadogDeployment"
+                echo ""
+                echo -e "${BOLD}ServiceNow:${NC}"
+                echo "  servicenow_change, changeFreezeCheck"
+                echo ""
+                echo -e "${BOLD}Ansible:${NC}"
+                echo "  ansible, ansibleKubernetes, ansiblePlaybook"
+                echo ""
+                echo -e "${BOLD}MuleSoft:${NC}"
+                echo "  mule4caasPipeline, mule4caasPipelineSf"
+                echo "  mulesoftBuild, mulesoftDeploy"
+                ;;
+                
+            github-actions|actions|gha)
+                echo -e "${BOLD}=== CI/CD - GitHub Actions ===${NC}"
+                echo ""
+                echo -e "${GREEN}Reusable Workflows:${NC}"
+                echo "  Repo: ASU/caas-image-library"
+                echo "  Path: .github/workflows/"
+                echo ""
+                echo "  workflow-build-image.yml"
+                echo "    Generic container image build with Trivy scanning"
+                echo "    Trigger: workflow_call"
+                echo ""
+                echo "  workflow-build-image-tomcat.yml"
+                echo "    Tomcat-specific image builds"
+                echo "    Trigger: workflow_call"
+                echo ""
+                echo -e "${GREEN}Job Workflows:${NC}"
+                echo "  job-apache-installer.yml"
+                echo "  job-haproxy-default-backend.yml"
+                echo "  job-k8s-deploy.yml"
+                echo "  job-sonar-scanner.yml"
+                echo ""
+                echo -e "${GREEN}OIDC Example:${NC}"
+                echo "  Repo: ASU/dco-github-actions-oidc-aws-example"
+                echo "  GitHub Actions OIDC with AWS"
+                ;;
+                
+            templates)
+                echo -e "${BOLD}=== CI/CD - Pipeline Templates ===${NC}"
+                echo ""
+                echo -e "${GREEN}CaaS Templates:${NC}"
+                echo "  Repo: ASU/caas-pipeline-templates"
+                echo "  - legacy-warapps"
+                echo "  - legacy-warapps-deployment"
+                echo ""
+                echo -e "${GREEN}Mobile Templates:${NC}"
+                echo "  Repo: ASU/mobile-mapp-templates"
+                echo "  Mobile Application Publishing Pipeline Templates"
+                echo ""
+                echo -e "${GREEN}MuleSoft Templates:${NC}"
+                echo "  Repo: ASU/ddt-mulesoft-base-application-template"
+                echo "  Template with container pipeline for Mulesoft apps"
+                ;;
+                
+            *)
+                error "Unknown type: $ptype. Use: jenkins, github-actions, or templates"
+                ;;
+        esac
+        return
+    fi
+    
+    # Full overview
+    echo -e "${BOLD}=== Design Pattern: CI/CD Pipelines ===${NC}"
+    echo ""
+    echo "Centralized CI/CD patterns for Jenkins and GitHub Actions at ASU."
+    echo "The primary asset is the Jenkins Shared Library with 75+ reusable"
+    echo "Groovy functions covering Terraform, Vault, credentials, security"
+    echo "scanning, and notifications."
+    echo ""
+    
+    echo -e "${BOLD}Jenkins Shared Library:${NC}"
+    echo "  Repo: ASU/devops-jenkins-pipeline-library"
+    echo "  75+ reusable Groovy functions in vars/"
+    echo ""
+    echo "  Key function categories:"
+    echo "    - Terraform: terraformInit, terraformPlan, terraformApply"
+    echo "    - Vault: vaultLogin, getVaultSecret, getVaultAppRoleToken"
+    echo "    - Credentials: setupMavenCredentials, setupNpmCredentials"
+    echo "    - Security: bridgecrewScan, scanDockerImage"
+    echo "    - Notifications: slackNotification, datadogDeployment"
+    echo "    - ServiceNow: servicenow_change, changeFreezeCheck"
+    echo ""
+    
+    echo -e "${BOLD}GitHub Actions:${NC}"
+    echo "  Reusable Workflows: ASU/caas-image-library"
+    echo "    workflow-build-image.yml (Trivy scanning)"
+    echo "    workflow-build-image-tomcat.yml"
+    echo "  OIDC Example: ASU/dco-github-actions-oidc-aws-example"
+    echo ""
+    
+    echo -e "${BOLD}Pipeline Templates:${NC}"
+    echo "  CaaS: ASU/caas-pipeline-templates"
+    echo "  MuleSoft: ASU/ddt-mulesoft-base-application-template"
+    echo "  Mobile: ASU/mobile-mapp-templates"
+    echo ""
+    
+    echo -e "${BOLD}Team Prefixes:${NC} dco, caas, devops, dot"
+    echo ""
+    
+    echo -e "${BOLD}Related Commands:${NC}"
+    echo "  discover.sh pattern --name cicd --type jenkins"
+    echo "  discover.sh pattern --name cicd --type github-actions"
+    echo "  discover.sh pattern --name cicd --type templates"
+    echo "  discover.sh repos --domain cicd"
+}
+
+#
+# Show Terraform Modules pattern details
+#
+show_pattern_terraform() {
+    local ptype="$1"
+    
+    if [[ -n "$ptype" ]]; then
+        case "$ptype" in
+            compute)
+                echo -e "${BOLD}=== Terraform Modules - Compute ===${NC}"
+                echo ""
+                echo "ec2-instance              Linux EC2 with Ansible integration"
+                echo "ec2-instance-linux-lowlevel  Low-level Linux EC2 configuration"
+                echo "ec2-windows               Windows EC2 instances"
+                echo "ec2-windows-v2            Windows EC2 v2"
+                echo "ec2-macos-instance        macOS EC2 instances"
+                echo "ec2-public-instance       Public-facing EC2 instances"
+                echo "nutanix-vm                Nutanix virtual machines"
+                ;;
+                
+            database|db)
+                echo -e "${BOLD}=== Terraform Modules - Database ===${NC}"
+                echo ""
+                echo "aurora                    Aurora clusters"
+                echo "aurora-mysql              Aurora MySQL"
+                echo "aurora-postgres           Aurora PostgreSQL"
+                echo "rds-mssql                 RDS SQL Server"
+                echo "rds-oracle                RDS Oracle"
+                ;;
+                
+            networking|network)
+                echo -e "${BOLD}=== Terraform Modules - Networking ===${NC}"
+                echo ""
+                echo "vpc-core-v3               VPC with subnets, NAT, VPN (v3)"
+                echo "vpc-core-v5               VPC with subnets, NAT, VPN, Route53 (v5)"
+                echo "security-group            Security groups"
+                echo "core-security-groups      Standard org-wide security groups"
+                echo "route53-host              Route53 DNS records"
+                echo "route53-private-zone      Private hosted zones"
+                echo "route53-public-zone       Public hosted zones"
+                ;;
+                
+            kubernetes|k8s|eks)
+                echo -e "${BOLD}=== Terraform Modules - Kubernetes/EKS ===${NC}"
+                echo ""
+                echo "eks-oidc-provider         EKS OIDC identity provider"
+                echo "eks-pod-identity-role     EKS pod identity IAM roles"
+                echo "eks-service-account-role  IRSA (IAM Roles for Service Accounts)"
+                echo "vault-kubernetes-auth-role  Vault K8s authentication"
+                ;;
+                
+            cloudflare|cf)
+                echo -e "${BOLD}=== Terraform Modules - Cloudflare ===${NC}"
+                echo ""
+                echo "cloudflare-tunnel                 Cloudflare Tunnel setup"
+                echo "cloudflare-tunnel-route53-dns     Tunnel with Route53 DNS"
+                echo "cloudflare-access-app             Cloudflare Access applications"
+                echo "cloudflare-access-edna-group      EDNA-integrated access groups"
+                echo "cloudflare-origin-ca-certificate  Origin CA certificates"
+                echo "cloudflare-zone-logpush-logging-lake  Zone logs to data lake"
+                echo "cloudflare-zero-trust-device-posture-rules  ZT posture rules"
+                echo "cloudflare-zero-trust-edna-list   Zero Trust EDNA lists"
+                ;;
+                
+            iam)
+                echo -e "${BOLD}=== Terraform Modules - IAM ===${NC}"
+                echo ""
+                echo "iam-role-github-actions   GitHub Actions OIDC federation"
+                echo "iam-role-datadog          Datadog integration role"
+                echo "iam-role-vault            HashiCorp Vault role"
+                echo "iam-role-packer           Packer image building"
+                echo "iam-role-servicenow       ServiceNow integrations"
+                echo "iam-role-prismacloud      Prisma Cloud security"
+                echo "iam-role-splunk           Splunk logging"
+                echo "iam-saml-adfs             SAML ADFS federation"
+                echo "iam-shibboleth            Shibboleth federation"
+                echo "github-oidc-provider      GitHub OIDC provider setup"
+                echo "aws-identity-center-permission-set  AWS SSO permission sets"
+                ;;
+                
+            observability|monitoring)
+                echo -e "${BOLD}=== Terraform Modules - Observability ===${NC}"
+                echo ""
+                echo "cloudwatch-logs-to-datadog   CloudWatch to Datadog"
+                echo "cloudwatch-logs-to-log-lake  CloudWatch to S3 data lake"
+                echo "cloudwatch-to-splunk         CloudWatch to Splunk"
+                echo "datadog-lambda-forwarder     Datadog Lambda forwarder"
+                echo "datadog-logs-firehose-forwarder  Datadog Kinesis Firehose"
+                echo "datadog-mule-monitors        MuleSoft Datadog monitors"
+                echo "amazon-inspector             AWS Inspector config"
+                ;;
+                
+            tags|tagging)
+                echo -e "${BOLD}=== Terraform Modules - Tagging Standards ===${NC}"
+                echo ""
+                echo -e "${YELLOW}IMPORTANT: product-tags is MANDATORY for all resources${NC}"
+                echo ""
+                echo "product-tags              ASU standard tagging (REQUIRED)"
+                echo "generate-tags             Tag generation utilities"
+                echo "product-map               Product key to metadata mapping"
+                echo ""
+                echo -e "${BOLD}Required Tags:${NC}"
+                echo "  ProductCategory, ProductFamily, ProductFamilyKey"
+                echo "  Product, ProductKey"
+                echo "  TechContact, AdminContact (ASURITE IDs)"
+                echo "  env (infradev, sandbox, dev, qa, uat, test, scan, non-prod, prod)"
+                echo ""
+                echo "Tagging Standard Version: 2025.0.2"
+                ;;
+                
+            *)
+                error "Unknown type: $ptype. Use: compute, database, networking, kubernetes, cloudflare, iam, observability, tags"
+                ;;
+        esac
+        return
+    fi
+    
+    # Full overview
+    echo -e "${BOLD}=== Design Pattern: ASU Terraform Modules ===${NC}"
+    echo ""
+    echo "Custom Terraform modules from dco-terraform hosted on JFrog Artifactory."
+    echo "These are ASU-specific modules with built-in tagging standards, security"
+    echo "configurations, and Ansible integration."
+    echo ""
+    
+    echo -e "${BOLD}Registry:${NC}"
+    echo "  jfrog-cloud.devops.asu.edu/asu-terraform-modules__dco-terraform"
+    echo ""
+    
+    echo -e "${BOLD}Module Source Pattern:${NC}"
+    echo '  module "example" {'
+    echo '    source  = "jfrog-cloud.devops.asu.edu/asu-terraform-modules__dco-terraform/<module>/aws"'
+    echo '    version = ">= 1.0"'
+    echo '  }'
+    echo ""
+    
+    echo -e "${BOLD}Module Categories:${NC}"
+    echo "  compute      - EC2 (Linux, Windows, macOS), Nutanix VMs"
+    echo "  database     - Aurora, RDS (MySQL, PostgreSQL, MSSQL, Oracle)"
+    echo "  networking   - VPC, Security Groups, Route53"
+    echo "  kubernetes   - EKS OIDC, Pod Identity, IRSA"
+    echo "  cloudflare   - Tunnels, Access Apps, Zero Trust"
+    echo "  iam          - GitHub Actions OIDC, Vault, Datadog, ServiceNow"
+    echo "  observability - CloudWatch to Datadog/Splunk, Inspector"
+    echo "  standards    - product-tags (MANDATORY)"
+    echo ""
+    
+    echo -e "${BOLD}Custom Providers:${NC}"
+    echo "  terraform-provider-edna - EDNA resource management"
+    echo "  terraform-provider-mandiantasm - Security scanning"
+    echo ""
+    
+    echo -e "${BOLD}Requirements:${NC}"
+    echo "  Terraform: >= 1.5.6"
+    echo "  AWS Provider: >= 5.82.0"
+    echo ""
+    
+    echo -e "${BOLD}Related Commands:${NC}"
+    echo "  discover.sh pattern --name terraform-modules --type compute"
+    echo "  discover.sh pattern --name terraform-modules --type database"
+    echo "  discover.sh pattern --name terraform-modules --type kubernetes"
+    echo "  discover.sh pattern --name terraform-modules --type tags"
+    echo "  discover.sh repos --domain terraform"
+}
+
+#
+# Show Vault pattern details
+#
+show_pattern_vault() {
+    local ptype="$1"
+    
+    if [[ -n "$ptype" ]]; then
+        case "$ptype" in
+            python)
+                echo -e "${BOLD}=== Vault - Python Patterns ===${NC}"
+                echo ""
+                echo -e "${GREEN}Token File Pattern:${NC}"
+                echo "  Repo: ASU/edna-rmi-linux"
+                echo "  Path: ansible/roles/edna/files/serviceConfigLookup.py"
+                echo ""
+                echo "  import hvac"
+                echo "  import boto3"
+                echo ""
+                echo "  # Read token from file"
+                echo "  with open('/var/run/vault-token') as token:"
+                echo "      TOKENVAL = token.read()"
+                echo "  client = hvac.Client(url='https://ops-vault-prod.opsprod.asu.edu', token=TOKENVAL)"
+                echo ""
+                echo "  # Fallback: AWS IAM authentication"
+                echo "  if not client.is_authenticated():"
+                echo "      session = boto3.Session()"
+                echo "      cred = session.get_credentials()"
+                echo "      client.auth.aws.iam_login(cred.access_key, cred.secret_key, cred.token, role='...')"
+                echo ""
+                echo "  secret = client.secrets.kv.v1.read_secret(path='services/...')['data']"
+                echo "  client.logout()"
+                echo ""
+                echo -e "${GREEN}Environment Variables Pattern:${NC}"
+                echo "  Repo: ASU/oprah-product-map"
+                echo "  Path: get_gdrive_sheet.py"
+                echo ""
+                echo "  import hvac"
+                echo "  vault_client = hvac.Client()  # Uses VAULT_ADDR and VAULT_TOKEN"
+                echo "  secret_data = vault_client.secrets.kv.v1.read_secret(path='...')"
+                ;;
+                
+            terraform|tf)
+                echo -e "${BOLD}=== Vault - Terraform Patterns ===${NC}"
+                echo ""
+                echo -e "${GREEN}Vault to AWS Secrets Manager:${NC}"
+                echo "  Repo: ASU/wflow-kuali-approver-service"
+                echo "  Path: terraform/secretsmanager.tf"
+                echo ""
+                echo '  data "vault_generic_secret" "api_key" {'
+                echo '    path = "secret/services/dco/jenkins/wflow/kbapi/\${terraform.workspace}/kuali_api_key"'
+                echo '  }'
+                echo ""
+                echo '  resource "aws_secretsmanager_secret" "api_key" {'
+                echo '    name_prefix = "kuali-api-key-\${terraform.workspace}-"'
+                echo '  }'
+                echo ""
+                echo '  resource "aws_secretsmanager_secret_version" "api_key" {'
+                echo '    secret_id     = aws_secretsmanager_secret.api_key.id'
+                echo '    secret_string = data.vault_generic_secret.api_key.data["api_key"]'
+                echo '  }'
+                echo ""
+                echo -e "${GREEN}Vault to SSM Parameter Store:${NC}"
+                echo "  Repo: ASU/iden-identity-resolution-service-api"
+                echo "  Path: terraform/secrets.tf"
+                echo ""
+                echo '  resource "aws_ssm_parameter" "db" {'
+                echo '    name  = "/iden/irs/\${terraform.workspace}/api/pscs/db"'
+                echo '    type  = "SecureString"'
+                echo '    value = data.vault_generic_secret.db.data_json'
+                echo '  }'
+                ;;
+                
+            auth)
+                echo -e "${BOLD}=== Vault - Authentication Methods ===${NC}"
+                echo ""
+                echo -e "${GREEN}AppRole (Jenkins CI/CD):${NC}"
+                echo "  TTL: 30 minutes"
+                echo "  Example: ASU/caas-caas-vault → vault/approle-jenkins.tf"
+                echo ""
+                echo -e "${GREEN}AWS IAM (EC2/Lambda):${NC}"
+                echo "  Cross-account STS roles for Vault authentication"
+                echo "  Example: ASU/caas-caas-vault → vault/auth-aws.tf"
+                echo ""
+                echo -e "${GREEN}Kubernetes (EKS pods):${NC}"
+                echo "  Native Kubernetes service account auth"
+                echo "  Example: ASU/caas-caas-vault → vault/auth-iam-principals.tf"
+                echo ""
+                echo -e "${GREEN}OIDC (Human users):${NC}"
+                echo "  OIDC via AWS Cognito integration"
+                echo "  Example: ASU/caas-caas-vault → vault/oidc.tf"
+                ;;
+                
+            jenkins)
+                echo -e "${BOLD}=== Vault - Jenkins Functions ===${NC}"
+                echo ""
+                echo "From: ASU/devops-jenkins-pipeline-library/vars/"
+                echo ""
+                echo "vaultLogin()         - Login to Vault"
+                echo "caasVaultLogin()     - Login to CaaS Vault"
+                echo "opsVaultLogin()      - Login to Ops Vault"
+                echo "getVaultSecret()     - Read secret from Vault"
+                echo "getVaultToken()      - Get Vault token"
+                echo "getVaultAppRoleToken() - Get token via AppRole"
+                ;;
+                
+            *)
+                error "Unknown type: $ptype. Use: python, terraform, auth, or jenkins"
+                ;;
+        esac
+        return
+    fi
+    
+    # Full overview
+    echo -e "${BOLD}=== Design Pattern: HashiCorp Vault Secrets ===${NC}"
+    echo ""
+    echo "Patterns for accessing secrets from HashiCorp Vault and syncing to AWS."
+    echo "ASU uses multiple Vault clusters (CaaS, DCO, Ops) with various auth"
+    echo "methods including AppRole, AWS IAM, Kubernetes, and OIDC."
+    echo ""
+    
+    echo -e "${BOLD}Vault Clusters:${NC}"
+    echo "  CaaS Vault: vault.caas-{env}.asu.edu"
+    echo "  Ops Vault:  ops-vault-prod.opsprod.asu.edu"
+    echo ""
+    
+    echo -e "${BOLD}Python (hvac):${NC}"
+    echo "  Token file: ASU/edna-rmi-linux → serviceConfigLookup.py"
+    echo "  Env vars:   ASU/oprah-product-map → get_gdrive_sheet.py"
+    echo ""
+    
+    echo -e "${BOLD}Terraform (vault_generic_secret):${NC}"
+    echo "  To Secrets Manager: ASU/wflow-kuali-approver-service"
+    echo "  To SSM:             ASU/iden-identity-resolution-service-api"
+    echo ""
+    
+    echo -e "${BOLD}Authentication Methods:${NC}"
+    echo "  AppRole    - Jenkins CI/CD (30 min TTL)"
+    echo "  AWS IAM    - EC2/Lambda workloads"
+    echo "  Kubernetes - EKS pods"
+    echo "  OIDC       - Human users (via Cognito)"
+    echo ""
+    
+    echo -e "${BOLD}Secret Path Convention:${NC}"
+    echo "  secret/services/{org}/{team}/{app}/{environment}/{component}"
+    echo ""
+    
+    echo -e "${BOLD}Jenkins Functions:${NC}"
+    echo "  vaultLogin, getVaultSecret, getVaultToken, getVaultAppRoleToken"
+    echo ""
+    
+    echo -e "${BOLD}Related Commands:${NC}"
+    echo "  discover.sh pattern --name vault --type python"
+    echo "  discover.sh pattern --name vault --type terraform"
+    echo "  discover.sh pattern --name vault --type auth"
+    echo "  discover.sh pattern --name vault --type jenkins"
+    echo "  discover.sh repos --domain vault"
+}
+
+#
+# Show generic pattern details (fallback)
+#
+show_pattern_generic() {
+    local pattern="$1"
+    local ptype="$2"
+    
+    local pattern_name
+    pattern_name=$(yaml_get_pattern_simple "$DOMAINS_FILE" "$pattern" "name")
+    
     echo -e "${BOLD}=== Design Pattern: $pattern_name ===${NC}"
     echo ""
     
@@ -1005,75 +1585,6 @@ action_pattern() {
     yaml_get_pattern_field "$DOMAINS_FILE" "$pattern" "when_to_use" | grep "^- " | while read -r line; do
         echo "  $line"
     done
-    echo ""
-    
-    # Architecture
-    echo -e "${BOLD}Architecture:${NC}"
-    local platform schema delivery
-    platform=$(sed -n "/^design_patterns:/,/^[a-z]/p" "$DOMAINS_FILE" | \
-               sed -n "/^  $pattern:/,/^  [a-zA-Z]/p" | \
-               sed -n "/^    architecture:/,/^    [a-zA-Z]/p" | \
-               grep "platform:" | sed 's/.*platform: *//' | tr -d '"')
-    schema=$(sed -n "/^design_patterns:/,/^[a-z]/p" "$DOMAINS_FILE" | \
-             sed -n "/^  $pattern:/,/^  [a-zA-Z]/p" | \
-             sed -n "/^    architecture:/,/^    [a-zA-Z]/p" | \
-             grep "schema_format:" | sed 's/.*schema_format: *//' | tr -d '"')
-    delivery=$(sed -n "/^design_patterns:/,/^[a-z]/p" "$DOMAINS_FILE" | \
-               sed -n "/^  $pattern:/,/^  [a-zA-Z]/p" | \
-               sed -n "/^    architecture:/,/^    [a-zA-Z]/p" | \
-               grep "delivery_guarantee:" | sed 's/.*delivery_guarantee: *//' | tr -d '"')
-    
-    echo "  Platform: ${platform:-Confluent Cloud (Managed Apache Kafka)}"
-    echo "  Schema Format: ${schema:-Apache Avro}"
-    echo "  Delivery: ${delivery:-At-least-once}"
-    echo ""
-    
-    # Publishers
-    echo -e "${BOLD}Publishers:${NC}"
-    for lang in java python javascript; do
-        local repo path
-        repo=$(yaml_get_pattern_nested "$DOMAINS_FILE" "$pattern" "publishers" "$lang" "repo")
-        [[ -z "$repo" ]] && continue
-        path=$(yaml_get_pattern_nested "$DOMAINS_FILE" "$pattern" "publishers" "$lang" "path")
-        local lang_display
-        lang_display=$(echo "${lang:0:1}" | tr '[:lower:]' '[:upper:]')${lang:1}
-        printf "  ${GREEN}%-12s${NC} %s" "${lang_display}:" "$repo"
-        [[ -n "$path" ]] && printf " → %s" "$path"
-        echo ""
-    done
-    echo ""
-    
-    # Subscribers
-    echo -e "${BOLD}Subscribers:${NC}"
-    for sub in python_peoplesoft_fa python_peoplesoft_cc identity_listener; do
-        local repo desc
-        repo=$(yaml_get_pattern_nested "$DOMAINS_FILE" "$pattern" "subscribers" "$sub" "repo")
-        [[ -z "$repo" ]] && continue
-        desc=$(yaml_get_pattern_nested "$DOMAINS_FILE" "$pattern" "subscribers" "$sub" "description")
-        echo "  $repo"
-        echo "    ${desc:-}"
-    done
-    echo ""
-    
-    # Boilerplate
-    echo -e "${BOLD}Boilerplate:${NC}"
-    echo "  ASU/evbr-enterprise-event-lake-event-handler-boilerplate"
-    echo "  Use: discover.sh pattern --name eel --type boilerplate"
-    echo ""
-    
-    # Best practices
-    echo -e "${BOLD}Best Practices:${NC}"
-    yaml_get_pattern_field "$DOMAINS_FILE" "$pattern" "best_practices" | grep "^- " | head -6 | while read -r line; do
-        echo "  $line"
-    done
-    echo ""
-    
-    # Related commands
-    echo -e "${BOLD}Related Commands:${NC}"
-    echo "  discover.sh pattern --name $pattern --type publisher"
-    echo "  discover.sh pattern --name $pattern --type subscriber"
-    echo "  discover.sh search --query \"EelClient\" --domain eel"
-    echo "  discover.sh repos --domain eel"
 }
 
 #
