@@ -909,6 +909,28 @@ action_context() {
                     echo "  Run: discover.sh pattern --name observability"
                     echo ""
                     ;;
+                custom-domains)
+                    echo -e "${YELLOW}${BOLD}=== Suggested Pattern: Custom Domain Provisioning ===${NC}"
+                    echo ""
+                    echo "For provisioning custom domains (*.asu.edu):"
+                    echo "  PRIMARY:     ASU/iden-fraud-watchdog (ACM + Route53 + CloudFront)"
+                    echo "  ACM:         us-east-1 for CloudFront/API Gateway (edge)"
+                    echo "  Validation:  DNS validation with Route53 (cross-account support)"
+                    echo "  DNS:         Route53 for validation, Infoblox for *.asu.edu CNAMEs"
+                    echo "  Run: discover.sh pattern --name custom-domains"
+                    echo ""
+                    ;;
+                dns)
+                    echo -e "${YELLOW}${BOLD}=== Suggested Pattern: DNS Configuration ===${NC}"
+                    echo ""
+                    echo "For DNS records (Infoblox + Cloudflare):"
+                    echo "  *.asu.edu:   Infoblox (dnsadmin.asu.edu) - both views"
+                    echo "  External:    Cloudflare for registration + DNS"
+                    echo "  Hybrid:      Infoblox CNAME → Cloudflare CDN → Origin"
+                    echo "  Examples:    ASU/sso-shibboleth, ASU/hosting-fse"
+                    echo "  Run: discover.sh pattern --name dns"
+                    echo ""
+                    ;;
             esac
         done
     fi
@@ -1097,6 +1119,24 @@ detect_patterns() {
     for trigger in $obs_triggers; do
         if [[ "$query_lower" == *"$trigger"* ]]; then
             detected="$detected observability"
+            break
+        fi
+    done
+    
+    # Custom domains pattern triggers
+    local custom_domain_triggers="custom domain acm certificate ssl tls api gateway domain cloudfront alias route53 subdomain wildcard certificate dns validation certificate_domains"
+    for trigger in $custom_domain_triggers; do
+        if [[ "$query_lower" == *"$trigger"* ]]; then
+            detected="$detected custom-domains"
+            break
+        fi
+    done
+    
+    # DNS pattern triggers  
+    local dns_triggers="infoblox dns record cname a record"
+    for trigger in $dns_triggers; do
+        if [[ "$query_lower" == *"$trigger"* ]]; then
+            detected="$detected dns"
             break
         fi
     done
