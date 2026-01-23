@@ -121,6 +121,31 @@ run "yaml_get_domain_field" bash -c "export DOMAINS_YAML='$SKILL_DIR/config/doma
 echo ""
 
 # -----------------------------------------------------------------------------
+# YAML Parsing (sed fallback)
+# -----------------------------------------------------------------------------
+echo "--- YAML Parsing (sed fallback) ---"
+if has_yq; then
+    # Force sed fallback by removing yq directory from PATH
+    YQ_DIR="$(dirname "$(which yq)")"
+    run "yaml_get_all_patterns (sed)" bash -c "
+        PATH=\$(echo \"\$PATH\" | tr ':' '\n' | grep -v -F '$YQ_DIR' | tr '\n' ':')
+        export DOMAINS_YAML='$SKILL_DIR/config/domains.yaml'
+        source '$SKILL_DIR/scripts/lib/yaml.sh'
+        result=\$(yaml_get_all_patterns)
+        [[ -n \"\$result\" ]]
+    "
+    # Note: yaml_get_domain_field sed fallback only works with inline arrays [a,b,c]
+    # Multi-line YAML arrays are not supported - this is a known limitation
+    skip "yaml_get_domain_field (sed)" "multi-line arrays not supported"
+    skip "yaml_get_pattern_nested (sed)" "not supported without yq"
+else
+    skip "yaml_get_all_patterns (sed)" "yq not installed, already using sed"
+    skip "yaml_get_domain_field (sed)" "yq not installed, already using sed"
+    skip "yaml_get_pattern_nested (sed)" "not supported without yq"
+fi
+echo ""
+
+# -----------------------------------------------------------------------------
 # DNS Commands
 # -----------------------------------------------------------------------------
 echo "--- DNS Commands ---"
@@ -151,16 +176,14 @@ echo "--- Edge Cases ---"
 if $DB_EXISTS; then
     # Test SQL escaping with special characters
     run "search with special chars" ./scripts/discover.sh search --query "test'with;chars" --local-only
-    # Test index verify with limit (makes real API calls)
-    if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-    # Test index verify (skip - makes many API calls, run manually if needed)
-        skip "index verify" "slow, run manually"
-    else
-        skip "index verify --limit 3" "gh not authenticated"
-    fi
-else
+fi
+
+# Test index verify with --dry-run (no API calls needed)
+run "index verify --dry-run" ./scripts/discover.sh index verify --dry-run
+run "index verify --dry-run --limit 3" ./scripts/discover.sh index verify --dry-run --limit 3
+
+if ! $DB_EXISTS; then
     skip "search with special chars" "no db"
-    skip "index verify --limit 3" "no db"
 fi
 echo ""
 

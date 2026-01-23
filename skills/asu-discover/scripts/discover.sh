@@ -71,7 +71,7 @@ INDEX SUBCOMMANDS:
   index build       Build full index from scratch (~30s)
   index refresh     Incremental update (repos changed since last run)
   index stats       Show index statistics and counts
-  index verify      Check if referenced repos still exist
+  index verify      Check if referenced repos still exist [--dry-run] [--limit N]
   index classify    Re-run domain classification
 
 PATTERN SUBCOMMANDS:
@@ -487,12 +487,31 @@ action_index_stats() {
 
 #
 # ACTION: Verify - Check if referenced repos still exist
+# Flags: --dry-run (list repos without API calls), --limit N (check only N repos)
 #
 action_index_verify() {
+    local dry_run=false
+    local limit=0
+    
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --dry-run) dry_run=true; shift ;;
+            --limit) limit="$2"; shift 2 ;;
+            *) shift ;;
+        esac
+    done
+    
     echo -e "${BOLD}=== Verifying Referenced Repositories ===${NC}"
     echo ""
-    echo "Checking repositories referenced in domains.yaml..."
-    echo "(This may take a minute due to API rate limits)"
+    
+    if $dry_run; then
+        echo "Repositories that would be verified:"
+        [[ $limit -gt 0 ]] && echo "(Limited to first $limit)"
+    else
+        echo "Checking repositories referenced in domains.yaml..."
+        echo "(This may take a minute due to API rate limits)"
+    fi
     echo ""
     
     # Extract all ASU/repo-name references from domains.yaml
@@ -503,13 +522,26 @@ action_index_verify() {
     local invalid_repos=""
     
     for repo in $refs; do
-        ((total++))
+        ((total++)) || true
+        
+        # Check limit
+        if [[ $limit -gt 0 && $total -gt $limit ]]; then
+            ((total--)) || true  # Don't count this one
+            break
+        fi
+        
+        if $dry_run; then
+            echo "  $repo"
+            ((valid++)) || true
+            continue
+        fi
+        
         printf "\rChecking: %s" "$repo"
         
         if gh repo view "$repo" &>/dev/null; then
-            ((valid++))
+            ((valid++)) || true
         else
-            ((invalid++))
+            ((invalid++)) || true
             invalid_repos="$invalid_repos\n  - $repo"
         fi
         
@@ -517,7 +549,9 @@ action_index_verify() {
         sleep 0.1
     done
     
-    printf "\r%-60s\n" ""  # Clear line
+    if ! $dry_run; then
+        printf "\r%-60s\n" ""  # Clear line
+    fi
     echo ""
     
     if [[ $invalid -gt 0 ]]; then
@@ -527,12 +561,16 @@ action_index_verify() {
     fi
     
     echo -e "${BOLD}Summary:${NC}"
-    echo "  Total referenced: $total"
-    echo -e "  Valid: ${GREEN}$valid${NC}"
-    if [[ $invalid -gt 0 ]]; then
-        echo -e "  Invalid: ${RED}$invalid${NC}"
+    if $dry_run; then
+        echo "  Would verify: $total repositories"
     else
-        echo -e "  Invalid: ${GREEN}0${NC}"
+        echo "  Total checked: $total"
+        echo -e "  Valid: ${GREEN}$valid${NC}"
+        if [[ $invalid -gt 0 ]]; then
+            echo -e "  Invalid: ${RED}$invalid${NC}"
+        else
+            echo -e "  Invalid: ${GREEN}0${NC}"
+        fi
     fi
 }
 
@@ -2507,13 +2545,12 @@ main() {
     if [[ "$action" == "index" ]]; then
         local subaction="${1:-stats}"
         [[ $# -gt 0 ]] && shift
-        parse_args "$@"
         
         case "$subaction" in
             build) action_index_build ;;
             refresh) action_index_refresh ;;
             stats) action_index_stats ;;
-            verify) action_index_verify ;;
+            verify) action_index_verify "$@" ;;
             classify) 
                 ensure_index
                 action_index_classify_internal
