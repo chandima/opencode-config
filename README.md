@@ -25,7 +25,7 @@ opencode-config/                      # This git repo (your config)
 ### 1. Clone this repository
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/chandima/opencode-config.git
 cd opencode-config
 ```
 
