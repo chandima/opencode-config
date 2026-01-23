@@ -13,7 +13,7 @@ Intelligent search and discovery across Arizona State University's GitHub organi
 
 **Requirements:**
 - `gh` CLI authenticated with access to ASU org (`gh auth login`)
-- `yq` (recommended) for reliable YAML parsing (`brew install yq`)
+- `yq` for YAML parsing (`brew install yq`)
 
 **Note:** Run `./scripts/discover.sh index stats` to see current repository counts.
 

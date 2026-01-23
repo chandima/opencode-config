@@ -2,33 +2,28 @@
 # ==============================================================================
 # YAML Parsing Library
 # ==============================================================================
-# Provides yq-based YAML parsing with sed fallback for environments
-# where yq is not installed.
+# Provides YAML parsing using yq.
 #
 # Usage: Source this file and use yaml_get_* functions
+# Requires: yq (https://github.com/mikefarah/yq)
 # ==============================================================================
 
 set -euo pipefail
 
-# Track if we've warned about missing yq
-YQ_WARNED="${YQ_WARNED:-}"
-
 # ==============================================================================
-# yq Detection
+# yq Requirement Check
 # ==============================================================================
 
-# Check if yq is available
-has_yq() {
-    command -v yq &>/dev/null
-}
-
-# Warn once per session if yq is not installed
-yaml_check_yq() {
-    if ! has_yq && [[ -z "$YQ_WARNED" ]]; then
-        echo "Note: Install yq for better YAML parsing: brew install yq" >&2
-        export YQ_WARNED=1
+# Ensure yq is installed - called when library is sourced
+require_yq() {
+    if ! command -v yq &>/dev/null; then
+        echo "ERROR: yq is required but not installed." >&2
+        echo "Install with: brew install yq" >&2
+        exit 1
     fi
 }
+
+require_yq
 
 # ==============================================================================
 # Domain Field Accessors
@@ -44,23 +39,15 @@ yaml_get_domain_field() {
     
     [[ -z "$yaml_file" || ! -f "$yaml_file" ]] && return 1
     
-    if has_yq; then
-        # yq v4 syntax - handle both arrays and scalars
-        local result
-        result=$(yq ".domains.${domain}.${field}" "$yaml_file" 2>/dev/null)
-        if [[ "$result" == "null" || -z "$result" ]]; then
-            echo ""
-        elif [[ "$result" == -* ]]; then
-            # Array format (starts with -)
-            yq ".domains.${domain}.${field} | .[]" "$yaml_file" 2>/dev/null | tr '\n' ' ' | xargs
-        else
-            echo "$result" | xargs
-        fi
+    local result
+    result=$(yq ".domains.${domain}.${field}" "$yaml_file" 2>/dev/null)
+    if [[ "$result" == "null" || -z "$result" ]]; then
+        echo ""
+    elif [[ "$result" == -* ]]; then
+        # Array format (starts with -)
+        yq ".domains.${domain}.${field} | .[]" "$yaml_file" 2>/dev/null | tr '\n' ' ' | xargs
     else
-        # Sed-based fallback (less reliable but works)
-        sed -n "/^  ${domain}:/,/^  [a-z_-]*:/p" "$yaml_file" 2>/dev/null | \
-            grep -E "^    ${field}:" | head -1 | \
-            sed 's/.*: *//' | tr -d '[]"' | tr ',' ' ' | xargs
+        echo "$result" | xargs
     fi
 }
 
@@ -95,14 +82,7 @@ yaml_get_pattern_field() {
     
     [[ -z "$yaml_file" || ! -f "$yaml_file" ]] && return 1
     
-    if has_yq; then
-        yq -r ".design_patterns.\"${pattern}\".${field} // empty" "$yaml_file" 2>/dev/null
-    else
-        # Sed-based fallback
-        sed -n "/^  ${pattern}:/,/^  [a-z_-]*:/p" "$yaml_file" 2>/dev/null | \
-            grep -E "^    ${field}:" | head -1 | \
-            sed 's/.*: *//'
-    fi
+    yq -r ".design_patterns.\"${pattern}\".${field} // empty" "$yaml_file" 2>/dev/null
 }
 
 # Get nested field from design pattern
@@ -115,12 +95,7 @@ yaml_get_pattern_nested() {
     
     [[ -z "$yaml_file" || ! -f "$yaml_file" ]] && return 1
     
-    if has_yq; then
-        yq -r ".design_patterns.\"${pattern}\".${path} // empty" "$yaml_file" 2>/dev/null
-    else
-        # Nested access not reliably supported in sed fallback
-        echo ""
-    fi
+    yq -r ".design_patterns.\"${pattern}\".${path} // empty" "$yaml_file" 2>/dev/null
 }
 
 # ==============================================================================
@@ -134,14 +109,7 @@ yaml_get_all_domains() {
     
     [[ -z "$yaml_file" || ! -f "$yaml_file" ]] && return 1
     
-    if has_yq; then
-        yq -r '.domains | keys | .[]' "$yaml_file" 2>/dev/null
-    else
-        # Sed-based fallback - find domain definitions
-        grep -E "^  [a-z_-]+:$" "$yaml_file" 2>/dev/null | \
-            sed 's/://g' | tr -d ' ' | \
-            grep -v -E "^(triggers|synonyms|repos|prefixes|description)$"
-    fi
+    yq -r '.domains | keys | .[]' "$yaml_file" 2>/dev/null
 }
 
 # Get list of all design pattern names
@@ -151,13 +119,7 @@ yaml_get_all_patterns() {
     
     [[ -z "$yaml_file" || ! -f "$yaml_file" ]] && return 1
     
-    if has_yq; then
-        yq -r '.design_patterns | keys | .[]' "$yaml_file" 2>/dev/null
-    else
-        # Sed-based fallback
-        sed -n '/^design_patterns:/,/^[a-z]/p' "$yaml_file" 2>/dev/null | \
-            grep -E "^  [a-z_-]+:$" | sed 's/://g' | tr -d ' '
-    fi
+    yq -r '.design_patterns | keys | .[]' "$yaml_file" 2>/dev/null
 }
 
 # ==============================================================================
@@ -172,13 +134,7 @@ yaml_get_search_config() {
     
     [[ -z "$yaml_file" || ! -f "$yaml_file" ]] && return 1
     
-    if has_yq; then
-        yq -r ".search.${key} // empty" "$yaml_file" 2>/dev/null
-    else
-        sed -n '/^search:/,/^[a-z]/p' "$yaml_file" 2>/dev/null | \
-            grep -E "^  ${key}:" | head -1 | \
-            sed 's/.*: *//'
-    fi
+    yq -r ".search.${key} // empty" "$yaml_file" 2>/dev/null
 }
 
 # ==============================================================================
@@ -192,12 +148,6 @@ yaml_validate() {
     
     [[ ! -f "$yaml_file" ]] && return 1
     
-    if has_yq; then
-        yq '.' "$yaml_file" &>/dev/null
-        return $?
-    else
-        # Basic check - file exists and has content
-        [[ -s "$yaml_file" ]]
-        return $?
-    fi
+    yq '.' "$yaml_file" &>/dev/null
+    return $?
 }

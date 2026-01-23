@@ -10,14 +10,7 @@ Smart discovery across ASU GitHub repositories. Provides domain-aware search, pa
 |-------------|---------|--------------|
 | `gh` CLI | GitHub API access | `brew install gh` then `gh auth login` |
 | `sqlite3` | Local repository index | Usually pre-installed on macOS/Linux |
-
-### Recommended
-
-| Requirement | Purpose | Installation |
-|-------------|---------|--------------|
-| `yq` | Reliable YAML parsing | `brew install yq` |
-
-**Note:** The skill will work without `yq` using a sed-based fallback, but `yq` provides more reliable YAML parsing.
+| `yq` | YAML parsing | `brew install yq` |
 
 ## Quick Start
 
@@ -58,7 +51,7 @@ asu-discover/
 │   └── lib/
 │       ├── db.sh         # Database helpers
 │       ├── dns.sh        # DNS scaffolding
-│       └── yaml.sh       # YAML parsing (yq + fallback)
+│       └── yaml.sh       # YAML parsing (requires yq)
 └── templates/
     └── dns/              # DNS Terraform templates
 ```

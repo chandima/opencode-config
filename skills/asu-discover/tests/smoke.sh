@@ -72,6 +72,15 @@ echo ""
 # Prerequisites
 # -----------------------------------------------------------------------------
 echo "--- Prerequisites ---"
+
+# Check yq is installed (required dependency)
+if command -v yq &>/dev/null; then
+    pass "yq installed"
+else
+    echo "ERROR: yq is required. Install with: brew install yq"
+    exit 1
+fi
+
 DB_EXISTS=false
 if db_exists; then
     pass "db exists"
@@ -118,31 +127,6 @@ echo "--- YAML Parsing ---"
 run "yaml_validate" yaml_validate "$SKILL_DIR/config/domains.yaml"
 run "yaml_get_all_patterns" bash -c "export DOMAINS_YAML='$SKILL_DIR/config/domains.yaml' && source $SKILL_DIR/scripts/lib/yaml.sh && [[ -n \$(yaml_get_all_patterns) ]]"
 run "yaml_get_domain_field" bash -c "export DOMAINS_YAML='$SKILL_DIR/config/domains.yaml' && source $SKILL_DIR/scripts/lib/yaml.sh && [[ -n \$(yaml_get_domain_field peoplesoft triggers) ]]"
-echo ""
-
-# -----------------------------------------------------------------------------
-# YAML Parsing (sed fallback)
-# -----------------------------------------------------------------------------
-echo "--- YAML Parsing (sed fallback) ---"
-if has_yq; then
-    # Force sed fallback by removing yq directory from PATH
-    YQ_DIR="$(dirname "$(which yq)")"
-    run "yaml_get_all_patterns (sed)" bash -c "
-        PATH=\$(echo \"\$PATH\" | tr ':' '\n' | grep -v -F '$YQ_DIR' | tr '\n' ':')
-        export DOMAINS_YAML='$SKILL_DIR/config/domains.yaml'
-        source '$SKILL_DIR/scripts/lib/yaml.sh'
-        result=\$(yaml_get_all_patterns)
-        [[ -n \"\$result\" ]]
-    "
-    # Note: yaml_get_domain_field sed fallback only works with inline arrays [a,b,c]
-    # Multi-line YAML arrays are not supported - this is a known limitation
-    skip "yaml_get_domain_field (sed)" "multi-line arrays not supported"
-    skip "yaml_get_pattern_nested (sed)" "not supported without yq"
-else
-    skip "yaml_get_all_patterns (sed)" "yq not installed, already using sed"
-    skip "yaml_get_domain_field (sed)" "yq not installed, already using sed"
-    skip "yaml_get_pattern_nested (sed)" "not supported without yq"
-fi
 echo ""
 
 # -----------------------------------------------------------------------------
