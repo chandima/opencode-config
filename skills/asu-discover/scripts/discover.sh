@@ -53,6 +53,7 @@ ACTIONS:
   code              Search code with rate limiting and caching
   context           Build context for an integration task
   patterns          Find integration patterns between systems
+  pattern           Show design pattern details (e.g., EEL)
   expand            Show how a query would be expanded (debug)
   index             Manage the local repository index
 
@@ -62,10 +63,19 @@ INDEX SUBCOMMANDS:
   index stats       Show index statistics
   index classify    Re-run domain classification
 
+PATTERN SUBCOMMANDS:
+  pattern --list                    List available design patterns
+  pattern --name eel                Show EEL pattern overview
+  pattern --name eel --type publisher   Find publisher examples
+  pattern --name eel --type subscriber  Find subscriber examples
+  pattern --name eel --type boilerplate Show boilerplate repo
+
 COMMON OPTIONS:
   --query QUERY     Search query (natural language or keywords)
   --domain DOMAIN   Filter to specific domain
   --prefix PREFIX   Filter by team prefix (crm, eadv, aiml, etc.)
+  --name NAME       Pattern name (for pattern action)
+  --type TYPE       Pattern type: publisher, subscriber, boilerplate
   --language LANG   Filter by programming language
   --limit N         Maximum results (default: 30)
   --no-expand       Disable keyword expansion
@@ -88,11 +98,15 @@ EXAMPLES:
   # Rate-limited code search (checks cache first)
   discover.sh code --query "checkAccess" --language typescript
   
-  # Build context for a task
+  # Build context for a task (auto-suggests design patterns)
   discover.sh context --query "sync employee data from PS to DPL"
   
   # Find integration patterns
   discover.sh patterns --source peoplesoft --target dpl
+  
+  # Show EEL design pattern
+  discover.sh pattern --name eel
+  discover.sh pattern --name eel --type publisher
   
   # Build/refresh the local index
   discover.sh index build
@@ -100,11 +114,14 @@ EXAMPLES:
 
 DOMAINS:
   peoplesoft, edna, dpl, serviceauth, auth, identity, salesforce,
-  ml, terraform, cicd, cloudflare, infoblox, aws, api
+  ml, terraform, cicd, cloudflare, infoblox, aws, api, eel, logging
+
+DESIGN PATTERNS:
+  eel - Enterprise Event Lake (Kafka-based event-driven architecture)
 
 TEAM PREFIXES:
   crm (66), eadv (38), authn (15), aiml (12), edna (11), iden (10),
-  infra, tf, dpl, ps, sf, cf, unity
+  evbr (2), eli5 (9), infra, tf, dpl, ps, sf, cf, unity
 EOF
     exit 0
 }
@@ -152,6 +169,9 @@ parse_args() {
             --prefix) PREFIX="$2"; shift 2 ;;
             --source) SOURCE_DOMAIN="$2"; shift 2 ;;
             --target) TARGET_DOMAIN="$2"; shift 2 ;;
+            --name) PATTERN_NAME="$2"; shift 2 ;;
+            --type) PATTERN_TYPE="$2"; shift 2 ;;
+            --list) LIST_PATTERNS=true; shift ;;
             --language) LANGUAGE="$2"; shift 2 ;;
             --limit) LIMIT="$2"; shift 2 ;;
             --no-expand) EXPAND=false; shift ;;
@@ -185,7 +205,7 @@ detect_domains() {
     local detected=""
     
     # All known domains
-    local all_domains="peoplesoft edna dpl serviceauth auth identity salesforce ml terraform cicd cloudflare infoblox aws api"
+    local all_domains="peoplesoft edna dpl serviceauth auth identity salesforce ml terraform cicd cloudflare infoblox aws api eel logging"
     
     for domain in $all_domains; do
         local triggers
@@ -673,12 +693,38 @@ action_context() {
     local detected_domains
     detected_domains=$(detect_domains "$QUERY")
     
+    # Detect applicable design patterns
+    local detected_patterns
+    detected_patterns=$(detect_patterns "$QUERY")
+    
     if [[ -z "$detected_domains" ]]; then
         warn "No specific domains detected. Performing general search."
     fi
     
     echo -e "${BOLD}Detected Domains:${NC} ${detected_domains:-general}"
     echo ""
+    
+    # === DESIGN PATTERN SUGGESTION ===
+    if [[ -n "$detected_patterns" ]]; then
+        echo -e "${YELLOW}${BOLD}=== Suggested Design Pattern: EEL ===${NC}"
+        echo ""
+        echo "For real-time, event-driven integration, consider the Enterprise Event Lake:"
+        echo ""
+        echo -e "  ${GREEN}Boilerplate:${NC}"
+        echo "    ASU/evbr-enterprise-event-lake-event-handler-boilerplate"
+        echo ""
+        echo -e "  ${GREEN}Publisher Examples:${NC}"
+        echo "    Java:       ASU/edna → EELClient.java"
+        echo "    Python:     ASU/iden-identity-resolution-service-api → eel_client.py"
+        echo "    JavaScript: ASU/cremo-credid → enterprise-event-lake/"
+        echo ""
+        echo -e "  ${GREEN}Subscriber Examples:${NC}"
+        echo "    ASU/sisfa-peoplesoft-financial-aid-module-event-listeners"
+        echo "    ASU/siscc-peoplesoft-campus-community-module-event-listeners"
+        echo ""
+        echo "  Run: discover.sh pattern --name eel"
+        echo ""
+    fi
     
     # Show matching repos from local index
     echo -e "${BOLD}Relevant Repositories (local index):${NC}"
@@ -776,6 +822,261 @@ action_patterns() {
 }
 
 #
+# Get design pattern field from YAML
+#
+yaml_get_pattern_field() {
+    local file="$1" pattern="$2" field="$3"
+    # design_patterns section has different indent structure
+    sed -n "/^design_patterns:/,/^[a-z]/p" "$file" 2>/dev/null | \
+        sed -n "/^  $pattern:/,/^  [a-zA-Z]/p" 2>/dev/null | \
+        sed -n "/^    $field:/,/^    [a-zA-Z]/p" 2>/dev/null | \
+        grep -v "^    $field:" | \
+        sed 's/^      //' || true
+}
+
+#
+# Get simple pattern field value
+#
+yaml_get_pattern_simple() {
+    local file="$1" pattern="$2" field="$3"
+    sed -n "/^design_patterns:/,/^[a-z]/p" "$file" 2>/dev/null | \
+        sed -n "/^  $pattern:/,/^  [a-zA-Z]/p" 2>/dev/null | \
+        grep "^    $field:" 2>/dev/null | \
+        sed "s/^    $field: *//" | \
+        tr -d '"' || true
+}
+
+#
+# Get nested pattern field (e.g., publishers.java.repo)
+#
+yaml_get_pattern_nested() {
+    local file="$1" pattern="$2" section="$3" item="$4" field="$5"
+    sed -n "/^design_patterns:/,/^[a-z]/p" "$file" 2>/dev/null | \
+        sed -n "/^  $pattern:/,/^  [a-zA-Z]/p" 2>/dev/null | \
+        sed -n "/^    $section:/,/^    [a-zA-Z]/p" 2>/dev/null | \
+        sed -n "/^      $item:/,/^      [a-zA-Z]/p" 2>/dev/null | \
+        grep "^        $field:" 2>/dev/null | \
+        sed "s/^        $field: *//" | \
+        tr -d '"' || true
+}
+
+#
+# Detect if query matches design pattern triggers
+#
+detect_patterns() {
+    local query="$1"
+    local query_lower
+    query_lower=$(echo "$query" | tr '[:upper:]' '[:lower:]')
+    local detected=""
+    
+    # EEL pattern triggers
+    local eel_triggers="event-driven real-time realtime publish subscribe kafka confluent avro event lake async decoupled fanout fan-out"
+    
+    for trigger in $eel_triggers; do
+        if [[ "$query_lower" == *"$trigger"* ]]; then
+            detected="eel"
+            break
+        fi
+    done
+    
+    echo "$detected"
+}
+
+#
+# ACTION: Pattern - Show design pattern details
+#
+action_pattern() {
+    # List available patterns
+    if [[ "${LIST_PATTERNS:-}" == "true" ]]; then
+        echo -e "${BOLD}=== Available Design Patterns ===${NC}"
+        echo ""
+        echo -e "${GREEN}eel${NC} - Enterprise Event Lake"
+        echo "     Real-time, decoupled, event-driven architecture backbone"
+        echo "     Built on Confluent Kafka with Avro schemas"
+        echo ""
+        echo "Usage: discover.sh pattern --name eel"
+        return
+    fi
+    
+    [[ -z "${PATTERN_NAME:-}" ]] && error "Missing --name (e.g., --name eel) or use --list"
+    
+    local pattern="$PATTERN_NAME"
+    local ptype="${PATTERN_TYPE:-}"
+    
+    # Validate pattern exists
+    local pattern_name
+    pattern_name=$(yaml_get_pattern_simple "$DOMAINS_FILE" "$pattern" "name")
+    [[ -z "$pattern_name" ]] && error "Unknown pattern: $pattern. Use --list to see available patterns."
+    
+    # Show specific type if requested
+    if [[ -n "$ptype" ]]; then
+        case "$ptype" in
+            publisher|publishers)
+                echo -e "${BOLD}=== $pattern_name - Publisher Examples ===${NC}"
+                echo ""
+                
+                for lang in java python javascript sisint; do
+                    local repo path desc language
+                    repo=$(yaml_get_pattern_nested "$DOMAINS_FILE" "$pattern" "publishers" "$lang" "repo")
+                    [[ -z "$repo" ]] && continue
+                    
+                    path=$(yaml_get_pattern_nested "$DOMAINS_FILE" "$pattern" "publishers" "$lang" "path")
+                    desc=$(yaml_get_pattern_nested "$DOMAINS_FILE" "$pattern" "publishers" "$lang" "description")
+                    language=$(yaml_get_pattern_nested "$DOMAINS_FILE" "$pattern" "publishers" "$lang" "language")
+                    
+                    echo -e "${GREEN}$language:${NC}"
+                    echo "  Repo: $repo"
+                    [[ -n "$path" ]] && echo "  Path: $path"
+                    echo "  $desc"
+                    echo ""
+                done
+                ;;
+                
+            subscriber|subscribers)
+                echo -e "${BOLD}=== $pattern_name - Subscriber Examples ===${NC}"
+                echo ""
+                
+                for sub in python_peoplesoft_fa python_peoplesoft_cc identity_listener; do
+                    local repo desc language
+                    repo=$(yaml_get_pattern_nested "$DOMAINS_FILE" "$pattern" "subscribers" "$sub" "repo")
+                    [[ -z "$repo" ]] && continue
+                    
+                    desc=$(yaml_get_pattern_nested "$DOMAINS_FILE" "$pattern" "subscribers" "$sub" "description")
+                    language=$(yaml_get_pattern_nested "$DOMAINS_FILE" "$pattern" "subscribers" "$sub" "language")
+                    
+                    echo -e "${GREEN}${language:-Python}:${NC}"
+                    echo "  Repo: $repo"
+                    echo "  $desc"
+                    echo ""
+                done
+                ;;
+                
+            boilerplate)
+                echo -e "${BOLD}=== $pattern_name - Boilerplate ===${NC}"
+                echo ""
+                
+                local repo desc use_for
+                repo=$(yaml_get_pattern_nested "$DOMAINS_FILE" "$pattern" "boilerplate" "" "repo" 2>/dev/null)
+                # Try alternate structure
+                if [[ -z "$repo" ]]; then
+                    repo=$(sed -n "/^design_patterns:/,/^[a-z]/p" "$DOMAINS_FILE" | \
+                           sed -n "/^  $pattern:/,/^  [a-zA-Z]/p" | \
+                           sed -n "/^    boilerplate:/,/^    [a-zA-Z]/p" | \
+                           grep "repo:" | sed 's/.*repo: *//' | tr -d '"')
+                fi
+                desc=$(sed -n "/^design_patterns:/,/^[a-z]/p" "$DOMAINS_FILE" | \
+                       sed -n "/^  $pattern:/,/^  [a-zA-Z]/p" | \
+                       sed -n "/^    boilerplate:/,/^    [a-zA-Z]/p" | \
+                       grep "description:" | sed 's/.*description: *//' | tr -d '"')
+                use_for=$(sed -n "/^design_patterns:/,/^[a-z]/p" "$DOMAINS_FILE" | \
+                          sed -n "/^  $pattern:/,/^  [a-zA-Z]/p" | \
+                          sed -n "/^    boilerplate:/,/^    [a-zA-Z]/p" | \
+                          grep "use_for:" | sed 's/.*use_for: *//' | tr -d '"')
+                
+                echo "Repository: ${repo:-ASU/evbr-enterprise-event-lake-event-handler-boilerplate}"
+                echo "Description: ${desc:-Official boilerplate for creating new EEL event handlers}"
+                echo "Use for: ${use_for:-Starting a new EEL publisher or subscriber}"
+                echo ""
+                local clone_repo="${repo:-evbr-enterprise-event-lake-event-handler-boilerplate}"
+                # Remove ASU/ prefix if present to avoid ASU/ASU/
+                clone_repo="${clone_repo#ASU/}"
+                echo "Clone: gh repo clone ASU/${clone_repo}"
+                ;;
+                
+            *)
+                error "Unknown type: $ptype. Use: publisher, subscriber, or boilerplate"
+                ;;
+        esac
+        return
+    fi
+    
+    # Show full pattern overview
+    echo -e "${BOLD}=== Design Pattern: $pattern_name ===${NC}"
+    echo ""
+    
+    # Description
+    local desc
+    desc=$(yaml_get_pattern_field "$DOMAINS_FILE" "$pattern" "description" | head -5)
+    echo "$desc"
+    echo ""
+    
+    # When to use
+    echo -e "${BOLD}When to use:${NC}"
+    yaml_get_pattern_field "$DOMAINS_FILE" "$pattern" "when_to_use" | grep "^- " | while read -r line; do
+        echo "  $line"
+    done
+    echo ""
+    
+    # Architecture
+    echo -e "${BOLD}Architecture:${NC}"
+    local platform schema delivery
+    platform=$(sed -n "/^design_patterns:/,/^[a-z]/p" "$DOMAINS_FILE" | \
+               sed -n "/^  $pattern:/,/^  [a-zA-Z]/p" | \
+               sed -n "/^    architecture:/,/^    [a-zA-Z]/p" | \
+               grep "platform:" | sed 's/.*platform: *//' | tr -d '"')
+    schema=$(sed -n "/^design_patterns:/,/^[a-z]/p" "$DOMAINS_FILE" | \
+             sed -n "/^  $pattern:/,/^  [a-zA-Z]/p" | \
+             sed -n "/^    architecture:/,/^    [a-zA-Z]/p" | \
+             grep "schema_format:" | sed 's/.*schema_format: *//' | tr -d '"')
+    delivery=$(sed -n "/^design_patterns:/,/^[a-z]/p" "$DOMAINS_FILE" | \
+               sed -n "/^  $pattern:/,/^  [a-zA-Z]/p" | \
+               sed -n "/^    architecture:/,/^    [a-zA-Z]/p" | \
+               grep "delivery_guarantee:" | sed 's/.*delivery_guarantee: *//' | tr -d '"')
+    
+    echo "  Platform: ${platform:-Confluent Cloud (Managed Apache Kafka)}"
+    echo "  Schema Format: ${schema:-Apache Avro}"
+    echo "  Delivery: ${delivery:-At-least-once}"
+    echo ""
+    
+    # Publishers
+    echo -e "${BOLD}Publishers:${NC}"
+    for lang in java python javascript; do
+        local repo path
+        repo=$(yaml_get_pattern_nested "$DOMAINS_FILE" "$pattern" "publishers" "$lang" "repo")
+        [[ -z "$repo" ]] && continue
+        path=$(yaml_get_pattern_nested "$DOMAINS_FILE" "$pattern" "publishers" "$lang" "path")
+        local lang_display
+        lang_display=$(echo "${lang:0:1}" | tr '[:lower:]' '[:upper:]')${lang:1}
+        printf "  ${GREEN}%-12s${NC} %s" "${lang_display}:" "$repo"
+        [[ -n "$path" ]] && printf " → %s" "$path"
+        echo ""
+    done
+    echo ""
+    
+    # Subscribers
+    echo -e "${BOLD}Subscribers:${NC}"
+    for sub in python_peoplesoft_fa python_peoplesoft_cc identity_listener; do
+        local repo desc
+        repo=$(yaml_get_pattern_nested "$DOMAINS_FILE" "$pattern" "subscribers" "$sub" "repo")
+        [[ -z "$repo" ]] && continue
+        desc=$(yaml_get_pattern_nested "$DOMAINS_FILE" "$pattern" "subscribers" "$sub" "description")
+        echo "  $repo"
+        echo "    ${desc:-}"
+    done
+    echo ""
+    
+    # Boilerplate
+    echo -e "${BOLD}Boilerplate:${NC}"
+    echo "  ASU/evbr-enterprise-event-lake-event-handler-boilerplate"
+    echo "  Use: discover.sh pattern --name eel --type boilerplate"
+    echo ""
+    
+    # Best practices
+    echo -e "${BOLD}Best Practices:${NC}"
+    yaml_get_pattern_field "$DOMAINS_FILE" "$pattern" "best_practices" | grep "^- " | head -6 | while read -r line; do
+        echo "  $line"
+    done
+    echo ""
+    
+    # Related commands
+    echo -e "${BOLD}Related Commands:${NC}"
+    echo "  discover.sh pattern --name $pattern --type publisher"
+    echo "  discover.sh pattern --name $pattern --type subscriber"
+    echo "  discover.sh search --query \"EelClient\" --domain eel"
+    echo "  discover.sh repos --domain eel"
+}
+
+#
 # ACTION: Expand (debug)
 #
 action_expand() {
@@ -866,6 +1167,7 @@ main() {
         repos) action_repos ;;
         context) action_context ;;
         patterns) action_patterns ;;
+        pattern) action_pattern ;;
         expand) action_expand ;;
         --help|-h) usage ;;
         *) error "Unknown action: $action. Use --help for usage." ;;

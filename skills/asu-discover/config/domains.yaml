@@ -25,6 +25,8 @@ team_prefixes:
   sf: salesforce       # Salesforce
   cf: cloudflare       # Cloudflare
   unity: unity         # Unity ID platform
+  evbr: eel            # Enterprise Event Lake
+  eli5: logging        # Logging/Observability (Kafkabahn)
 
 domains:
   peoplesoft:
@@ -469,7 +471,200 @@ domains:
       - graphql-server
     prefixes: [api, gateway]
 
+  eel:
+    triggers:
+      - eel
+      - "event lake"
+      - "enterprise event"
+      - kafka
+      - confluent
+      - avro
+      - "schema registry"
+      - producer
+      - consumer
+      - publisher
+      - subscriber
+      - "event handler"
+      - "event driven"
+      - "event-driven"
+      - realtime
+      - "real-time"
+      - evbr
+    synonyms:
+      - EEL
+      - EelClient
+      - eel_client
+      - "enterprise-event-lake"
+      - KafkaProducer
+      - KafkaConsumer
+      - avro
+      - "schema registry"
+      - publish_event
+      - send_event
+      - event_handler
+      - confluent
+      - kafka
+    file_hints:
+      extensions: ["py", "java", "js", "ts", "tf"]
+      paths: ["event-handlers/", "eel/", "kafka/", "events/", "enterprise-event-lake/"]
+    repos:
+      - evbr-enterprise-event-lake
+      - evbr-enterprise-event-lake-event-handler-boilerplate
+      - sisfa-peoplesoft-financial-aid-module-event-listeners
+      - siscc-peoplesoft-campus-community-module-event-listeners
+      - sisint-sis-data-event-realtime-publisher
+      - eli5-kafkabahn
+    prefixes: [evbr, eli5]
+
+  logging:
+    triggers:
+      - logging
+      - log
+      - observability
+      - cribl
+      - opensearch
+      - elk
+      - kafkabahn
+    synonyms:
+      - logging
+      - observability
+      - Cribl
+      - OpenSearch
+      - Elasticsearch
+      - Kafkabahn
+      - log aggregation
+    file_hints:
+      extensions: ["py", "yaml", "json"]
+      paths: ["logging/", "observability/", "cribl/"]
+    repos:
+      - eli5-kafkabahn
+      - eli5-observability-pipeline-platform
+      - eli5-logging-lake
+    prefixes: [eli5]
+
+# =============================================================================
+# Design Patterns
+# =============================================================================
+# Architectural patterns with implementation guidance.
+# These are more comprehensive than domains - they represent full integration
+# patterns with examples, best practices, and boilerplate code.
+#
+# Use: ./discover.sh pattern --name <pattern>
+
+design_patterns:
+  eel:
+    name: "Enterprise Event Lake (EEL)"
+    description: |
+      Real-time, decoupled, event-driven architectural backbone at ASU.
+      The EEL provides a managed Kafka-based messaging platform for 
+      asynchronous, loosely-coupled communication between services.
+    
+    when_to_use:
+      - Real-time data synchronization across systems
+      - Loose coupling between services (publisher doesn't know subscribers)
+      - Event-driven workflows and notifications
+      - Async communication with PeopleSoft and other enterprise systems
+      - Audit trails and event sourcing
+      - Fan-out scenarios (one event, many consumers)
+    
+    architecture:
+      platform: "Confluent Cloud (Managed Apache Kafka)"
+      schema_format: "Apache Avro"
+      schema_registry: true
+      delivery_guarantee: "At-least-once"
+      infrastructure_repo: "ASU/evbr-enterprise-event-lake"
+      
+    naming_conventions:
+      topics: |
+        Format: {domain}.{entity}.{action}
+        Examples:
+          - identity.person.created
+          - enrollment.student.updated
+          - financial-aid.award.disbursed
+      events: |
+        Use PascalCase for event names:
+          - PersonCreated
+          - EnrollmentUpdated
+          - AwardDisbursed
+      schemas: |
+        - All events use Avro schemas
+        - Schemas registered in Confluent Schema Registry
+        - Support schema evolution (backward compatible changes)
+        
+    publishers:
+      java:
+        repo: "ASU/edna"
+        path: "edna-server/src/main/java/edu/asu/edna/server/EELClient.java"
+        description: "Java EEL client used by EDNA server for identity/entitlement events"
+        language: "Java"
+      python:
+        repo: "ASU/iden-identity-resolution-service-api"
+        path: "lambda_container_layers/python/irs_common/eel_client.py"
+        description: "Python EEL client for AWS Lambda-based publishers"
+        language: "Python"
+      javascript:
+        repo: "ASU/cremo-credid"
+        path: "backend/__tests__/event-handlers/enterprise-event-lake/"
+        description: "JavaScript/Node.js EEL integration example with tests"
+        language: "JavaScript"
+      sisint:
+        repo: "ASU/sisint-sis-data-event-realtime-publisher"
+        path: ""
+        description: "SIS realtime event publisher (PeopleSoft data)"
+        language: "HCL/Python"
+        
+    subscribers:
+      python_peoplesoft_fa:
+        repo: "ASU/sisfa-peoplesoft-financial-aid-module-event-listeners"
+        path: ""
+        description: "Event listeners for PeopleSoft Financial Aid module events"
+        language: "Python"
+      python_peoplesoft_cc:
+        repo: "ASU/siscc-peoplesoft-campus-community-module-event-listeners"
+        path: ""
+        description: "Event listeners for PeopleSoft Campus Community module events"
+        language: "Python"
+      identity_listener:
+        repo: "ASU/iden-identity-resolution-service-listener"
+        path: ""
+        description: "Identity Resolution Service event listener"
+        language: "HCL/Python"
+        
+    boilerplate:
+      repo: "ASU/evbr-enterprise-event-lake-event-handler-boilerplate"
+      description: "Official boilerplate for creating new EEL event handlers"
+      use_for: "Starting a new EEL publisher or subscriber"
+      
+    infrastructure:
+      repo: "ASU/evbr-enterprise-event-lake"
+      description: "Terraform infrastructure for EEL (Confluent Kafka cluster)"
+      
+    best_practices:
+      - "Use Avro schemas for all events (enables schema evolution)"
+      - "Register schemas in Schema Registry before publishing"
+      - "Include correlation IDs (trace_id) for distributed tracing"
+      - "Implement idempotent consumers (handle duplicate events gracefully)"
+      - "Use dead-letter queues for failed event processing"
+      - "Follow topic naming conventions for discoverability"
+      - "Keep events small - reference large payloads by ID"
+      - "Include event metadata: timestamp, source, version"
+      
+    related_domains:
+      - peoplesoft   # Common EEL publisher (SIS data)
+      - edna         # Uses EEL for identity/entitlement events
+      - identity     # Identity events via EEL
+      - dpl          # Principal data changes via EEL
+      
+    code_search_queries:
+      - "EelClient"
+      - "eel_client"
+      - "enterprise-event-lake"
+      - "KafkaProducer"
+      - "confluent_kafka"
+
+# =============================================================================
 # Search configuration
+# =============================================================================
 search:
   default_limit: 50
   max_results: 200

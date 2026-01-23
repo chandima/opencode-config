@@ -51,7 +51,8 @@ Intelligent search and discovery across Arizona State University's GitHub organi
 | `repos` | Find repos by domain/prefix | No |
 | `code` | Search code with caching | Yes (10/min) |
 | `context` | Build integration context | Partial |
-| `patterns` | Find integration patterns | Yes |
+| `patterns` | Find integration patterns between systems | Yes |
+| `pattern` | Show design pattern details (e.g., EEL) | No |
 | `index` | Manage local index | No |
 
 ## How to Use
@@ -113,6 +114,63 @@ cd {base_directory}
 ./scripts/discover.sh index classify
 ```
 
+### Using Design Patterns
+
+Design patterns are architectural templates with implementation guidance. They go beyond simple domain search by providing boilerplate code, best practices, and real-world examples.
+
+```bash
+# List available design patterns
+./scripts/discover.sh pattern --list
+
+# Show full pattern overview
+./scripts/discover.sh pattern --name eel
+
+# Get publisher examples by language
+./scripts/discover.sh pattern --name eel --type publisher
+
+# Get subscriber examples
+./scripts/discover.sh pattern --name eel --type subscriber
+
+# Get boilerplate repo for starting a new handler
+./scripts/discover.sh pattern --name eel --type boilerplate
+```
+
+The `context` action auto-suggests relevant patterns when your query matches pattern triggers (e.g., "real-time", "event-driven", "publish", "kafka").
+
+## Design Patterns
+
+### EEL (Enterprise Event Lake)
+
+ASU's real-time, Kafka-based event-driven architecture backbone. Use for decoupled, asynchronous communication between services.
+
+| Aspect | Details |
+|--------|---------|
+| Platform | Confluent Cloud (Managed Apache Kafka) |
+| Schema Format | Apache Avro |
+| Delivery | At-least-once |
+| Infrastructure | `ASU/evbr-enterprise-event-lake` |
+
+**When to use:**
+- Real-time data sync across systems
+- Loose coupling (publishers don't know subscribers)
+- Event-driven workflows and notifications
+- Fan-out scenarios (one event, many consumers)
+- Audit trails and event sourcing
+
+**Key Repositories:**
+
+| Type | Repository | Description |
+|------|------------|-------------|
+| Boilerplate | `evbr-enterprise-event-lake-event-handler-boilerplate` | Start here for new handlers |
+| Java Publisher | `edna` → `EELClient.java` | Identity/entitlement events |
+| Python Publisher | `iden-identity-resolution-service-api` → `eel_client.py` | Lambda-based publishing |
+| JS Publisher | `cremo-credid` | JavaScript integration example |
+| Python Subscriber | `sisfa-peoplesoft-financial-aid-module-event-listeners` | Financial Aid events |
+| Python Subscriber | `siscc-peoplesoft-campus-community-module-event-listeners` | Campus Community events |
+
+**Pattern triggers** (auto-detected in `context` action):
+`event-driven`, `real-time`, `publish`, `subscribe`, `kafka`, `confluent`, `avro`, `async`, `decoupled`, `fanout`
+
 ## Domains
 
 | Domain | Triggers | Team Prefixes | Key Repos |
@@ -128,6 +186,8 @@ cd {base_directory}
 | `cicd` | cicd, pipeline, workflow, actions | cicd | reusable-workflows |
 | `cloudflare` | cloudflare, cf, worker | cf | cloudflare-workers |
 | `ml` | ml, ai, machine learning, model | aiml | ml-models |
+| `eel` | eel, event lake, kafka, confluent, avro | evbr | evbr-enterprise-event-lake |
+| `logging` | logging, observability, cribl, kafkabahn | eli5 | eli5-kafkabahn |
 
 ## Team Prefixes
 
@@ -141,6 +201,8 @@ Based on ASU org analysis:
 | aiml | 12 | ml |
 | edna | 11 | edna |
 | iden | 10 | identity |
+| eli5 | 9 | logging |
+| evbr | 2 | eel |
 | tf | - | terraform |
 | infra | - | infrastructure |
 
