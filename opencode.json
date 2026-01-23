@@ -1,9 +1,7 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "plugin": [
-    "@tarquinen/opencode-dcp",
-    "opencode-notify",
-    "opencode-worktree"
+    "@tarquinen/opencode-dcp"
   ],
   "provider": {
     "litellm": {

@@ -85,8 +85,8 @@ This config uses the following plugins:
 | Plugin | Purpose |
 |--------|---------|
 | `@tarquinen/opencode-dcp` | Dynamic context pruning - reduces token bloat |
-| `opencode-notify` | Desktop notifications for long-running tasks |
-| `opencode-worktree` | Git worktree management tools |
+
+> **Note:** Some plugins like `opencode-notify` and `opencode-worktree` require [OCX](https://github.com/kdcokenny/ocx) package manager (not available via npm).
 
 ## Adding Skills
 
