@@ -184,6 +184,8 @@ Centralized CI/CD patterns for Jenkins and GitHub Actions. The primary asset is 
 | GitHub Actions | `ASU/caas-image-library` (reusable workflows) |
 | Pipeline Templates | `ASU/caas-pipeline-templates`, `ASU/ddt-mulesoft-base-application-template` |
 
+**IMPORTANT:** MuleSoft is DEPRECATED. New integrations should use AWS tooling (API Gateway, Lambda, Step Functions, etc.).
+
 **When to use:**
 - Setting up Jenkins pipelines for new projects
 - Integrating Vault secrets into CI/CD
@@ -390,7 +392,7 @@ datadogRum.init({
 | `logging` | logging, observability, cribl, kafkabahn | eli5 | eli5-kafkabahn, eli5-observability-pipeline-platform |
 | `vault` | vault, hvac, secret, hashicorp | authn, caas | caas-caas-vault |
 | `devops` | devops, jenkins, pipeline, shared library | devops, dco | devops-jenkins-pipeline-library |
-| `mulesoft` | mulesoft, mule, anypoint, esb | ddt | ddt-mulesoft-base-application-template |
+| `mulesoft` | mulesoft, mule, anypoint, esb | ddt | ddt-mulesoft-base-application-template | **DEPRECATED** - Use AWS tooling |
 | `feature-flags` | feature flag, toggle | appss | appss-enterprise-feature-flags |
 
 ## Team Prefixes
