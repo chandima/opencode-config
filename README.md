@@ -88,6 +88,19 @@ This config uses the following plugins:
 
 > **Note:** Some plugins like `opencode-notify` and `opencode-worktree` require [OCX](https://github.com/kdcokenny/ocx) package manager (not available via npm).
 
+## Dependencies
+
+Skills in this repository may require the following dependencies:
+
+| Dependency | Required By | Installation |
+|------------|-------------|--------------|
+| Node.js 18+ | mcporter, context7-docs | `brew install node` |
+| MCPorter | mcporter, context7-docs | `brew tap steipete/tap && brew install mcporter` (or use `npx mcporter`) |
+| gh CLI | github-ops | `brew install gh` |
+| yq | asu-discover | `brew install yq` |
+
+> **Note:** MCPorter can be invoked via `npx mcporter` without installation. The skills use this approach by default.
+
 ## Adding Skills
 
 Create skills in the `skills/` directory:
