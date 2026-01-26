@@ -25,3 +25,6 @@ pnpm-lock.yaml
 *.tmp
 *.temp
 *.log
+
+# Generated audit reports (point-in-time, not source-controlled)
+.opencode/docs/SECURITY-AUDIT.md
