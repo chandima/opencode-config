@@ -36,11 +36,19 @@ When in Plan mode:
 ### Transition to Build Mode
 
 When user says "Go ahead" or toggles to Build:
-1. Ensure `.opencode/docs/PLANNING.md` is saved and current
-2. Archive any research sources to `.opencode/docs/archive/`
-3. Update AGENTS.md if planning decisions affect project conventions
-4. Create TodoWrite tasks from phases in the plan
-5. Begin implementation (code changes now allowed)
+
+**MANDATORY PRE-COMMIT CHECKLIST (DO NOT SKIP):**
+
+1. **Archive sources** → Move research docs to `.opencode/docs/archive/{date}-{name}.md`
+2. **Create sources.md** → Index all sources in `.opencode/docs/archive/sources.md`
+3. **Update AGENTS.md** → If planning decisions affect project conventions
+4. **Update PLANNING.md** → Mark phases complete, update changelog
+5. **Create TodoWrite tasks** → From phases in the plan
+
+⚠️ **CRITICAL:** Steps 1-4 MUST be completed BEFORE committing. Do NOT commit without archiving sources and updating steering documents. This is a hard requirement, not a suggestion.
+
+After checklist is complete:
+- Begin implementation (code changes now allowed)
 
 ### Living Document Model
 
@@ -140,14 +148,14 @@ For significant technology choices, include a decision table:
 
 ## Source Document Archiving
 
-**Never delete source documents.** When consolidating research, preserve originals.
+⚠️ **MANDATORY:** Never delete source documents. When consolidating research, preserve originals in archive.
 
 **Archive Structure:**
 ```
 .opencode/docs/
 ├── PLANNING.md                   # Active living plan
-└── archive/                      # Source documents
-    ├── sources.md                # Index with key findings
+└── archive/                      # Source documents (REQUIRED)
+    ├── sources.md                # Index with key findings (REQUIRED)
     └── {date}-{description}.md   # Original research docs
 ```
 
@@ -159,6 +167,8 @@ For significant technology choices, include a decision table:
 |----|-------|------|------|--------------|
 | SRC-001 | [Research topic] | research | YYYY-MM-DD | [Key insight 1]; [Key insight 2] |
 ```
+
+**FAILURE TO ARCHIVE = INCOMPLETE IMPLEMENTATION.** Do not mark phases as complete or commit changes until sources are archived.
 
 ## Phase Structure (Agent-Native)
 
@@ -236,14 +246,19 @@ npm test -- --grep "example"
 
 ## Remember
 
+**⚠️ BEFORE COMMITTING - MANDATORY STEPS:**
+1. Archive source documents to `.opencode/docs/archive/`
+2. Create/update `archive/sources.md` index
+3. Update AGENTS.md if conventions changed
+4. Mark completed phases with ✅ in PLANNING.md
+
+**Planning requirements:**
 - Exact file paths always
 - Complete code examples (not "add validation here")
 - Test commands with expected output
 - Reference skills with `@skills/skill-name`
-- Archive sources, document decisions
 - Phases map to TodoWrite items
 - **Update changelog on major changes**
-- **Update AGENTS.md if conventions change**
 
 ## AGENTS.md Updates
 
