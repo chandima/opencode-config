@@ -31,7 +31,8 @@ When user says "Go ahead" or toggles to Build:
 1. Save plan to `docs/plans/YYYY-MM-DD-<feature>.md`
 2. Initialize changelog with v1.0
 3. Archive any research sources
-4. Create TodoWrite tasks from phases
+4. Update AGENTS.md if planning decisions affect project conventions
+5. Create TodoWrite tasks from phases
 
 ### Updating Existing Plans
 
@@ -214,6 +215,71 @@ npm test -- --grep "example"
 - Archive sources, document decisions
 - Phases map to TodoWrite items
 - **Update changelog on major changes**
+- **Update AGENTS.md if conventions change**
+
+## AGENTS.md Updates
+
+Planning decisions may establish conventions that should be documented in AGENTS.md. After finalizing a plan, check if updates are needed.
+
+### Find the Relevant AGENTS.md
+
+Search from current directory upward to git root:
+```bash
+# Find closest AGENTS.md in hierarchy
+find . -maxdepth 3 -name "AGENTS.md" -o -name "CLAUDE.md" 2>/dev/null | head -1
+```
+
+Hierarchy (most specific wins):
+1. `./AGENTS.md` - Current directory
+2. `../<parent>/AGENTS.md` - Parent directories
+3. Root `AGENTS.md` - Project-wide conventions
+
+### When to Update
+
+Update AGENTS.md if the plan establishes:
+
+| Decision Type | AGENTS.md Section |
+|---------------|-------------------|
+| New naming conventions | Conventions |
+| New file/folder structure | Repository Structure |
+| New testing patterns | Testing |
+| New tool/command usage | Available Commands |
+| New skill conventions | Skill Conventions |
+| Architecture patterns | Architecture |
+
+### What to Add
+
+Keep updates minimal and focused:
+
+```markdown
+## [Section Name]
+
+### [Convention Name] (added YYYY-MM-DD)
+
+[Brief description of the convention]
+
+**Rationale:** [Link to plan] `docs/plans/YYYY-MM-DD-feature.md`
+```
+
+### What NOT to Add
+
+- Implementation details (belong in plan, not AGENTS.md)
+- Temporary decisions (only permanent conventions)
+- Feature-specific logic (belongs in code/docs)
+
+### Example Update
+
+If plan establishes a new API versioning convention:
+
+```markdown
+## API Conventions
+
+### Versioning (added 2026-01-25)
+
+All API endpoints use URL path versioning: `/api/v1/`, `/api/v2/`
+
+**Rationale:** `docs/plans/2026-01-25-api-versioning.md`
+```
 
 ## Execution
 
