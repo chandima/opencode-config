@@ -1,6 +1,6 @@
 ---
 name: writing-plans
-description: "Use when planning multi-step tasks. Invoke in Plan mode (Tab) for research/iteration, then Build mode to save. Also use to update existing plans."
+description: "Use when planning multi-step tasks. ONLY use in Plan mode (Tab). Updates .opencode/docs/PLANNING.md as a living document. Use for research, decisions, and iteration before Build mode."
 allowed-tools: Read Write Edit Glob Grep Bash Task
 context: fork
 ---
@@ -11,50 +11,78 @@ context: fork
 
 Write implementation plans optimized for agentic execution. Plans should contain everything needed to implement without re-research: key decisions, schemas, code examples, file paths, and test criteria.
 
-**Announce at start:** "I'm using the writing-plans skill to create the implementation plan."
+**Announce at start:** "I'm using the writing-plans skill to update the implementation plan."
 
-**Save plans to:** `docs/plans/YYYY-MM-DD-<feature-name>.md`
+**IMPORTANT: Plan Mode Only**
+This skill MUST only be used in **Plan mode** (toggle with Tab). Plan mode is READ-ONLY for code but WRITE-ENABLED for planning documents.
+
+**Save plans to:** `.opencode/docs/PLANNING.md` (single living document per project)
 
 ## OpenCode Integration
 
-### Plan Mode (Tab to toggle)
+### Plan Mode Enforcement
 
-When in Plan mode (READ-ONLY):
+**CRITICAL:** Before proceeding, verify you are in Plan mode:
+- Plan mode indicator should be visible in the TUI
+- If in Build mode, instruct user: "Please switch to Plan mode (Tab) before planning."
+
+When in Plan mode:
 - Research codebase, gather context
 - Propose architecture verbally
 - Iterate based on user feedback
-- DO NOT create/modify files
+- Update `.opencode/docs/PLANNING.md` with decisions
+- DO NOT modify application code
 
 ### Transition to Build Mode
 
 When user says "Go ahead" or toggles to Build:
-1. Save plan to `docs/plans/YYYY-MM-DD-<feature>.md`
-2. Initialize changelog with v1.0
-3. Archive any research sources
-4. Update AGENTS.md if planning decisions affect project conventions
-5. Create TodoWrite tasks from phases
+1. Ensure `.opencode/docs/PLANNING.md` is saved and current
+2. Archive any research sources to `.opencode/docs/archive/`
+3. Update AGENTS.md if planning decisions affect project conventions
+4. Create TodoWrite tasks from phases in the plan
+5. Begin implementation (code changes now allowed)
 
-### Updating Existing Plans
+### Living Document Model
 
-On skill load, check for existing plans:
+Unlike dated plan files, `.opencode/docs/PLANNING.md` is a **living document**:
+
 ```bash
-ls docs/plans/*.md 2>/dev/null
+# Check for existing plan
+ls .opencode/docs/PLANNING.md 2>/dev/null
 ```
 
-If plan exists and user intent is to modify:
+**If plan exists:**
 1. Read current plan
-2. Identify changes needed
-3. Update relevant sections
+2. Identify sections needing updates
+3. Update relevant sections in-place
 4. Append changelog entry (increment version)
+5. Mark completed phases with ✅
 
-## Plan Document Header
+**If no plan exists:**
+1. Create `.opencode/docs/` directory if needed
+2. Create new PLANNING.md with header template
+3. Initialize changelog with v1.0
 
-**Every plan MUST start with:**
+## Plan Document Structure
+
+### File Location
+
+```
+project-root/
+├── .opencode/
+│   └── docs/
+│       ├── PLANNING.md          # Living plan document
+│       └── archive/
+│           ├── sources.md       # Source index
+│           └── *.md             # Research documents
+```
+
+### Header Template
+
+**Every PLANNING.md MUST start with:**
 
 ```markdown
-# [Feature Name] Implementation Plan
-
-**Version:** v1.0 | **Updated:** YYYY-MM-DD
+# [Project/Feature Name] Implementation Plan
 
 **Goal:** [One sentence describing what this builds]
 
@@ -116,11 +144,11 @@ For significant technology choices, include a decision table:
 
 **Archive Structure:**
 ```
-docs/plans/
-├── YYYY-MM-DD-feature-name.md       # Active plan
-└── archive/                          # Source documents
-    ├── sources.md                    # Index with key findings
-    └── {date}-{description}.md       # Original research docs
+.opencode/docs/
+├── PLANNING.md                   # Active living plan
+└── archive/                      # Source documents
+    ├── sources.md                # Index with key findings
+    └── {date}-{description}.md   # Original research docs
 ```
 
 **Source Index Format (`archive/sources.md`):**
@@ -258,7 +286,7 @@ Keep updates minimal and focused:
 
 [Brief description of the convention]
 
-**Rationale:** [Link to plan] `docs/plans/YYYY-MM-DD-feature.md`
+**Rationale:** `.opencode/docs/PLANNING.md`
 ```
 
 ### What NOT to Add
@@ -278,15 +306,16 @@ If plan establishes a new API versioning convention:
 
 All API endpoints use URL path versioning: `/api/v1/`, `/api/v2/`
 
-**Rationale:** `docs/plans/2026-01-25-api-versioning.md`
+**Rationale:** `.opencode/docs/PLANNING.md`
 ```
 
 ## Execution
 
-After saving the plan:
+After transitioning to Build mode:
 
 1. Use `TodoWrite` to create tasks from phases
 2. Execute phases sequentially
 3. Run test criteria after each phase
 4. Commit after each phase passes
-5. Update plan changelog if scope changes during build
+5. Return to Plan mode if scope changes require plan updates
+6. Update `.opencode/docs/PLANNING.md` changelog when phases complete
