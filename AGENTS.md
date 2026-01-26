@@ -78,7 +78,7 @@ Skills with a `tests/` directory must have smoke tests run after modifications:
 
 For detailed examples, see:
 - `@skills/github-ops/SKILL.md` - Multi-script skill with 12 domains
-- `@skills/asu-discover/SKILL.md` - Single-script with YAML config
+- `@skills/asu-discover/SKILL.md` - Node.js RAG client skill with TypeScript
 - `@skills/skill-creator/SKILL.md` - AI-assisted skill creation workflow
 
 ## GitHub Operations

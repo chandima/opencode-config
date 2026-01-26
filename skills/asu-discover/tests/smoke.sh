@@ -1,178 +1,72 @@
 #!/usr/bin/env bash
-# smoke.sh - Regression smoke tests for asu-discover skill
-# Covers brittle points: set -e interactions, YAML parsing, pattern loading, DNS detection
 set -euo pipefail
 
-SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-export SKILL_DIR
-cd "$SKILL_DIR"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SKILL_DIR="$(dirname "$SCRIPT_DIR")"
 
-# Test counters
-PASSED=0
-FAILED=0
-SKIPPED=0
-
-# Colors (disable if not tty)
-if [[ -t 1 ]]; then
-    GREEN='\033[0;32m'
-    RED='\033[0;31m'
-    YELLOW='\033[0;33m'
-    NC='\033[0m'
-else
-    GREEN='' RED='' YELLOW='' NC=''
-fi
-
-pass() { ((PASSED++)) || true; echo -e "${GREEN}✓${NC} $1"; }
-fail() { ((FAILED++)) || true; echo -e "${RED}✗${NC} $1"; }
-skip() { ((SKIPPED++)) || true; echo -e "${YELLOW}-${NC} $1 (skipped: $2)"; }
-
-# Run command, expect success
-run() {
-    local name="$1"; shift
-    if "$@" >/dev/null 2>&1; then
-        pass "$name"
-    else
-        fail "$name"
-    fi
-}
-
-# Run command, expect failure
-run_expect_fail() {
-    local name="$1"; shift
-    if "$@" >/dev/null 2>&1; then
-        fail "$name"
-    else
-        pass "$name"
-    fi
-}
-
-# Run command, expect output to contain string
-run_expect_output() {
-    local name="$1"
-    local expected="$2"
-    shift 2
-    local output
-    if output=$("$@" 2>&1) && [[ "$output" == *"$expected"* ]]; then
-        pass "$name"
-    else
-        fail "$name"
-    fi
-}
-
-# Source libraries for direct function tests
-source "$SKILL_DIR/scripts/lib/db.sh"
-source "$SKILL_DIR/scripts/lib/yaml.sh"
-SCRIPT_DIR="$SKILL_DIR/scripts"  # Required by dns.sh
-source "$SKILL_DIR/scripts/lib/dns.sh"
-
-echo "=== asu-discover Smoke Tests ==="
+echo "=== Smoke Test: asu-discover ==="
 echo ""
 
-# -----------------------------------------------------------------------------
-# Prerequisites
-# -----------------------------------------------------------------------------
-echo "--- Prerequisites ---"
+# Ensure dependencies are installed
+if [[ ! -d "$SKILL_DIR/node_modules" ]]; then
+    echo "Installing dependencies..."
+    (cd "$SKILL_DIR" && pnpm install --silent)
+fi
 
-# Check yq is installed (required dependency)
-if command -v yq &>/dev/null; then
-    pass "yq installed"
+# Test 1: Help command
+echo "Test 1: Help command"
+if "$SKILL_DIR/scripts/discover.sh" --help > /dev/null 2>&1; then
+    echo "  ✓ Help command works"
 else
-    echo "ERROR: yq is required. Install with: brew install yq"
+    echo "  ✗ Help command failed"
     exit 1
 fi
 
-DB_EXISTS=false
-if db_exists; then
-    pass "db exists"
-    DB_EXISTS=true
+# Test 2: Health check (requires network)
+echo "Test 2: Health check"
+if "$SKILL_DIR/scripts/discover.sh" health > /dev/null 2>&1; then
+    echo "  ✓ Health check passed"
 else
-    skip "db exists" "run 'index build' first"
+    echo "  ✗ Health check failed (network issue or backend down?)"
+    exit 1
 fi
-echo ""
 
-# -----------------------------------------------------------------------------
-# Index Operations (require DB)
-# -----------------------------------------------------------------------------
-echo "--- Index Operations ---"
-if $DB_EXISTS; then
-    run "index stats" ./scripts/discover.sh index stats
-    run "get_repo_count --all" bash -c "source scripts/lib/db.sh && [[ \$(get_repo_count --all) -gt 0 ]]"
-    run "get_repo_count --active" bash -c "source scripts/lib/db.sh && [[ \$(get_repo_count --active) -ge 0 ]]"
-    run "get_repo_count --archived" bash -c "source scripts/lib/db.sh && [[ \$(get_repo_count --archived) -ge 0 ]]"
-    run "get_prefix_stats" bash -c "source scripts/lib/db.sh && get_prefix_stats 5"
+# Test 3: Cache stats
+echo "Test 3: Cache stats"
+if "$SKILL_DIR/scripts/discover.sh" cache-stats > /dev/null 2>&1; then
+    echo "  ✓ Cache stats passed"
 else
-    skip "index stats" "no db"
-    skip "get_repo_count --all" "no db"
-    skip "get_repo_count --active" "no db"
-    skip "get_repo_count --archived" "no db"
-    skip "get_prefix_stats" "no db"
+    echo "  ✗ Cache stats failed"
+    exit 1
 fi
-echo ""
 
-# -----------------------------------------------------------------------------
-# Pattern Loading
-# -----------------------------------------------------------------------------
-echo "--- Pattern Loading ---"
-run "pattern --list" ./scripts/discover.sh pattern --list
-run "pattern --name eel" ./scripts/discover.sh pattern --name eel
-run "pattern --name eel --brief" ./scripts/discover.sh pattern --name eel --brief
-run "pattern --name vault --type typescript" ./scripts/discover.sh pattern --name vault --type typescript
-run_expect_fail "pattern --name nonexistent" ./scripts/discover.sh pattern --name nonexistent
-echo ""
-
-# -----------------------------------------------------------------------------
-# YAML Parsing
-# -----------------------------------------------------------------------------
-echo "--- YAML Parsing ---"
-run "yaml_validate" yaml_validate "$SKILL_DIR/config/domains.yaml"
-run "yaml_get_all_patterns" bash -c "export DOMAINS_YAML='$SKILL_DIR/config/domains.yaml' && source $SKILL_DIR/scripts/lib/yaml.sh && [[ -n \$(yaml_get_all_patterns) ]]"
-run "yaml_get_domain_field" bash -c "export DOMAINS_YAML='$SKILL_DIR/config/domains.yaml' && source $SKILL_DIR/scripts/lib/yaml.sh && [[ -n \$(yaml_get_domain_field peoplesoft triggers) ]]"
-echo ""
-
-# -----------------------------------------------------------------------------
-# DNS Commands
-# -----------------------------------------------------------------------------
-echo "--- DNS Commands ---"
-run_expect_output "dns-validate *.asu.edu → infoblox" "infoblox" ./scripts/discover.sh dns-validate --domain test.asu.edu
-run_expect_output "dns-validate *.example.com → cloudflare" "cloudflare" ./scripts/discover.sh dns-validate --domain test.example.com
-run "dns-examples" ./scripts/discover.sh dns-examples
-echo ""
-
-# -----------------------------------------------------------------------------
-# Search/Context (require DB)
-# -----------------------------------------------------------------------------
-echo "--- Search/Context ---"
-if $DB_EXISTS; then
-    run "search --local-only" ./scripts/discover.sh search --query "terraform" --local-only
-    run "context --local-only" ./scripts/discover.sh context --query "kafka" --local-only
-    run "expand" ./scripts/discover.sh expand --query "vault"
+# Test 4: Natural language search (requires network + model)
+echo "Test 4: Natural language search"
+echo "  (This test loads the embedding model - first run may be slow)"
+if "$SKILL_DIR/scripts/discover.sh" ask "EDNA authorization" --limit 1 --json > /dev/null 2>&1; then
+    echo "  ✓ Natural language search passed"
 else
-    skip "search --local-only" "no db"
-    skip "context --local-only" "no db"
-    skip "expand" "no db"
+    echo "  ✗ Natural language search failed"
+    exit 1
 fi
+
+# Test 5: Structured search
+echo "Test 5: Structured search"
+if "$SKILL_DIR/scripts/discover.sh" search --query "checkAccess" --limit 1 --json > /dev/null 2>&1; then
+    echo "  ✓ Structured search passed"
+else
+    echo "  ✗ Structured search failed"
+    exit 1
+fi
+
+# Test 6: Clear cache
+echo "Test 6: Clear cache"
+if "$SKILL_DIR/scripts/discover.sh" clear-cache > /dev/null 2>&1; then
+    echo "  ✓ Cache clear passed"
+else
+    echo "  ✗ Cache clear failed"
+    exit 1
+fi
+
 echo ""
-
-# -----------------------------------------------------------------------------
-# Edge Cases
-# -----------------------------------------------------------------------------
-echo "--- Edge Cases ---"
-if $DB_EXISTS; then
-    # Test SQL escaping with special characters
-    run "search with special chars" ./scripts/discover.sh search --query "test'with;chars" --local-only
-fi
-
-# Test index verify with --dry-run (no API calls needed)
-run "index verify --dry-run" ./scripts/discover.sh index verify --dry-run
-run "index verify --dry-run --limit 3" ./scripts/discover.sh index verify --dry-run --limit 3
-
-if ! $DB_EXISTS; then
-    skip "search with special chars" "no db"
-fi
-echo ""
-
-# -----------------------------------------------------------------------------
-# Summary
-# -----------------------------------------------------------------------------
-echo "=== Results: ${PASSED} passed, ${FAILED} failed, ${SKIPPED} skipped ==="
-exit $((FAILED > 0 ? 1 : 0))
+echo "=== All smoke tests passed ==="

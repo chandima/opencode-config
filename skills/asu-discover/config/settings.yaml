@@ -1,0 +1,15 @@
+api:
+  url: https://x6qxzhvbd9.execute-api.us-west-2.amazonaws.com
+  timeout_ms: 30000
+
+model:
+  name: jinaai/jina-embeddings-v2-base-code
+  cache_dir: ~/.cache/opencode/asu-discover/models
+
+cache:
+  enabled: true
+  ttl_hours: 24
+  path: ~/.cache/opencode/asu-discover/cache.json
+
+defaults:
+  limit: 10
