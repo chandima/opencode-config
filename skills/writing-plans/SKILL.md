@@ -41,8 +41,92 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Tech Stack:** [Key technologies/libraries]
 
+**Sources:** `archive/sources.md` | [SRC-001], [SRC-002]
+
 ---
 ```
+
+## Source Document Archiving
+
+**Never delete source documents.** When consolidating research into a plan, preserve original source documents for future reference.
+
+**Archive Structure:**
+```
+docs/plans/
+├── YYYY-MM-DD-feature-name.md       # Active plan
+└── archive/                          # Source documents
+    ├── sources.md                    # Index with key findings
+    └── {date}-{description}.md       # Original research docs
+```
+
+**Source Index Format (`archive/sources.md`):**
+```markdown
+# Source Documents
+
+| ID | Title | Type | Date | Key Findings |
+|----|-------|------|------|--------------|
+| SRC-001 | [Research topic] | research | YYYY-MM-DD | [Key insight 1]; [Key insight 2] |
+| SRC-002 | [Design discussion] | design | YYYY-MM-DD | [Architecture decision]; [Deployment approach] |
+```
+
+*Example: `SRC-001 | Auth Provider Research | research | 2025-01-20 | OAuth2 preferred over SAML; Auth0 best for MVP`*
+
+**Source Preservation Policy:**
+1. Move original research docs to `archive/`
+2. Create `archive/sources.md` index with key findings
+3. Reference sources in plan header and decision table
+4. Keep archives even after plan completion
+
+## Key Decisions Table
+
+For significant technology choices, include a decision table in the plan. This prevents "decision amnesia" where rationale is lost after consolidation.
+
+```markdown
+## Key Decisions
+
+| Decision | Choice | Rationale | Alternatives Rejected |
+|----------|--------|-----------|----------------------|
+| [Category] | [Selected option] | [Why this fits requirements] | [Option A (reason)], [Option B (reason)] |
+
+**Sources:** [SRC-001], [SRC-002] - see `archive/sources.md`
+```
+
+*Example:*
+| Database | PostgreSQL | ACID compliance needed, team expertise | MongoDB (no transactions), SQLite (scaling concerns) |
+| Auth | OAuth2 + PKCE | Industry standard, mobile-friendly | Session cookies (no SPA support), API keys (no user context) |
+
+**When to include:**
+- Technology stack choices (database, framework, model)
+- Architecture patterns (sync vs async, monolith vs services)
+- Significant tradeoffs (cost vs performance)
+
+**Skip when:**
+- Simple plans following established patterns
+- No major choices to document
+
+## Runtime Reasoning Capture
+
+During plan execution, use explicit reasoning steps for complex decisions. Based on research showing significant improvement on policy-heavy tasks.
+
+**During execution, use this pattern:**
+
+```markdown
+**Step N: Evaluate options**
+
+Think through:
+- What constraints apply here?
+- What did the source research recommend?
+- Are there edge cases to consider?
+
+Document your reasoning before proceeding.
+```
+
+**When to use:**
+- Policy-heavy decisions during implementation
+- When tool output needs interpretation
+- Before making choices that deviate from the plan
+
+This creates an audit trail of WHY specific implementation choices were made, not just WHAT was done.
 
 ## Task Structure
 
@@ -93,6 +177,7 @@ git commit -m "feat: add specific feature"
 - Exact commands with expected output
 - Reference relevant skills with @ syntax
 - DRY, YAGNI, TDD, frequent commits
+- Archive sources, document decisions
 
 ## Execution Handoff
 
