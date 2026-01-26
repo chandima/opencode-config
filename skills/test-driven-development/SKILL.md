@@ -1,6 +1,8 @@
 ---
 name: test-driven-development
-description: Use when implementing any feature or bugfix, before writing implementation code
+description: "Use when implementing any feature or bugfix, before writing implementation code. Enforces test-first discipline with red-green-refactor cycle."
+allowed-tools: Read Glob Grep Bash Task
+context: fork
 ---
 
 # Test-Driven Development (TDD)
@@ -21,7 +23,7 @@ Write the test first. Watch it fail. Write minimal code to pass.
 - Refactoring
 - Behavior changes
 
-**Exceptions (ask your human partner):**
+**Exceptions (ask the user):**
 - Throwaway prototypes
 - Generated code
 - Configuration files
@@ -46,33 +48,11 @@ Implement fresh from tests. Period.
 
 ## Red-Green-Refactor
 
-```dot
-digraph tdd_cycle {
-    rankdir=LR;
-    red [label="RED\nWrite failing test", shape=box, style=filled, fillcolor="#ffcccc"];
-    verify_red [label="Verify fails\ncorrectly", shape=diamond];
-    green [label="GREEN\nMinimal code", shape=box, style=filled, fillcolor="#ccffcc"];
-    verify_green [label="Verify passes\nAll green", shape=diamond];
-    refactor [label="REFACTOR\nClean up", shape=box, style=filled, fillcolor="#ccccff"];
-    next [label="Next", shape=ellipse];
-
-    red -> verify_red;
-    verify_red -> green [label="yes"];
-    verify_red -> red [label="wrong\nfailure"];
-    green -> verify_green;
-    verify_green -> refactor [label="yes"];
-    verify_green -> green [label="no"];
-    refactor -> verify_green [label="stay\ngreen"];
-    verify_green -> next;
-    next -> red;
-}
-```
-
 ### RED - Write Failing Test
 
 Write one minimal test showing what should happen.
 
-<Good>
+**Good:**
 ```typescript
 test('retries failed operations 3 times', async () => {
   let attempts = 0;
@@ -89,9 +69,8 @@ test('retries failed operations 3 times', async () => {
 });
 ```
 Clear name, tests real behavior, one thing
-</Good>
 
-<Bad>
+**Bad:**
 ```typescript
 test('retry works', async () => {
   const mock = jest.fn()
@@ -103,7 +82,6 @@ test('retry works', async () => {
 });
 ```
 Vague name, tests mock not code
-</Bad>
 
 **Requirements:**
 - One behavior
@@ -131,7 +109,7 @@ Confirm:
 
 Write simplest code to pass the test.
 
-<Good>
+**Good:**
 ```typescript
 async function retryOperation<T>(fn: () => Promise<T>): Promise<T> {
   for (let i = 0; i < 3; i++) {
@@ -145,9 +123,8 @@ async function retryOperation<T>(fn: () => Promise<T>): Promise<T> {
 }
 ```
 Just enough to pass
-</Good>
 
-<Bad>
+**Bad:**
 ```typescript
 async function retryOperation<T>(
   fn: () => Promise<T>,
@@ -161,7 +138,6 @@ async function retryOperation<T>(
 }
 ```
 Over-engineered
-</Bad>
 
 Don't add features, refactor other code, or "improve" beyond the test.
 
@@ -343,7 +319,7 @@ Can't check all boxes? You skipped TDD. Start over.
 
 | Problem | Solution |
 |---------|----------|
-| Don't know how to test | Write wished-for API. Write assertion first. Ask your human partner. |
+| Don't know how to test | Write wished-for API. Write assertion first. Ask the user. |
 | Test too complicated | Design too complicated. Simplify interface. |
 | Must mock everything | Code too coupled. Use dependency injection. |
 | Test setup huge | Extract helpers. Still complex? Simplify design. |
@@ -356,7 +332,7 @@ Never fix bugs without a test.
 
 ## Testing Anti-Patterns
 
-When adding mocks or test utilities, read @testing-anti-patterns.md to avoid common pitfalls:
+Avoid common pitfalls when adding mocks or test utilities:
 - Testing mock behavior instead of real behavior
 - Adding test-only methods to production classes
 - Mocking without understanding dependencies
@@ -368,4 +344,4 @@ Production code → test exists and failed first
 Otherwise → not TDD
 ```
 
-No exceptions without your human partner's permission.
+No exceptions without the user's permission.

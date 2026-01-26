@@ -1,6 +1,6 @@
 ---
 name: writing-plans
-description: Use when you have a spec or requirements for a multi-step task, before touching code. Creates agent-native implementation plans with phases, deliverables, and test criteria.
+description: "Use when planning multi-step tasks. Invoke in Plan mode (Tab) for research/iteration, then Build mode to save. Also use to update existing plans."
 allowed-tools: Read Write Edit Glob Grep Bash Task
 context: fork
 ---
@@ -15,12 +15,45 @@ Write implementation plans optimized for agentic execution. Plans should contain
 
 **Save plans to:** `docs/plans/YYYY-MM-DD-<feature-name>.md`
 
+## OpenCode Integration
+
+### Plan Mode (Tab to toggle)
+
+When in Plan mode (READ-ONLY):
+- Research codebase, gather context
+- Propose architecture verbally
+- Iterate based on user feedback
+- DO NOT create/modify files
+
+### Transition to Build Mode
+
+When user says "Go ahead" or toggles to Build:
+1. Save plan to `docs/plans/YYYY-MM-DD-<feature>.md`
+2. Initialize changelog with v1.0
+3. Archive any research sources
+4. Create TodoWrite tasks from phases
+
+### Updating Existing Plans
+
+On skill load, check for existing plans:
+```bash
+ls docs/plans/*.md 2>/dev/null
+```
+
+If plan exists and user intent is to modify:
+1. Read current plan
+2. Identify changes needed
+3. Update relevant sections
+4. Append changelog entry (increment version)
+
 ## Plan Document Header
 
-**Every plan MUST start with this header:**
+**Every plan MUST start with:**
 
 ```markdown
 # [Feature Name] Implementation Plan
+
+**Version:** v1.0 | **Updated:** YYYY-MM-DD
 
 **Goal:** [One sentence describing what this builds]
 
@@ -33,35 +66,52 @@ Write implementation plans optimized for agentic execution. Plans should contain
 ---
 ```
 
+## Changelog
+
+Track major plan changes with semantic versioning:
+
+```markdown
+## Changelog
+
+| Version | Date | Source | Summary |
+|---------|------|--------|---------|
+| v1.0 | 2026-01-25 | Plan mode | Initial plan |
+| v1.1 | 2026-01-25 | User feedback | Added rate limiting to auth phase |
+| v2.0 | 2026-01-26 | SRC-003 | Restructured to microservices |
+```
+
+**Source types:**
+- `Plan mode` - Created during planning session
+- `User feedback` - TUI conversation updates
+- `SRC-XXX` - Based on archived research
+- `Implementation` - Discovered during build
+
+**Version rules:**
+- v1.0 → v1.1: Minor additions/clarifications
+- v1.x → v2.0: Major restructure or scope change
+
 ## Key Decisions Table
 
-For significant technology choices, include a decision table. This prevents re-research by capturing rationale upfront.
+For significant technology choices, include a decision table:
 
 ```markdown
 ## Key Decisions
 
 | Decision | Choice | Rationale | Alternatives Rejected |
 |----------|--------|-----------|----------------------|
-| [Category] | [Selected option] | [Why this fits requirements] | [Option A (reason)], [Option B (reason)] |
+| [Category] | [Selected option] | [Why this fits] | [Option A (reason)], [Option B (reason)] |
 
 **Sources:** [SRC-001], [SRC-002] - see `archive/sources.md`
 ```
-
-*Example:*
-| Database | PostgreSQL | ACID compliance needed, team expertise | MongoDB (no transactions), SQLite (scaling concerns) |
 
 **When to include:**
 - Technology stack choices (database, framework, model)
 - Architecture patterns (sync vs async, monolith vs services)
 - Significant tradeoffs (cost vs performance)
 
-**Skip when:**
-- Simple plans following established patterns
-- No major choices to document
-
 ## Source Document Archiving
 
-**Never delete source documents.** When consolidating research into a plan, preserve originals.
+**Never delete source documents.** When consolidating research, preserve originals.
 
 **Archive Structure:**
 ```
@@ -83,14 +133,14 @@ docs/plans/
 
 ## Phase Structure (Agent-Native)
 
-Organize work into phases with clear deliverables and test criteria. Each phase maps to a TodoWrite milestone.
+Organize work into phases with clear deliverables and test criteria:
 
 ```markdown
 ## Phase N: [Phase Name]
 
 **Deliverables:**
-- [ ] `path/to/file.ts` - Description of what it does
-- [ ] `path/to/test.ts` - Test coverage for above
+- [ ] `path/to/file.ts` - Description
+- [ ] `path/to/test.ts` - Test coverage
 
 **Schema/Types:** (if applicable)
 ```typescript
@@ -100,9 +150,9 @@ interface Example {
 }
 ```
 
-**Code Example:** (reference implementation)
+**Code Example:**
 ```typescript
-export function exampleFunction(): Example {
+export function example(): Example {
   return { id: "1", name: "test" };
 }
 ```
@@ -116,7 +166,7 @@ npm test -- --grep "example"
 **Commit:** `feat: add example functionality`
 ```
 
-## What to Include in Plans
+## What to Include
 
 | Element | Why It Matters |
 |---------|----------------|
@@ -129,38 +179,26 @@ npm test -- --grep "example"
 
 ## What NOT to Include
 
-- Micro-steps like "run test, verify it fails, then implement" - agent handles this naturally
-- References to non-existent sub-skills or worktrees
+- Micro-steps like "run test, verify it fails" - agent handles naturally
 - Overly granular 2-5 minute human-paced steps
-- Execution mode choices (agent executes directly)
+- References to non-existent skills
 
 ## Task Granularity
 
 **Right-sized for agents:**
-- One phase = one logical unit of work (feature, component, integration)
+- One phase = one logical unit of work
 - Phase contains all files, schemas, examples needed
 - Test criteria defines "done"
 - Commit message provided
 
-**Too granular (avoid):**
-```markdown
-Step 1: Write failing test
-Step 2: Run test to verify failure
-Step 3: Write implementation
-Step 4: Run test to verify pass
-Step 5: Commit
-```
-
-**Right-sized:**
+**Example:**
 ```markdown
 ## Phase 2: User Authentication
 
 **Deliverables:**
 - [ ] `src/auth/service.ts` - Auth service with login/logout
-- [ ] `src/auth/middleware.ts` - JWT validation middleware  
+- [ ] `src/auth/middleware.ts` - JWT validation middleware
 - [ ] `tests/auth/service.test.ts` - Unit tests
-
-**Code Example:** [complete implementation]
 
 **Test Criteria:** `npm test -- auth` passes
 
@@ -172,9 +210,10 @@ Step 5: Commit
 - Exact file paths always
 - Complete code examples (not "add validation here")
 - Test commands with expected output
-- Reference relevant skills with `@skills/skill-name`
+- Reference skills with `@skills/skill-name`
 - Archive sources, document decisions
 - Phases map to TodoWrite items
+- **Update changelog on major changes**
 
 ## Execution
 
@@ -184,5 +223,4 @@ After saving the plan:
 2. Execute phases sequentially
 3. Run test criteria after each phase
 4. Commit after each phase passes
-
-The agent executes the plan directly using the Task tool for complex phases or inline for simple ones.
+5. Update plan changelog if scope changes during build
