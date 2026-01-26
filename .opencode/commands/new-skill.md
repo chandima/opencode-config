@@ -1,51 +1,40 @@
 ---
 name: new-skill
-description: Scaffold a new OpenCode skill with proper structure
+description: Create a new OpenCode skill (invokes skill-creator)
 arguments:
   - name: skill-name
     description: Name for the new skill (lowercase-kebab-case)
     required: true
+  - name: quick
+    description: Skip interview, just scaffold
+    required: false
 ---
 
-# New Skill Scaffolding
+# New Skill Command
 
-Create a new skill directory with proper structure and boilerplate.
+Create a new OpenCode skill using the skill-creator skill.
 
 ## Instructions
 
-1. **Validate the skill name**: Must be `lowercase-kebab-case` (letters, numbers, hyphens only)
-2. **Create the skill directory structure**:
+1. **Load skill-creator skill:**
    ```
-   skills/{{skill-name}}/
-   ├── SKILL.md          # From template, customize frontmatter
-   └── scripts/          # Optional, create if needed
+   skill({ name: "skill-creator" })
    ```
 
-3. **Copy and customize the template**:
-   - Read `@templates/skill/SKILL.md.template`
-   - Replace `{{skill-name}}` with the provided name
-   - Replace `{{skill-description}}` with a placeholder for the user to fill
-   - Write to `skills/{{skill-name}}/SKILL.md`
+2. **Determine mode from arguments:**
+   - If `$ARGUMENTS` contains `--quick`: Quick mode (scaffold only)
+   - Otherwise: Full mode (search + interview + generate)
 
-4. **Inform the user** what was created and what they need to customize:
-   - Update the `description` in frontmatter (critical for skill discovery)
-   - Update `allowed-tools` based on what the skill needs
-   - Add skill-specific documentation sections
+3. **Pass skill name to workflow:**
+   - Extract skill name from `$ARGUMENTS` (first argument, excluding flags)
+   - Follow skill-creator's workflow with this name
 
-## Validation Rules
+## Usage Examples
 
-- Name must match pattern: `^[a-z][a-z0-9-]*[a-z0-9]$`
-- Name must be at least 3 characters
-- Directory must not already exist
-
-## Example Usage
-
-```
+```bash
+# Full AI-assisted creation
 /new-skill my-awesome-skill
-```
 
-Creates:
-```
-skills/my-awesome-skill/
-└── SKILL.md
+# Quick scaffolding only
+/new-skill my-awesome-skill --quick
 ```

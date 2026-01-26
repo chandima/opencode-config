@@ -10,8 +10,8 @@ This repository contains custom skills and configuration for OpenCode. It is sym
 opencode-config/
 ├── skills/           # Custom OpenCode skills
 │   ├── github-ops/   # GitHub operations via gh CLI
-│   └── asu-discover/ # ASU org repository discovery
-├── templates/        # Skill templates and boilerplate
+│   ├── asu-discover/ # ASU org repository discovery
+│   └── skill-creator/ # AI-assisted skill creation
 ├── .opencode/        # OpenCode commands and config
 │   └── commands/     # Custom slash commands
 └── opencode.json     # Provider configuration (LiteLLM)
@@ -72,14 +72,14 @@ Skills with a `tests/` directory must have smoke tests run after modifications:
 
 | Command | Purpose |
 |---------|---------|
-| `/new-skill <name>` | Scaffold a new skill with SKILL.md template |
+| `/new-skill <name> [--quick]` | Create a new skill (AI-assisted, or `--quick` for scaffold only) |
 
 ## Reference Files
 
 For detailed examples, see:
 - `@skills/github-ops/SKILL.md` - Multi-script skill with 12 domains
 - `@skills/asu-discover/SKILL.md` - Single-script with YAML config
-- `@templates/skill/SKILL.md.template` - Boilerplate for new skills
+- `@skills/skill-creator/SKILL.md` - AI-assisted skill creation workflow
 
 ## GitHub Operations
 
