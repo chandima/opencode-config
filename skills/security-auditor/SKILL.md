@@ -100,6 +100,21 @@ Includes:
 - Scoped vs out-of-scope findings (monorepos)
 - Full findings appendix
 
+### Gitignore Recommendation
+
+The audit report is a **point-in-time snapshot** and should NOT be committed to version control. Add this to your `.gitignore`:
+
+```gitignore
+# Security audit reports (generated, not source-controlled)
+.opencode/docs/SECURITY-AUDIT.md
+```
+
+**Why?**
+- Reports contain timestamps and tool versions that change on every run
+- Findings are environment-specific (different machines may have different tools)
+- In CI/CD, audit reports should be artifacts, not committed files
+- Committing reports creates noise in git history
+
 ## Blocking Behavior
 
 The skill will **refuse to proceed with deployment** if:
