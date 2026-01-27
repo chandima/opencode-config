@@ -94,21 +94,11 @@ Skills in this repository may require the following dependencies:
 
 | Dependency | Required By | Installation |
 |------------|-------------|--------------|
-| Node.js 22+ | asu-discover, mcporter, context7-docs | `brew install node` |
-| pnpm | asu-discover | `npm install -g pnpm` |
+| Node.js 22+ | mcporter, context7-docs | `brew install node` |
 | MCPorter | mcporter, context7-docs | `brew tap steipete/tap && brew install mcporter` (or use `npx mcporter`) |
-| gh CLI | github-ops, asu-discover | `brew install gh` |
+| gh CLI | github-ops | `brew install gh` |
 
 > **Note:** MCPorter can be invoked via `npx mcporter` without installation. The skills use this approach by default.
-
-### Skill-Specific Setup
-
-Some skills require additional setup:
-
-```bash
-# asu-discover: Download embedding model (~500MB, first-time only)
-./skills/asu-discover/scripts/setup.sh
-```
 
 ## Adding Skills
 
