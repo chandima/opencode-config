@@ -10,7 +10,6 @@ This repository contains custom skills and configuration for OpenCode. It is sym
 opencode-config/
 ├── skills/           # Custom OpenCode skills
 │   ├── github-ops/   # GitHub operations via gh CLI
-│   ├── asu-discover/ # ASU org repository discovery
 │   └── skill-creator/ # AI-assisted skill creation
 ├── .opencode/        # OpenCode commands and config
 │   └── commands/     # Custom slash commands
@@ -41,6 +40,34 @@ context: fork
 | `description` | Explains purpose AND when to use (triggers skill loading) |
 | `allowed-tools` | Whitelist of tools the skill can use |
 | `context` | Use `fork` to run in isolated context |
+
+### Skill Management
+
+Skills can be enabled or disabled via permissions in `opencode.json`:
+
+```json
+{
+  "permission": {
+    "skill": {
+      "*": "allow",
+      "asu-discover": "deny",
+      "experimental-*": "ask"
+    }
+  }
+}
+```
+
+| Permission | Behavior |
+|------------|----------|
+| `allow` | Skill loads immediately |
+| `deny` | Skill hidden from agent, access rejected |
+| `ask` | User prompted for approval before loading |
+
+**Note:** Disabled skills remain in the `skills/` directory but are not available to OpenCode agents.
+
+#### Currently Disabled Skills
+
+- **asu-discover**: Disabled pending server-side implementation refactor. The original design was inadequate and requires architectural changes to the backend integration.
 
 ### Script Standards
 
@@ -78,7 +105,6 @@ Skills with a `tests/` directory must have smoke tests run after modifications:
 
 For detailed examples, see:
 - `@skills/github-ops/SKILL.md` - Multi-script skill with 12 domains
-- `@skills/asu-discover/SKILL.md` - Node.js RAG client skill with TypeScript
 - `@skills/skill-creator/SKILL.md` - AI-assisted skill creation workflow
 
 ## GitHub Operations

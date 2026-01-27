@@ -3,6 +3,12 @@
   "plugin": [
     "@tarquinen/opencode-dcp"
   ],
+  "permission": {
+    "skill": {
+      "*": "allow",
+      "asu-discover": "deny"
+    }
+  },
   "provider": {
     "litellm": {
       "npm": "@ai-sdk/openai-compatible",
