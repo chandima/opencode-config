@@ -30,10 +30,18 @@ If the user is already in the `my-plan` agent, proceed with the workflow below.
 | Agent | When to Use | Capabilities |
 |-------|-------------|--------------|
 | **my-plan** | Planning phase | READ-ONLY. Creates Beads epics/tasks, builds dependency DAG, produces Ready Queue. Bash limited to bd/bdui only. |
-| **my-plan-exec** | Implementation phase | Full access. Implements ready work, commits code, updates Beads statuses. |
-| **my-plan-review** | Verification phase | READ-ONLY. Verifies acceptance criteria, updates Beads notes. Bash limited to bd/bdui only. |
+| **my-plan-review** | Review phase (plan + code) | READ-ONLY. Approves plan before exec, approves code before push. Bash limited to bd/bdui only. |
+| **my-plan-exec** | Implementation phase | Full access. Implements ready work, commits locally (no push until review approves). |
 
-**Handoff flow:** `my-plan` → (user approval) → `my-plan-exec` → `my-plan-review` → repeat
+**Workflow with review gates:**
+```
+my-plan (create plan) → my-plan-review (approve plan) → my-plan-exec (implement, commit locally) → my-plan-review (approve code) → push
+```
+
+**Key points:**
+- Plan must be reviewed BEFORE execution begins
+- Code must be reviewed BEFORE pushing
+- `my-plan-exec` commits locally but does NOT push
 
 ---
 

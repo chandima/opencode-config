@@ -200,19 +200,20 @@ To verify agent permission enforcement:
 
 ### Testing the Planning Workflow
 
-The full Beads-first workflow uses three agents:
+The full Beads-first workflow uses three agents with review gates:
 
 | Step | Agent | Mode | Purpose |
 |------|-------|------|---------|
 | 1 | `my-plan` | READ-ONLY | Create Beads epic and tasks |
-| 2 | `my-plan-exec` | Full access | Implement ready tasks |
-| 3 | `my-plan-review` | READ-ONLY | Verify against acceptance criteria |
+| 2 | `my-plan-review` | READ-ONLY | Approve plan before implementation |
+| 3 | `my-plan-exec` | Full access | Implement ready tasks (commit locally, no push) |
+| 4 | `my-plan-review` | READ-ONLY | Approve code, authorize push |
 
 ```bash
 # Switch between agents
 /agent my-plan        # Planning phase
+/agent my-plan-review # Review phase (plan or code)
 /agent my-plan-exec   # Implementation phase
-/agent my-plan-review # Review phase
 ```
 
 Beads commands for the workflow:
@@ -221,7 +222,7 @@ Beads commands for the workflow:
 bd prime              # Load Beads context
 bd ready              # Show unblocked tasks
 bd list               # List all issues
-bd update <id> --status=closed  # Mark task complete
+bd close <id>         # Mark task complete
 ```
 
 ## Notes

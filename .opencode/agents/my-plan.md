@@ -144,3 +144,13 @@ Always return:
 4) **Open Questions / Risks** (only what matters)
 
 Never show a TODO checklist; show Beads tasks and readiness instead.
+
+
+## Workflow Position
+
+```
+YOU (plan) → my-plan-review (approve plan) → my-plan-exec (implement) → my-plan-review (approve code) → push
+```
+
+After creating the plan, hand off to `my-plan-review` for plan approval BEFORE execution begins.
+Do NOT hand off directly to `my-plan-exec`. The plan must be reviewed first.
