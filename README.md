@@ -175,6 +175,55 @@ See [OpenCode Skills docs](https://opencode.ai/docs/skills/) for details.
 
 > **Note:** Some skills may be disabled via permissions in `opencode.json`. Check the `permission.skill` section.
 
+## Testing
+
+### Testing Skills
+
+Skills with a `tests/` directory should have smoke tests run after modifications:
+
+```bash
+./skills/<skill-name>/tests/smoke.sh
+```
+
+All tests should pass before committing changes.
+
+### Testing Agents
+
+To verify agent permission enforcement:
+
+1. Switch to the agent: `/agent my-plan`
+2. Try forbidden actions:
+   - Edit a file → Should be blocked
+   - Run `git commit` → Should be blocked
+   - Run `bd prime` → Should work (Beads commands allowed)
+3. Verify the agent stays in read-only mode
+
+### Testing the Planning Workflow
+
+The full Beads-first workflow uses three agents:
+
+| Step | Agent | Mode | Purpose |
+|------|-------|------|---------|
+| 1 | `my-plan` | READ-ONLY | Create Beads epic and tasks |
+| 2 | `my-plan-exec` | Full access | Implement ready tasks |
+| 3 | `my-plan-review` | READ-ONLY | Verify against acceptance criteria |
+
+```bash
+# Switch between agents
+/agent my-plan        # Planning phase
+/agent my-plan-exec   # Implementation phase
+/agent my-plan-review # Review phase
+```
+
+Beads commands for the workflow:
+
+```bash
+bd prime              # Load Beads context
+bd ready              # Show unblocked tasks
+bd list               # List all issues
+bd update <id> --status=closed  # Mark task complete
+```
+
 ## Notes
 
 - API keys and secrets should be set via environment variables, not in this repo
