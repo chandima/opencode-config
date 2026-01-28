@@ -10,11 +10,14 @@ opencode-config/                      # This git repo (your config)
 ├── README.md
 ├── setup.sh                          # Setup script for OpenCode and Codex
 ├── opencode.json                     # OpenCode config file (tracked)
-└── skills/                           # Custom skills (tracked, works with both CLIs)
+├── skills/                           # Custom skills (tracked, works with both CLIs)
+└── .opencode/
+    └── agents/                       # Custom agents (OpenCode only)
 
 ~/.config/opencode/                   # OpenCode runtime directory
 ├── opencode.json -> <repo>/opencode.json    # Symlink (via setup.sh)
 ├── skills/ -> <repo>/skills/                # Symlink (via setup.sh)
+├── agents/ -> <repo>/.opencode/agents/      # Symlink (via setup.sh)
 ├── node_modules/                     # Runtime (not tracked)
 ├── package.json                      # Runtime (not tracked)
 └── bun.lock                          # Runtime (not tracked)
@@ -47,7 +50,7 @@ cd opencode-config
 ```
 
 The script will:
-- **OpenCode**: Symlink `opencode.json` and `skills/` to `~/.config/opencode/`
+- **OpenCode**: Symlink `opencode.json`, `skills/`, and `agents/` to `~/.config/opencode/`
 - **Codex**: Symlink individual skills to `~/.codex/skills/` (preserves `.system/` directory)
 - **Respects disabled skills**: Skills with `"deny"` permission in `opencode.json` are skipped for Codex
 
@@ -59,6 +62,7 @@ The script will:
 mkdir -p ~/.config/opencode
 ln -sf "$(pwd)/opencode.json" ~/.config/opencode/opencode.json
 ln -sfn "$(pwd)/skills" ~/.config/opencode/skills
+ln -sfn "$(pwd)/.opencode/agents" ~/.config/opencode/agents
 ```
 
 **Codex:**

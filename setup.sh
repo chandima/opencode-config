@@ -51,6 +51,9 @@ setup_opencode() {
     ln -sfn "$SCRIPT_DIR/skills" "$config_dir/skills"
     ln -sfn "$SCRIPT_DIR/.opencode/agents" "$config_dir/agents"
     
+    echo "  Linked: opencode.json"
+    echo "  Linked: skills/"
+    echo "  Linked: agents/"
     echo "  Done!"
 }
 
