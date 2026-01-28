@@ -20,8 +20,11 @@ permission:
   glob: allow
   grep: allow
   list: allow
+  websearch: allow
+  webfetch: allow
 
   # Allow file modifications (this is the execution agent).
+  write: allow
   edit: allow
 
   # Never use OpenCode todo list system (Beads is the plan ledger).
@@ -52,6 +55,8 @@ permission:
     "git reset *": ask
     "git rebase *": ask
     "git push*": ask
+    "git push --force*": deny
+    "git push -f*": deny
     "git fetch*": allow
     "git pull*": ask
     "git clean*": deny
