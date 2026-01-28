@@ -78,7 +78,18 @@ git pull
 # Changes are immediately available - no copy/sync needed
 ```
 
-## Plugins
+## Configuration
+
+### opencode.json
+
+The `opencode.json` file contains:
+- **Plugins**: Extensions that enhance OpenCode functionality
+- **Permissions**: Skill access control (enable/disable skills)
+- **Provider**: LLM provider configuration
+
+> **⚠️ Important:** The `provider` section is specific to the author (chandima) and uses a custom LiteLLM endpoint. If you fork this repository, you'll need to update the provider configuration to use your own LLM provider. See [OpenCode Provider docs](https://opencode.ai/docs/providers/) for configuration options.
+
+### Plugins
 
 This config uses the following plugins:
 
