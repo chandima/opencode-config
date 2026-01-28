@@ -120,6 +120,36 @@ C) Open the visual board (optional but recommended)
 
 ---
 
+## TDD Evaluation
+
+Evaluate task complexity and apply the `tdd` label automatically for non-trivial work.
+
+### Complexity Heuristics
+
+| Complexity | TDD? | Indicators |
+|------------|------|------------|
+| Trivial | No | Docs, typos, config, renames, formatting, comments |
+| Small | No | Single-line fixes, simple renames, env changes |
+| Medium | Yes | New functions, bug fixes with logic, refactors |
+| Large | Yes | New features, API changes, multi-file changes, architectural work |
+
+### Auto-labeling Rules
+
+- **Trivial/Small:** Do NOT add `tdd` label
+- **Medium/Large:** Automatically add `tdd` label when creating the task:
+  ```bash
+  bd create --title="Implement auth middleware" --type=task --labels="tdd"
+  ```
+- **Uncertain:** Ask the user: "This task could go either way. Should it follow TDD?"
+
+### Indicators of Uncertainty
+- Task involves both code and config changes
+- Scope is ambiguous
+- Existing test coverage is unknown
+- User might have strong preference
+
+---
+
 ## Delegation Guidelines (subagents)
 
 Use subagents to accelerate planning, but keep Beads as the ledger:

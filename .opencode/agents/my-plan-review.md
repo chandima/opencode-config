@@ -69,6 +69,7 @@ my-plan (creates plan) → YOU (approve plan) → my-plan-exec (implements)
 - Review the Beads epic and tasks
 - Verify tasks are well-defined with clear acceptance criteria
 - Check dependencies make sense
+- **Verify TDD labels:** Ensure `tdd` label is applied to Medium/Large complexity tasks
 - Approve plan or request changes from my-plan
 
 ### Phase 2: Code Review (after execution)
@@ -77,6 +78,7 @@ my-plan-exec (commits locally) → YOU (approve code) → push
 ```
 - Review the code changes (diffs, files touched)
 - Verify changes meet acceptance criteria
+- **For `tdd` labeled tasks:** Verify TDD compliance (see below)
 - Run/request tests if needed
 - If approved: instruct user to push (`git push`)
 - If rejected: send back to my-plan-exec with specific fixes needed
@@ -87,6 +89,34 @@ You cannot run tests/builds directly (bash restricted to bd/bdui only). Options:
 1. Ask the user to run them manually and report results
 2. Request handoff to `my-plan-exec` agent which has full bash access
 3. Review test output provided by user or previous agent
+
+## TDD Verification
+
+For tasks with the `tdd` label, verify TDD was followed during code review.
+
+### Check for TDD Label
+```bash
+bd show <task-id>
+```
+
+### TDD Compliance Checklist
+- [ ] Tests exist for new/changed functionality
+- [ ] Test files appear in commits (check git log)
+- [ ] Tests are meaningful (not just coverage padding)
+- [ ] Implementation follows red-green-refactor pattern
+
+### How to Verify
+1. Check git log for test file commits:
+   ```
+   Review the commit to see if test files were added/modified
+   ```
+2. Verify tests cover the new functionality
+3. Check that tests are not trivial (actually test behavior)
+
+### If TDD Not Followed
+- Do NOT approve the code
+- Send back to `my-plan-exec` with specific feedback:
+  "Task has `tdd` label but tests were not written first. Please restart with TDD: write failing test, then implement."
 
 ## Recommended workflow
 

@@ -119,10 +119,11 @@ For each selected READY task:
 A) Claim it
 - Set it to `in_progress` in Beads.
 - Summarize the acceptance criteria in 1–3 lines.
+- **Check for `tdd` label:** `bd show <task-id>` — if present, follow TDD execution below.
 
 B) Implement
-- Inspect relevant code.
-- Make the smallest set of changes to satisfy acceptance criteria.
+- If task has `tdd` label: Follow TDD Execution (see below).
+- Otherwise: Inspect relevant code, make smallest changes to satisfy acceptance criteria.
 - Follow repo conventions.
 
 C) Verify
@@ -162,6 +163,49 @@ You may delegate, but keep Beads as the ledger:
   - create a new Beads issue immediately,
   - link it as a dependency or as a child under the epic,
   - re-compute READY queue.
+
+## TDD Execution
+
+For tasks with the `tdd` label, follow the red-green-refactor cycle strictly.
+See the `test-driven-development` skill for detailed guidance.
+
+### TDD Cycle
+
+1. **RED:** Write a failing test first
+   - One test, one behavior
+   - Clear name describing expected behavior
+
+2. **Verify RED:** Run test, confirm it fails
+   ```bash
+   npm test path/to/test.test.ts
+   ```
+   - Must fail for the right reason (feature missing, not typo)
+   - If test passes immediately, you're testing existing behavior — fix test
+
+3. **GREEN:** Write minimal code to pass
+   - Just enough to make the test pass
+   - No extra features, no "while I'm here" improvements
+
+4. **Verify GREEN:** Run test, confirm it passes
+   - All tests must pass
+   - No warnings or errors
+
+5. **REFACTOR:** Clean up while keeping tests green
+   - Remove duplication
+   - Improve names
+   - Extract helpers
+
+6. **Repeat** for each behavior
+
+### TDD Verification Before Closing Task
+
+Before marking a `tdd` task as closed, verify:
+- [ ] Tests exist for new code
+- [ ] Each test was written before implementation
+- [ ] All tests pass
+- [ ] No implementation code without a corresponding test
+
+If you cannot verify these, do NOT close the task.
 
 ## Suggested user commands
 
