@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# OpenCode configuration setup script
+# This script only configures OpenCode (~/.config/opencode)
+# For Codex CLI setup, see README.md for manual instructions
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_DIR="$HOME/.config/opencode"
 
 echo "Setting up OpenCode config symlinks..."
+echo "(For Codex CLI setup, see README.md manual instructions)"
+echo ""
 echo "Source: $SCRIPT_DIR"
 echo "Target: $CONFIG_DIR"
 echo ""

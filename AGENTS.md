@@ -1,8 +1,38 @@
 # OpenCode Configuration Repository
 
-This repository contains custom skills and configuration for OpenCode. It is symlinked to `~/.config/opencode/` to extend OpenCode's capabilities.
+This repository contains custom skills and configuration for OpenCode and Codex CLI. It is symlinked to extend both CLIs' capabilities.
 
 **This is NOT application code** - it contains AI agent skills, commands, and templates.
+
+## CLI Support
+
+This repository supports both **OpenCode** and **Codex CLI**:
+
+| Aspect | OpenCode | Codex |
+|--------|----------|-------|
+| Config directory | `~/.config/opencode/` | `~/.codex/` |
+| Config file | `opencode.json` (JSON) | `config.toml` (TOML) |
+| Skills directory | `~/.config/opencode/skills/` | `~/.codex/skills/` |
+| Setup script | `./setup.sh` (automated) | Manual symlinking required |
+| System skills | None | `.system/` subdirectory (skill-creator, skill-installer) |
+
+### OpenCode Setup (Automated)
+
+Run the setup script to automatically configure OpenCode:
+
+```bash
+./setup.sh
+```
+
+This creates symlinks for `opencode.json` and `skills/` in `~/.config/opencode/`.
+
+### Codex Setup (Manual)
+
+To use these skills with Codex CLI, manually symlink individual skills. See the README.md "Codex CLI Setup" section for detailed instructions, including how to respect disabled skills from `opencode.json`.
+
+**Important:** Do NOT symlink the entire `skills/` directory to `~/.codex/skills/`, as this will hide Codex's system skills in `.system/`.
+
+**Configuration:** Codex uses `config.toml` (TOML format), not `opencode.json`. Manage your Codex configuration separately.
 
 ## Repository Structure
 
@@ -43,8 +73,9 @@ context: fork
 
 ### Skill Management
 
-Skills can be enabled or disabled via permissions in `opencode.json`:
+Skills can be enabled or disabled via permissions in `opencode.json` (OpenCode) or `config.toml` (Codex):
 
+**OpenCode (`opencode.json`):**
 ```json
 {
   "permission": {
@@ -57,13 +88,21 @@ Skills can be enabled or disabled via permissions in `opencode.json`:
 }
 ```
 
+**Codex (`~/.codex/config.toml`):**
+```toml
+[permission.skill]
+"*" = "allow"
+asu-discover = "deny"
+"experimental-*" = "ask"
+```
+
 | Permission | Behavior |
 |------------|----------|
 | `allow` | Skill loads immediately |
 | `deny` | Skill hidden from agent, access rejected |
 | `ask` | User prompted for approval before loading |
 
-**Note:** Disabled skills remain in the `skills/` directory but are not available to OpenCode agents.
+**Note:** Disabled skills remain in the `skills/` directory but are not available to the CLI.
 
 #### Currently Disabled Skills
 
