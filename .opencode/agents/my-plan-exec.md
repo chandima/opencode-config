@@ -164,6 +164,60 @@ You may delegate, but keep Beads as the ledger:
   - link it as a dependency or as a child under the epic,
   - re-compute READY queue.
 
+## Test Discovery (Node.js Projects)
+
+Before running tests, determine the correct test runner and command.
+
+### 1. Detect Package Manager
+
+Check for lockfiles in project root (in priority order):
+
+| Lockfile | Package Manager |
+|----------|-----------------|
+| `pnpm-lock.yaml` | pnpm |
+| `yarn.lock` | yarn |
+| `bun.lockb` | bun |
+| `package-lock.json` | npm |
+| (none found) | npm (default) |
+
+```bash
+# Quick detection
+if [ -f pnpm-lock.yaml ]; then PM=pnpm
+elif [ -f yarn.lock ]; then PM=yarn
+elif [ -f bun.lockb ]; then PM=bun
+else PM=npm; fi
+```
+
+### 2. Find Test Command
+
+Read `package.json` and determine the test command:
+
+**For running all tests:**
+- Check `scripts.test` exists → use `$PM test`
+- Check `scripts.test:unit` for unit tests only
+
+**For running a single test file:**
+Check `devDependencies` for the test framework:
+
+| Framework | Single File Command |
+|-----------|---------------------|
+| vitest | `$PM exec vitest run <file>` |
+| jest | `$PM exec jest <file>` |
+| mocha | `$PM exec mocha <file>` |
+
+### 3. Fallback: Ask User
+
+If no test script or framework can be detected:
+
+1. **STOP** - Do not proceed with TDD
+2. **ASK the user:** "I couldn't detect a test runner. How should I run tests in this project?"
+3. **Wait for response** before continuing
+
+**Never:**
+- Skip tests silently
+- Guess the test command
+- Assume tests aren't needed
+
 ## TDD Execution
 
 For tasks with the `tdd` label, follow the red-green-refactor cycle strictly.
@@ -175,19 +229,37 @@ See the `test-driven-development` skill for detailed guidance.
    - One test, one behavior
    - Clear name describing expected behavior
 
-2. **Verify RED:** Run test, confirm it fails
+2. **Verify RED:** Run test, confirm it fails *for the right reason*
    ```bash
-   npm test path/to/test.test.ts
+   $PM test <file>   # or: $PM exec vitest run <file>
    ```
-   - Must fail for the right reason (feature missing, not typo)
-   - If test passes immediately, you're testing existing behavior — fix test
+   
+   **Valid failures** (feature is missing):
+   - `ReferenceError: functionName is not defined`
+   - `TypeError: x.method is not a function`
+   - `expect(received).toBe(expected)` with wrong value
+   - Test times out waiting for unimplemented async behavior
+   
+   **Invalid failures** (fix these first):
+   - Syntax errors in test file
+   - Import/module resolution errors
+   - Test framework misconfiguration
+   - Missing test dependencies
+   
+   **If test passes immediately:**
+   - You're testing existing behavior, not new functionality
+   - Rewrite the test to target the actual new behavior
+   
+   **If test fails for wrong reason:**
+   - Fix the test file first (imports, syntax, setup)
+   - Re-run until you get a valid "feature missing" failure
 
 3. **GREEN:** Write minimal code to pass
    - Just enough to make the test pass
    - No extra features, no "while I'm here" improvements
 
 4. **Verify GREEN:** Run test, confirm it passes
-   - All tests must pass
+   - All tests must pass (not just the new one)
    - No warnings or errors
 
 5. **REFACTOR:** Clean up while keeping tests green
