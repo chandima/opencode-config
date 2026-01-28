@@ -109,6 +109,20 @@ The `opencode.json` file contains:
 
 > **Note:** The `provider` section uses a custom LiteLLM endpoint. If you fork this repository, update the provider configuration to use your own LLM provider. See [OpenCode Provider docs](https://opencode.ai/docs/providers/) for configuration options.
 
+### Custom Agents
+
+Custom agents are stored in `.opencode/agents/` and provide specialized workflows:
+
+| Agent | Role | Permissions |
+|-------|------|-------------|
+| **my-plan** | Planning only | READ-ONLY. Creates Beads epics/tasks, builds dependency DAG. Cannot edit code or commit. |
+| **my-plan-exec** | Implementation | Full access. Implements ready work, commits code, updates Beads statuses. Force-push blocked. |
+| **my-plan-review** | Verification | READ-ONLY. Verifies acceptance criteria, runs tests/builds, updates Beads notes. |
+
+**Workflow:** `my-plan` → (user approval) → `my-plan-exec` → `my-plan-review` → repeat
+
+These agents integrate with [Beads](https://github.com/beads-ai/beads-cli) for dependency-aware task tracking. The `writing-plans` skill automatically delegates planning requests to the `my-plan` agent.
+
 ### Plugins
 
 This config uses the following plugins:
@@ -144,6 +158,22 @@ skills/
 Each `SKILL.md` must have YAML frontmatter with `name` and `description`.
 
 See [OpenCode Skills docs](https://opencode.ai/docs/skills/) for details.
+
+### Available Skills
+
+| Skill | Purpose | Trigger Phrases |
+|-------|---------|-----------------|
+| **writing-plans** | Beads-first planning | "plan", "create a plan", "design", "break down", "help me plan" |
+| **github-ops** | GitHub operations via gh CLI | GitHub-related tasks |
+| **context7-docs** | Library documentation via Context7 MCP | Research React, Next.js, npm libraries |
+| **skill-creator** | AI-assisted skill creation | Creating new skills |
+| **mcporter** | Direct MCP access via MCPorter | Advanced MCP operations |
+| **systematic-debugging** | Root cause investigation | Bug fixes, test failures |
+| **test-driven-development** | Test-first development | Feature implementation |
+| **typescript-advanced-types** | Advanced TypeScript types | Complex type logic |
+| **security-auditor** | Pre-deployment security audit | Deploy to production, releases |
+
+> **Note:** Some skills may be disabled via permissions in `opencode.json`. Check the `permission.skill` section.
 
 ## Notes
 
