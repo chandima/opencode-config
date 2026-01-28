@@ -116,12 +116,44 @@ Custom agents are stored in `.opencode/agents/` and provide specialized workflow
 | Agent | Role | Permissions |
 |-------|------|-------------|
 | **my-plan** | Planning only | READ-ONLY. Creates Beads epics/tasks, builds dependency DAG. Cannot edit code or commit. |
-| **my-plan-exec** | Implementation | Full access. Implements ready work, commits code, updates Beads statuses. Force-push blocked. |
-| **my-plan-review** | Verification | READ-ONLY. Verifies acceptance criteria, runs tests/builds, updates Beads notes. |
+| **my-plan-exec** | Implementation | Full access. Implements ready work, commits locally (no push). Force-push blocked. |
+| **my-plan-review** | Review gates | READ-ONLY. Approves plans before implementation, approves code before push. |
 
-**Workflow:** `my-plan` → (user approval) → `my-plan-exec` → `my-plan-review` → repeat
+**Workflow with Review Gates:**
+
+```mermaid
+flowchart LR
+    A[my-plan] -->|create plan| B[my-plan-review]
+    B -->|approve plan| C[my-plan-exec]
+    B -.->|request changes| A
+    C -->|commit locally| D[my-plan-review]
+    D -->|approve & push| E((done))
+    D -.->|request fixes| C
+```
+
+1. **my-plan** creates Beads epic and tasks (READ-ONLY)
+2. **my-plan-review** approves the plan before implementation
+3. **my-plan-exec** implements ready tasks, commits locally (no push)
+4. **my-plan-review** reviews code, authorizes push to remote
 
 These agents integrate with [Beads](https://github.com/beads-ai/beads-cli) for dependency-aware task tracking. The `writing-plans` skill automatically delegates planning requests to the `my-plan` agent.
+
+#### TDD Integration
+
+The planning workflow integrates with Test-Driven Development for medium/large tasks:
+
+| Phase | Agent | TDD Behavior |
+|-------|-------|--------------|
+| Planning | **my-plan** | Evaluates task complexity, applies `tdd` label to medium/large tasks |
+| Implementation | **my-plan-exec** | Checks for `tdd` label, follows red-green-refactor cycle |
+| Review | **my-plan-review** | Verifies TDD compliance: tests exist, tests pass, coverage adequate |
+
+**Complexity Thresholds:**
+- **Trivial/Small** (config changes, typos, < 20 lines) → No TDD
+- **Medium/Large** (new features, refactors, > 50 lines) → Auto-apply `tdd` label
+- **Uncertain** → Ask user for preference
+
+When a task has the `tdd` label, **my-plan-exec** loads the `test-driven-development` skill and follows the red-green-refactor cycle before marking the task complete.
 
 ### Plugins
 
@@ -201,6 +233,24 @@ To verify agent permission enforcement:
 ### Testing the Planning Workflow
 
 The full Beads-first workflow uses three agents with review gates:
+
+```mermaid
+flowchart TD
+    subgraph "1. Planning"
+        A[my-plan<br/>CREATE plan] --> B{my-plan-review<br/>APPROVE plan?}
+    end
+    subgraph "2. Implementation"
+        B -->|yes| C[my-plan-exec<br/>IMPLEMENT + commit locally]
+        C -->|has tdd label| T[Follow red-green-refactor]
+        T --> D
+        C -->|no tdd label| D{my-plan-review<br/>APPROVE code?}
+    end
+    subgraph "3. Completion"
+        D -->|yes| E[git push]
+    end
+    B -.->|no| A
+    D -.->|no| C
+```
 
 | Step | Agent | Mode | Purpose |
 |------|-------|------|---------|
