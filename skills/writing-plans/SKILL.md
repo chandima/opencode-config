@@ -29,11 +29,14 @@ If the user is already in the `my-plan` agent, proceed with the workflow below.
 
 | Agent | When to Use | Capabilities |
 |-------|-------------|--------------|
-| **my-plan** | Planning phase | READ-ONLY. Creates Beads epics/tasks, builds dependency DAG, produces Ready Queue |
-| **my-plan-exec** | Implementation phase | Implements ready work, commits code, updates Beads statuses |
-| **my-plan-review** | Verification phase | READ-ONLY. Verifies acceptance criteria, runs tests, updates Beads notes |
+| **my-plan** | Planning phase | READ-ONLY. Creates Beads epics/tasks, builds dependency DAG, produces Ready Queue. No bash access. |
+| **my-plan-exec** | Implementation phase | Full access. Implements ready work, commits code, updates Beads statuses. |
+| **my-plan-review** | Verification phase | READ-ONLY. Verifies acceptance criteria, updates Beads notes. No bash access. |
+| **beads-runner** | Beads commands only | Subagent for `bd`/`bdui` commands. Used by my-plan and my-plan-review. |
 
 **Handoff flow:** `my-plan` → (user approval) → `my-plan-exec` → `my-plan-review` → repeat
+
+**Beads command execution:** Since `my-plan` and `my-plan-review` have bash disabled for safety, they delegate Beads CLI commands to the `beads-runner` subagent.
 
 ---
 
@@ -78,11 +81,11 @@ Optional UI via `beads-ui` (`bdui start --open`, board/epics/issues). :contentRe
 ## Workflow (my-plan)
 
 ### 0) Prime context (every time)
-The plugin auto-runs `bd prime` at session start, but if anything feels stale, run it explicitly. :contentReference[oaicite:4]{index=4}
+The plugin auto-runs `bd prime` at session start, but if anything feels stale, run it via beads-runner.
 
-Recommended commands:
-- `bd prime`
-- `bd ready` (see what’s currently unblocked) :contentReference[oaicite:5]{index=5}
+Delegate to beads-runner:
+- `Task(subagent_type="beads-runner", prompt="Run: bd prime")`
+- `Task(subagent_type="beads-runner", prompt="Run: bd ready")`
 
 ### 1) Frame the request in one paragraph
 Capture:
@@ -122,7 +125,7 @@ In chat, output:
 
 ### 6) Optional: launch the UI for shared planning
 If the user wants a dashboard:
-- Suggest: `bdui start --open` :contentReference[oaicite:9]{index=9}
+- Delegate: `Task(subagent_type="beads-runner", prompt="Run: bdui start --open")`
 Mention:
 - Board view (Blocked / Ready / In progress / Closed)
 - Epics view (progress rollups)
@@ -138,7 +141,7 @@ When the user approves the plan, do **one** of the following:
 - Tell the user: “Switch to `my-plan-exec` and execute READY tasks for Epic <ID>, one at a time.”
 
 **Option B (autonomous execution):**
-- Only if the user explicitly asks: delegate specific issues to `beads-task-agent`. :contentReference[oaicite:10]{index=10}
+- Only if the user explicitly asks: delegate specific issues to `beads-task-agent`.
 
 ### Handoff to review (my-plan-exec → my-plan-review)
 After implementation for a task/phase:
