@@ -171,6 +171,7 @@ Skills in this repository may require the following dependencies:
 
 | Dependency | Required By | Installation |
 |------------|-------------|--------------|
+| Beads CLI | writing-plans, custom agents | `brew tap beads-ai/tap && brew install beads` |
 | Node.js 22+ | mcporter, context7-docs | `brew install node` |
 | MCPorter | mcporter, context7-docs | `brew tap steipete/tap && brew install mcporter` (or use `npx mcporter`) |
 | gh CLI | github-ops | `brew install gh` |
