@@ -1,11 +1,41 @@
 ---
 name: writing-plans
-description: "Beads-first planning. Use ONLY with the my-plan agent. Produces a dependency-aware Beads epic + tasks (no PLANNING.md/todos). Hands off cleanly to my-plan-exec and my-plan-review."
+description: "Beads-first planning for multi-step work. Use when user asks to 'plan', 'create a plan', 'design', 'break down', or 'help me plan' a feature/task. Delegates to my-plan agent for plan creation using Beads."
 allowed-tools: Read Glob Grep Bash Task
 context: fork
 ---
 
 # Writing Plans (Beads-first)
+
+## Immediate Action Required
+
+When this skill is loaded, you MUST delegate planning work to the `my-plan` agent.
+
+**Do NOT attempt to create plans yourself.** The `my-plan` agent is the designated read-only planning agent that:
+- Creates Beads epics and tasks with dependency-aware DAGs
+- Produces a computed "Ready Queue" of unblocked work
+- Never modifies code or uses OpenCode todos
+
+**Delegation command:**
+```
+Use the Task tool to invoke the my-plan agent with the user's planning request.
+```
+
+If the user is already in the `my-plan` agent, proceed with the workflow below.
+
+---
+
+## Agent Routing
+
+| Agent | When to Use | Capabilities |
+|-------|-------------|--------------|
+| **my-plan** | Planning phase | READ-ONLY. Creates Beads epics/tasks, builds dependency DAG, produces Ready Queue |
+| **my-plan-exec** | Implementation phase | Implements ready work, commits code, updates Beads statuses |
+| **my-plan-review** | Verification phase | READ-ONLY. Verifies acceptance criteria, runs tests, updates Beads notes |
+
+**Handoff flow:** `my-plan` → (user approval) → `my-plan-exec` → `my-plan-review` → repeat
+
+---
 
 ## Purpose
 
@@ -28,10 +58,11 @@ Optional UI via `beads-ui` (`bdui start --open`, board/epics/issues). :contentRe
 
 ## Invocation & Guardrails
 
-**Announce at start:** “I’m using the writing-plans skill (Beads-first).”
+**Announce at start:** "I'm using the writing-plans skill (Beads-first). Delegating to my-plan agent."
 
-**Hard requirement:** Use this skill **only while the active agent is `my-plan`**.
-- If the user is in any other agent (including built-in plan/build), instruct them to switch to `my-plan`.
+**Hard requirement:** Planning work MUST be performed by the `my-plan` agent.
+- If you are not the `my-plan` agent, delegate immediately using the Task tool.
+- If the user is in any other agent (including built-in plan/build), instruct them to switch to `my-plan` or delegate the work.
 
 **Allowed side effects:**
 - Beads operations only (creating/updating issues, dependencies, statuses, notes).
