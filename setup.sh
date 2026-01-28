@@ -37,7 +37,7 @@ setup_opencode() {
     mkdir -p "$config_dir"
     
     # Check for existing symlinks/files and warn
-    for item in opencode.json skills; do
+    for item in opencode.json skills agents; do
         target="$config_dir/$item"
         if [[ -L "$target" ]]; then
             echo "  Replacing existing symlink: $target"
@@ -49,6 +49,7 @@ setup_opencode() {
     # Create symlinks
     ln -sf "$SCRIPT_DIR/opencode.json" "$config_dir/opencode.json"
     ln -sfn "$SCRIPT_DIR/skills" "$config_dir/skills"
+    ln -sfn "$SCRIPT_DIR/.opencode/agents" "$config_dir/agents"
     
     echo "  Done!"
 }
