@@ -45,6 +45,22 @@ Use for ANY technical issue:
 - You're in a hurry (rushing guarantees rework)
 - Manager wants it fixed NOW (systematic is faster than thrashing)
 
+## When Process is Optional
+
+The full four-phase process may be overkill for:
+
+- **Obvious typos** - Missing semicolon, misspelled variable, clear syntax error
+- **Configuration errors with clear messages** - "Missing required field X", "Invalid value for Y"
+- **Documented known issues** - Error message links to fix, or you've seen this exact issue before
+- **Single-line fixes with obvious cause** - Import missing, wrong file path
+
+**Even then:**
+- Verify the fix actually works
+- If fix doesn't work → full process applies
+- If "obvious" fix creates new issues → full process applies
+
+**When in doubt:** Use the full process. It's faster than guessing wrong.
+
 ## The Four Phases
 
 You MUST complete each phase before proceeding to the next.
