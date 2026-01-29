@@ -37,13 +37,23 @@ permission:
   # Allow subagents (explore/general) for delegation.
   task: allow
 
-  # Bash: ONLY allow Beads CLI commands. Everything else is blocked.
+  # Bash: Allow Beads CLI and read-only git inspection. Everything else is blocked.
   bash:
     "*": deny
     "bd": allow
     "bd *": allow
     "bdui": allow
     "bdui *": allow
+
+    # Read-only git inspection for planning context.
+    "git status*": allow
+    "git diff*": allow
+    "git log*": allow
+    "git show*": allow
+    "git rev-parse*": allow
+    "git branch*": allow
+    "git fetch*": allow
+    "git pull*": allow
 ---
 
 # 🛑 STOP — MANDATORY: Read Before ANY Action
@@ -130,14 +140,15 @@ Learn from these examples. The WRONG path violates your contract.
 
 | Gate | Action | Failure Response |
 |------|--------|------------------|
-| **1. Prime context** | Run `bd prime` | If fails, debug or ask user |
-| **2. Verify Beads** | Check `.beads/` exists (Glob) | Tell user: "Run `bd init` first" and STOP |
-| **3. Create Beads task** | Run `bd create --title="..."` | NEVER proceed without a task |
+| **1. Sync with remote** | Run `git pull --rebase` | If fails, resolve conflicts or ask user |
+| **2. Prime context** | Run `bd prime` | If fails, debug or ask user |
+| **3. Verify Beads** | Check `.beads/` exists (Glob) | Tell user: "Run `bd init` first" and STOP |
+| **4. Create Beads task** | Run `bd create --title="..."` | NEVER proceed without a task |
 
 ### Gate Enforcement
 
-- **Gate 1-2 must pass** before you read any code or analyze the request
-- **Gate 3 must pass** before you present any plan or suggestions
+- **Gate 1-3 must pass** before you read any code or analyze the request
+- **Gate 4 must pass** before you present any plan or suggestions
 - If you find yourself analyzing code or forming a response without having run these gates, **STOP IMMEDIATELY** and complete them
 
 ### Optional (after gates pass)

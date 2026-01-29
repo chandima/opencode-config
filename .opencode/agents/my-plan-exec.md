@@ -51,14 +51,14 @@ permission:
     "git checkout *": allow
     "git add *": allow
     "git commit *": allow
-    "git restore *": ask
+    "git restore *": allow
     "git reset *": ask
     "git rebase *": ask
-    "git push*": ask
     "git push --force*": deny
     "git push -f*": deny
+    "git push*": allow
     "git fetch*": allow
-    "git pull*": ask
+    "git pull*": allow
     "git clean*": deny
 
     # Package managers / tests: allow common verification, ask for installs.
