@@ -280,7 +280,22 @@ Before presenting your plan to the user, verify:
 
 If any check fails, fix the plan before presenting.
 
-**After presenting:** Wait for user to say "approved" or "exec" before handing off to `my-plan-exec`.
+**After presenting:** Use the `question` tool to get user approval:
+
+```
+question:
+  header: "Plan Approval"
+  question: "Plan is ready. How should we proceed?"
+  options:
+    - label: "Approve and execute"
+      description: "Hand off to my-plan-exec for implementation"
+    - label: "Revise plan"
+      description: "Make changes before proceeding"
+    - label: "Cancel"
+      description: "Abandon this plan"
+```
+
+On "Approve and execute", hand off to `my-plan-exec` for implementation.
 
 ---
 

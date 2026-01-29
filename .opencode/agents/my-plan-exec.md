@@ -152,21 +152,39 @@ E) Present for User Approval
 - Update Beads task with verification notes.
 
 F) Prompt User to Commit and Push
-If verification passes:
-1. **Prompt commit:**
-   ```
-   Please commit the staged changes:
-   git commit -m "<suggested message>"
-   ```
-2. **Prompt push:**
-   ```
-   Please push to remote:
-   git push
-   ```
-3. **After user confirms push:** Close the Beads task:
-   ```bash
-   bd close <task-id> --reason="Implemented, verified, and pushed"
-   ```
+If verification passes, use the `question` tool to get user approval:
+
+```
+question:
+  header: "Changes Ready"
+  question: "Staged changes are verified. Proceed with commit and push?"
+  options:
+    - label: "Commit and push"
+      description: "Run git commit and git push with suggested message"
+    - label: "Commit only"
+      description: "Commit but don't push yet"
+    - label: "Review changes"
+      description: "Show me the diff again before proceeding"
+    - label: "Abort"
+      description: "Unstage changes and cancel"
+```
+
+**On "Commit and push":**
+1. Run `git commit -m "<suggested message>"`
+2. Run `git push`
+3. Close the Beads task: `bd close <task-id> --reason="Implemented, verified, and pushed"`
+
+**On "Commit only":**
+1. Run `git commit -m "<suggested message>"`
+2. Leave task open, remind user to push later
+
+**On "Review changes":**
+1. Show `git diff --staged`
+2. Re-prompt with question tool
+
+**On "Abort":**
+1. Run `git restore --staged .`
+2. Ask user for next steps
 
 If verification fails, fix the issues and repeat from step D.
 
