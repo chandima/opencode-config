@@ -115,26 +115,24 @@ Custom agents are stored in `.opencode/agents/` and provide specialized workflow
 
 | Agent | Role | Permissions |
 |-------|------|-------------|
-| **my-plan** | Planning only | READ-ONLY. Creates Beads epics/tasks, builds dependency DAG. Cannot edit code or commit. |
-| **my-plan-exec** | Implementation | Full access. Implements ready work, commits locally (no push). Force-push blocked. |
-| **my-plan-review** | Review gates | READ-ONLY. Approves plans before implementation, approves code before push. |
+| **my-plan** | Planning + validation | READ-ONLY. Creates Beads epics/tasks, builds dependency DAG, self-validates plan. Cannot edit code or commit. |
+| **my-plan-exec** | Implementation + verification | Full access. Implements ready work, runs tests, verifies changes, prompts user to commit/push. Force-push blocked. |
 
-**Workflow with Review Gates:**
+**Workflow:**
 
 ```mermaid
 flowchart LR
-    A[my-plan] -->|create plan| B[my-plan-review]
-    B -->|approve plan| C[my-plan-exec]
-    B -.->|request changes| A
-    C -->|commit locally| D[my-plan-review]
-    D -->|approve & push| E((done))
-    D -.->|request fixes| C
+    A[my-plan] -->|present plan| B{User approves?}
+    B -->|yes| C[my-plan-exec]
+    B -.->|no| A
+    C -->|verify + stage| D{User commits?}
+    D -->|yes| E[git push]
+    E --> F((done))
+    D -.->|no| C
 ```
 
-1. **my-plan** creates Beads epic and tasks (READ-ONLY)
-2. **my-plan-review** approves the plan before implementation
-3. **my-plan-exec** implements ready tasks, commits locally (no push)
-4. **my-plan-review** reviews code, authorizes push to remote
+1. **my-plan** creates Beads epic and tasks, self-validates, presents for user approval
+2. **my-plan-exec** implements ready tasks, runs tests, verifies, prompts user to commit and push
 
 These agents integrate with [Beads](https://github.com/beads-ai/beads-cli) for dependency-aware task tracking. The `writing-plans` skill automatically delegates planning requests to the `my-plan` agent.
 
@@ -145,8 +143,7 @@ The planning workflow integrates with Test-Driven Development for medium/large t
 | Phase | Agent | TDD Behavior |
 |-------|-------|--------------|
 | Planning | **my-plan** | Evaluates task complexity, applies `tdd` label to medium/large tasks |
-| Implementation | **my-plan-exec** | Checks for `tdd` label, follows red-green-refactor cycle |
-| Review | **my-plan-review** | Verifies TDD compliance: tests exist, tests pass, coverage adequate |
+| Implementation | **my-plan-exec** | Checks for `tdd` label, follows red-green-refactor cycle, verifies TDD compliance before prompting commit |
 
 **Complexity Thresholds:**
 - **Trivial/Small** (config changes, typos, < 20 lines) → No TDD
@@ -233,18 +230,18 @@ To verify agent permission enforcement:
 
 ### Testing the Planning Workflow
 
-The full Beads-first workflow uses three agents with review gates:
+The full Beads-first workflow uses two agents:
 
 ```mermaid
 flowchart TD
     subgraph "1. Planning"
-        A[my-plan<br/>CREATE plan] --> B{my-plan-review<br/>APPROVE plan?}
+        A[my-plan<br/>CREATE + validate plan] --> B{User approves?}
     end
     subgraph "2. Implementation"
-        B -->|yes| C[my-plan-exec<br/>IMPLEMENT + commit locally]
+        B -->|yes| C[my-plan-exec<br/>IMPLEMENT + verify]
         C -->|has tdd label| T[Follow red-green-refactor]
         T --> D
-        C -->|no tdd label| D{my-plan-review<br/>APPROVE code?}
+        C -->|no tdd label| D{User commits?}
     end
     subgraph "3. Completion"
         D -->|yes| E[git push]
@@ -255,15 +252,12 @@ flowchart TD
 
 | Step | Agent | Mode | Purpose |
 |------|-------|------|---------|
-| 1 | `my-plan` | READ-ONLY | Create Beads epic and tasks |
-| 2 | `my-plan-review` | READ-ONLY | Approve plan before implementation |
-| 3 | `my-plan-exec` | Full access | Implement ready tasks (commit locally, no push) |
-| 4 | `my-plan-review` | READ-ONLY | Approve code, authorize push |
+| 1 | `my-plan` | READ-ONLY | Create Beads epic/tasks, self-validate, present for approval |
+| 2 | `my-plan-exec` | Full access | Implement, run tests, verify, prompt user to commit/push |
 
 ```bash
 # Switch between agents
 /agent my-plan        # Planning phase
-/agent my-plan-review # Review phase (plan or code)
 /agent my-plan-exec   # Implementation phase
 ```
 

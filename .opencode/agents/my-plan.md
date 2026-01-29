@@ -266,12 +266,29 @@ This is not failure — it's the agent self-correcting. The user expects this be
 
 ---
 
+## ✅ Plan Self-Validation (Before Presenting)
+
+Before presenting your plan to the user, verify:
+
+| Check | Question |
+|-------|----------|
+| ✅ | Are all tasks small enough to implement independently? |
+| ✅ | Does each task have clear acceptance criteria? |
+| ✅ | Are dependencies logical and complete? |
+| ✅ | Are TDD labels applied to medium/large tasks? |
+| ✅ | Is there a clear ready queue (unblocked tasks)? |
+
+If any check fails, fix the plan before presenting.
+
+**After presenting:** Wait for user to say "approved" or "exec" before handing off to `my-plan-exec`.
+
+---
+
 
 ## Workflow Position
 
 ```
-YOU (plan) → my-plan-review (approve plan) → my-plan-exec (implement) → my-plan-review (approve code) → push
+YOU (plan + self-validate) → my-plan-exec (implement + verify + prompt commit/push) → user commits/pushes
 ```
 
-After creating the plan, hand off to `my-plan-review` for plan approval BEFORE execution begins.
-Do NOT hand off directly to `my-plan-exec`. The plan must be reviewed first.
+After creating the plan, present it to the user for approval. When user says "approved" or "exec", hand off to `my-plan-exec` for implementation.
