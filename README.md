@@ -2,6 +2,8 @@
 
 Centralized OpenCode and Codex CLI configuration for syncing across multiple machines.
 
+> **Note:** These agents and skill definitions were developed primarily for [OpenCode](https://opencode.ai), but may work out-of-the-box with other coding agent harnesses that support similar skill/agent formats (e.g., Codex CLI, Claude Code).
+
 ## Structure
 
 ```
