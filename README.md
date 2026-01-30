@@ -50,6 +50,7 @@ cd opencode-config
 ```
 
 The script will:
+
 - **OpenCode**: Symlink `opencode.json`, `skills/`, and `agents/` to `~/.config/opencode/`
 - **Codex**: Symlink individual skills to `~/.codex/skills/` (preserves `.system/` directory)
 - **Respects disabled skills**: Skills with `"deny"` permission in `opencode.json` are skipped for Codex
@@ -58,6 +59,7 @@ The script will:
 <summary>Manual alternative (without script)</summary>
 
 **OpenCode:**
+
 ```bash
 mkdir -p ~/.config/opencode
 ln -sf "$(pwd)/opencode.json" ~/.config/opencode/opencode.json
@@ -66,6 +68,7 @@ ln -sfn "$(pwd)/.opencode/agents" ~/.config/opencode/agents
 ```
 
 **Codex:**
+
 ```bash
 for skill in skills/*; do
   ln -sfn "$(pwd)/$skill" ~/.codex/skills/$(basename "$skill")
@@ -103,6 +106,7 @@ git pull
 ### opencode.json
 
 The `opencode.json` file contains:
+
 - **Plugins**: Extensions that enhance OpenCode functionality
 - **Permissions**: Skill access control (enable/disable skills)
 - **Provider**: LLM provider configuration
@@ -113,9 +117,9 @@ The `opencode.json` file contains:
 
 Custom agents are stored in `.opencode/agents/` and provide specialized workflows:
 
-| Agent | Role | Permissions |
-|-------|------|-------------|
-| **my-plan** | Planning + validation | READ-ONLY. Creates Beads epics/tasks, builds dependency DAG, self-validates plan. Cannot edit code or commit. |
+| Agent            | Role                          | Permissions                                                                                                        |
+| ---------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **my-plan**      | Planning + validation         | READ-ONLY. Creates Beads epics/tasks, builds dependency DAG, self-validates plan. Cannot edit code or commit.      |
 | **my-plan-exec** | Implementation + verification | Full access. Implements ready work, runs tests, verifies changes, prompts user to commit/push. Force-push blocked. |
 
 **Workflow:**
@@ -140,12 +144,13 @@ These agents integrate with [Beads](https://github.com/beads-ai/beads-cli) for d
 
 The planning workflow integrates with Test-Driven Development for medium/large tasks:
 
-| Phase | Agent | TDD Behavior |
-|-------|-------|--------------|
-| Planning | **my-plan** | Evaluates task complexity, applies `tdd` label to medium/large tasks |
+| Phase          | Agent            | TDD Behavior                                                                                              |
+| -------------- | ---------------- | --------------------------------------------------------------------------------------------------------- |
+| Planning       | **my-plan**      | Evaluates task complexity, applies `tdd` label to medium/large tasks                                      |
 | Implementation | **my-plan-exec** | Checks for `tdd` label, follows red-green-refactor cycle, verifies TDD compliance before prompting commit |
 
 **Complexity Thresholds:**
+
 - **Trivial/Small** (config changes, typos, < 20 lines) → No TDD
 - **Medium/Large** (new features, refactors, > 50 lines) → Auto-apply `tdd` label
 - **Uncertain** → Ask user for preference
@@ -156,8 +161,8 @@ When a task has the `tdd` label, **my-plan-exec** loads the `test-driven-develop
 
 This config uses the following plugins:
 
-| Plugin | Purpose |
-|--------|---------|
+| Plugin                    | Purpose                                       |
+| ------------------------- | --------------------------------------------- |
 | `@tarquinen/opencode-dcp` | Dynamic context pruning - reduces token bloat |
 
 > **Note:** Some plugins like `opencode-notify` and `opencode-worktree` require [OCX](https://github.com/kdcokenny/ocx) package manager (not available via npm).
@@ -166,12 +171,12 @@ This config uses the following plugins:
 
 Skills in this repository may require the following dependencies:
 
-| Dependency | Required By | Installation |
-|------------|-------------|--------------|
-| Beads CLI | writing-plans, custom agents | `brew tap beads-ai/tap && brew install beads` |
-| Node.js 22+ | mcporter, context7-docs | `brew install node` |
-| MCPorter | mcporter, context7-docs | `brew tap steipete/tap && brew install mcporter` (or use `npx mcporter`) |
-| gh CLI | github-ops | `brew install gh` |
+| Dependency  | Required By                  | Installation                                                             |
+| ----------- | ---------------------------- | ------------------------------------------------------------------------ |
+| Beads CLI   | writing-plans, custom agents | `brew install beads`                                                     |
+| Node.js 22+ | mcporter, context7-docs      | Usually pre-installed; use Volta, nvm, or fnm to manage versions         |
+| MCPorter    | mcporter, context7-docs      | `brew tap steipete/tap && brew install mcporter` (or use `npx mcporter`) |
+| gh CLI      | github-ops                   | `brew install gh`                                                        |
 
 > **Note:** MCPorter can be invoked via `npx mcporter` without installation. The skills use this approach by default.
 
@@ -191,17 +196,17 @@ See [OpenCode Skills docs](https://opencode.ai/docs/skills/) for details.
 
 ### Available Skills
 
-| Skill | Purpose | Trigger Phrases |
-|-------|---------|-----------------|
-| **writing-plans** | Beads-first planning | "plan", "create a plan", "design", "break down", "help me plan" |
-| **github-ops** | GitHub operations via gh CLI | GitHub-related tasks |
-| **context7-docs** | Library documentation via Context7 MCP | Research React, Next.js, npm libraries |
-| **skill-creator** | AI-assisted skill creation | Creating new skills |
-| **mcporter** | Direct MCP access via MCPorter | Advanced MCP operations |
-| **systematic-debugging** | Root cause investigation | Bug fixes, test failures |
-| **test-driven-development** | Test-first development | Feature implementation |
-| **typescript-advanced-types** | Advanced TypeScript types | Complex type logic |
-| **security-auditor** | Pre-deployment security audit | Deploy to production, releases |
+| Skill                         | Purpose                                | Trigger Phrases                                                 |
+| ----------------------------- | -------------------------------------- | --------------------------------------------------------------- |
+| **writing-plans**             | Beads-first planning                   | "plan", "create a plan", "design", "break down", "help me plan" |
+| **github-ops**                | GitHub operations via gh CLI           | GitHub-related tasks                                            |
+| **context7-docs**             | Library documentation via Context7 MCP | Research React, Next.js, npm libraries                          |
+| **skill-creator**             | AI-assisted skill creation             | Creating new skills                                             |
+| **mcporter**                  | Direct MCP access via MCPorter         | Advanced MCP operations                                         |
+| **systematic-debugging**      | Root cause investigation               | Bug fixes, test failures                                        |
+| **test-driven-development**   | Test-first development                 | Feature implementation                                          |
+| **typescript-advanced-types** | Advanced TypeScript types              | Complex type logic                                              |
+| **security-auditor**          | Pre-deployment security audit          | Deploy to production, releases                                  |
 
 > **Note:** Some skills may be disabled via permissions in `opencode.json`. Check the `permission.skill` section.
 
@@ -250,10 +255,10 @@ flowchart TD
     D -.->|no| C
 ```
 
-| Step | Agent | Mode | Purpose |
-|------|-------|------|---------|
-| 1 | `my-plan` | READ-ONLY | Create Beads epic/tasks, self-validate, present for approval |
-| 2 | `my-plan-exec` | Full access | Implement, run tests, verify, prompt user to commit/push |
+| Step | Agent          | Mode        | Purpose                                                      |
+| ---- | -------------- | ----------- | ------------------------------------------------------------ |
+| 1    | `my-plan`      | READ-ONLY   | Create Beads epic/tasks, self-validate, present for approval |
+| 2    | `my-plan-exec` | Full access | Implement, run tests, verify, prompt user to commit/push     |
 
 ```bash
 # Switch between agents
