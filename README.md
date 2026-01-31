@@ -140,11 +140,18 @@ flowchart LR
 1. **my-plan** creates Beads epic and tasks, self-validates, presents for user approval
 2. **my-plan-exec** implements ready tasks, runs tests, verifies, prompts user to commit and push
 
-These agents integrate with [Beads](https://github.com/beads-ai/beads-cli) for dependency-aware task tracking. The `writing-plans` skill automatically delegates planning requests to the `my-plan` agent.
+These agents integrate with [Beads](https://github.com/beads-ai/beads-cli) for dependency-aware task tracking.
 
-#### TDD Integration
+#### Methodology Protocols
 
-The planning workflow integrates with Test-Driven Development for medium/large tasks:
+The agents follow methodology protocols defined in `AGENTS.md`:
+
+| Protocol | When Applied | Key Rule |
+| -------- | ------------ | -------- |
+| **Debugging** | Before proposing any fix | No fix without confirmed root cause |
+| **TDD** | Medium/large complexity tasks | No production code without failing test first |
+
+**TDD Integration:**
 
 | Phase          | Agent            | TDD Behavior                                                                                              |
 | -------------- | ---------------- | --------------------------------------------------------------------------------------------------------- |
@@ -156,8 +163,6 @@ The planning workflow integrates with Test-Driven Development for medium/large t
 - **Trivial/Small** (config changes, typos, < 20 lines) → No TDD
 - **Medium/Large** (new features, refactors, > 50 lines) → Auto-apply `tdd` label
 - **Uncertain** → Ask user for preference
-
-When a task has the `tdd` label, **my-plan-exec** loads the `test-driven-development` skill and follows the red-green-refactor cycle before marking the task complete.
 
 ### Plugins
 
@@ -173,12 +178,12 @@ This config uses the following plugins:
 
 Skills in this repository may require the following dependencies:
 
-| Dependency  | Required By                  | Installation                                                             |
-| ----------- | ---------------------------- | ------------------------------------------------------------------------ |
-| Beads CLI   | writing-plans, custom agents | `brew install beads`                                                     |
-| Node.js 22+ | mcporter, context7-docs      | Usually pre-installed; use Volta, nvm, or fnm to manage versions         |
-| MCPorter    | mcporter, context7-docs      | `brew tap steipete/tap && brew install mcporter` (or use `npx mcporter`) |
-| gh CLI      | github-ops                   | `brew install gh`                                                        |
+| Dependency  | Required By             | Installation                                                             |
+| ----------- | ----------------------- | ------------------------------------------------------------------------ |
+| Beads CLI   | custom agents           | `brew install beads`                                                     |
+| Node.js 22+ | mcporter, context7-docs | Usually pre-installed; use Volta, nvm, or fnm to manage versions         |
+| MCPorter    | mcporter, context7-docs | `brew tap steipete/tap && brew install mcporter` (or use `npx mcporter`) |
+| gh CLI      | github-ops              | `brew install gh`                                                        |
 
 > **Note:** MCPorter can be invoked via `npx mcporter` without installation. The skills use this approach by default.
 
@@ -198,19 +203,15 @@ See [OpenCode Skills docs](https://opencode.ai/docs/skills/) for details.
 
 ### Available Skills
 
-| Skill                         | Purpose                                | Trigger Phrases                                                 |
-| ----------------------------- | -------------------------------------- | --------------------------------------------------------------- |
-| **writing-plans**             | Beads-first planning                   | "plan", "create a plan", "design", "break down", "help me plan" |
-| **github-ops**                | GitHub operations via gh CLI           | GitHub-related tasks                                            |
-| **context7-docs**             | Library documentation via Context7 MCP | Research React, Next.js, npm libraries                          |
-| **skill-creator**             | AI-assisted skill creation             | Creating new skills                                             |
-| **mcporter**                  | Direct MCP access via MCPorter         | Advanced MCP operations                                         |
-| **systematic-debugging**      | Root cause investigation               | Bug fixes, test failures                                        |
-| **test-driven-development**   | Test-first development                 | Feature implementation                                          |
-| **typescript-advanced-types** | Advanced TypeScript types              | Complex type logic                                              |
-| **security-auditor**          | Pre-deployment security audit          | Deploy to production, releases                                  |
+| Skill               | Purpose                                | Trigger Phrases                        |
+| ------------------- | -------------------------------------- | -------------------------------------- |
+| **github-ops**      | GitHub operations via gh CLI           | GitHub-related tasks                   |
+| **context7-docs**   | Library documentation via Context7 MCP | Research React, Next.js, npm libraries |
+| **skill-creator**   | AI-assisted skill creation             | Creating new skills                    |
+| **mcporter**        | Direct MCP access via MCPorter         | Advanced MCP operations                |
+| **security-auditor**| Pre-deployment security audit          | Deploy to production, releases         |
 
-> **Note:** Some skills may be disabled via permissions in `opencode.json`. Check the `permission.skill` section.
+> **Note:** Methodology-based guidance (debugging, TDD) is embedded in `AGENTS.md` for passive context availability. Some skills may be disabled via permissions in `opencode.json`.
 
 ## Testing
 
