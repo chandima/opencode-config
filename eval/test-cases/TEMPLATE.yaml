@@ -1,0 +1,52 @@
+# Test Case Template
+# Copy this file and fill in the details for your test case
+
+test_case:
+  # Unique identifier (lowercase-kebab-case)
+  id: my-plan-skill-001
+  
+  # Agent mode: my-plan (read-only) or my-plan-exec (execution)
+  agent: my-plan
+  
+  # The user query/prompt to test
+  query: "Your test query here"
+  
+  # Expected behavior
+  expected:
+    # Expected skill to be invoked (null if no skill expected)
+    skill: skill-name
+    
+    # Whether a skill should be triggered (true/false)
+    skill_triggered: true
+    
+    # Expected tools to be used (optional)
+    tools:
+      - ToolName
+      - Bash(command)
+    
+    # Expected agent behavior
+    agent_behavior: plan  # plan | execute | ask | delegate
+  
+  # Optional context
+  context:
+    # Files that should exist
+    files: []
+    
+    # Environment variables
+    environment: {}
+  
+  # Metadata
+  metadata:
+    # Skill category
+    category: skill-name
+    
+    # Complexity level
+    complexity: simple  # simple | medium | complex
+    
+    # Priority (0-4, where 0 is critical)
+    priority: 1
+    
+    # Tags for categorization
+    tags:
+      - tag1
+      - tag2

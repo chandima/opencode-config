@@ -1,0 +1,18 @@
+test_case:
+  id: my-plan-exec-mcporter-001
+  agent: my-plan-exec
+  query: "Configure the GitHub MCP server for this project"
+  expected:
+    skill: mcporter
+    skill_triggered: true
+    tools:
+      - skill(mcporter)
+    agent_behavior: execute
+  metadata:
+    category: mcporter
+    complexity: medium
+    priority: 2
+    tags:
+      - mcp
+      - github
+      - configuration

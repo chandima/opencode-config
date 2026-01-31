@@ -1,0 +1,19 @@
+test_case:
+  id: my-plan-context7-002
+  agent: my-plan
+  query: "What are the Tailwind CSS utility classes for flexbox?"
+  expected:
+    skill: context7-docs
+    skill_triggered: true
+    tools:
+      - skill(context7-docs)
+    agent_behavior: plan
+  metadata:
+    category: context7-docs
+    complexity: simple
+    priority: 1
+    tags:
+      - documentation
+      - tailwind
+      - css
+      - flexbox

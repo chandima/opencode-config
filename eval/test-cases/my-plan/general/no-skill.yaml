@@ -1,0 +1,16 @@
+test_case:
+  id: my-plan-no-skill-001
+  agent: my-plan
+  query: "What is the weather today?"
+  expected:
+    skill: null
+    skill_triggered: false
+    tools: []
+    agent_behavior: ask
+  metadata:
+    category: general
+    complexity: simple
+    priority: 2
+    tags:
+      - no-skill
+      - general-query

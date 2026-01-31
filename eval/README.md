@@ -10,23 +10,24 @@ This framework tests whether OpenCode skills are correctly invoked when `my-plan
 eval/
 ├── framework/
 │   ├── schema.json       # JSON schema for test case validation
-│   └── config.yaml       # Framework configuration
+│   ├── config.yaml       # Framework configuration
+│   └── validate.sh       # Test case validator
 ├── runner/
 │   └── run.sh            # Main test orchestrator
 ├── detectors/
 │   ├── skill-trigger.sh  # Detects skill invocation
 │   └── tool-usage.sh     # Tracks tool usage
 ├── test-cases/
+│   ├── TEMPLATE.yaml     # Template for new test cases
 │   ├── my-plan/          # Test cases for my-plan agent
-│   │   ├── github-ops/
-│   │   ├── context7-docs/
-│   │   └── security-auditor/
+│   │   ├── github-ops/   # 3 test cases
+│   │   ├── context7-docs/# 2 test cases
+│   │   └── general/      # 1 test case (no skill)
 │   └── my-plan-exec/     # Test cases for my-plan-exec agent
-│       ├── github-ops/
-│       ├── context7-docs/
-│       ├── security-auditor/
-│       ├── skill-creator/
-│       └── mcporter/
+│       ├── github-ops/   # 2 test cases
+│       ├── security-auditor/ # 2 test cases
+│       ├── skill-creator/# 1 test case
+│       └── mcporter/     # 1 test case
 ├── reports/
 │   └── generate.sh       # Report generator
 └── ci/
@@ -56,6 +57,12 @@ test_case:
 
 ## Usage
 
+### Validate Test Cases
+Before running tests, validate your test case files:
+```bash
+./eval/framework/validate.sh
+```
+
 ### Run all tests
 ```bash
 ./eval/runner/run.sh
@@ -71,6 +78,14 @@ test_case:
 ./eval/runner/run.sh -s github-ops
 ```
 
+### Create New Test Case
+Copy the template and fill in your test details:
+```bash
+cp eval/test-cases/TEMPLATE.yaml eval/test-cases/my-plan/github-ops/my-test.yaml
+# Edit the file, then validate:
+./eval/framework/validate.sh
+```
+
 ## Metrics
 
 The framework tracks:
@@ -83,10 +98,25 @@ The framework tracks:
 
 - [x] Framework design
 - [x] Directory structure
-- [x] Test case schema
-- [x] Configuration
-- [x] Sample test cases
+- [x] Test case schema (JSON)
+- [x] Framework configuration (YAML)
+- [x] Test case validator
+- [x] 12 sample test cases covering 5 skills
+- [x] Test case template
 - [ ] Full test runner implementation
 - [ ] OpenCode CLI integration
 - [ ] Report generation
 - [ ] CI/CD integration
+
+## Test Case Summary
+
+| Agent | Skill | Count |
+|-------|-------|-------|
+| my-plan | github-ops | 3 |
+| my-plan | context7-docs | 2 |
+| my-plan | general (no skill) | 1 |
+| my-plan-exec | github-ops | 2 |
+| my-plan-exec | security-auditor | 2 |
+| my-plan-exec | skill-creator | 1 |
+| my-plan-exec | mcporter | 1 |
+| **Total** | | **12** |

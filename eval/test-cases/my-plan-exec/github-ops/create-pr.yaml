@@ -1,0 +1,19 @@
+test_case:
+  id: my-plan-exec-github-002
+  agent: my-plan-exec
+  query: "Create a pull request from feature-branch to main with title 'Add login feature'"
+  expected:
+    skill: github-ops
+    skill_triggered: true
+    tools:
+      - Bash(gh:pr)
+    agent_behavior: execute
+  metadata:
+    category: github-ops
+    complexity: medium
+    priority: 1
+    tags:
+      - github
+      - pr
+      - create
+      - write

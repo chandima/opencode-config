@@ -1,0 +1,19 @@
+test_case:
+  id: my-plan-github-003
+  agent: my-plan
+  query: "Search for code containing 'useEffect' in the facebook/react repository"
+  expected:
+    skill: github-ops
+    skill_triggered: true
+    tools:
+      - Bash(gh:search)
+    agent_behavior: plan
+  metadata:
+    category: github-ops
+    complexity: medium
+    priority: 2
+    tags:
+      - github
+      - search
+      - code
+      - read-only
