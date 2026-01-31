@@ -178,6 +178,79 @@ case "$ACTION" in
 esac
 ```
 
+## Methodology Protocols
+
+### Debugging Protocol (BEFORE proposing any fix)
+
+**Iron Law:** No fix without confirmed root cause. Fixes based on guesses create new bugs.
+
+**4-Phase Process:**
+
+1. **Investigate** — Gather evidence before theorizing
+   - Reproduce the bug with minimal steps
+   - Collect: error messages, stack traces, logs, state at failure
+   - Identify: when did it last work? What changed?
+
+2. **Analyze** — Find the root cause
+   - Trace execution path to failure point
+   - Check: data flow, state mutations, race conditions, edge cases
+   - If 3+ hypotheses fail → question architecture, not just code
+
+3. **Verify** — Confirm root cause before fixing
+   - Can you predict the bug's behavior from your theory?
+   - Can you make it worse/better by changing the suspected code?
+   - Write a failing test that captures the bug
+
+4. **Fix** — Minimal change that addresses root cause
+   - Fix the cause, not the symptom
+   - Run the failing test → must pass
+   - Run full test suite → no regressions
+
+**Red Flags (stop and reassess):**
+- "Let me try this..." without understanding why
+- Fixing symptoms instead of causes
+- Same area breaks repeatedly
+
+### TDD Protocol (for medium+ complexity tasks)
+
+**Iron Law:** No production code without a failing test first.
+
+**Red-Green-Refactor Cycle:**
+
+1. **RED** — Write ONE failing test
+   - Test describes desired behavior, not implementation
+   - Run it → must fail (proves test works)
+   - Failure must be "feature missing," not syntax/import error
+
+2. **GREEN** — Write minimal code to pass
+   - Just enough to make the test pass
+   - No extra features, no "while I'm here" improvements
+   - Resist urge to write "real" implementation
+
+3. **REFACTOR** — Clean up while green
+   - Remove duplication
+   - Improve names
+   - Extract helpers
+   - Tests must stay green throughout
+
+4. **REPEAT** — Next behavior, next test
+
+**Rationalizations to Reject:**
+- "I'll write tests after" → No. Test first or delete the code.
+- "This is too simple to test" → Then the test is simple too. Write it.
+- "I know this works" → Prove it. Write the test.
+- "Tests slow me down" → Debugging untested code is slower.
+
+**When to Apply:**
+- New functions/methods with logic
+- Bug fixes (write failing test that reproduces bug first)
+- Refactors (ensure test coverage before changing)
+- API changes
+
+**Skip TDD for:** Typos, comments, config changes, pure formatting.
+
+---
+
 ## Session Completion
 
 Session close protocol is defined in `.opencode/agents/my-plan-exec.md` under "Session Close Protocol (Landing the Plane)".
