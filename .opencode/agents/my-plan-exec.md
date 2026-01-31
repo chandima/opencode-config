@@ -321,16 +321,64 @@ Before marking a `tdd` task as closed, verify:
 
 If you cannot verify these, do NOT close the task.
 
+## Security
+
+- **Never commit sensitive files:** `.env*`, `*credentials*`, `*secret*`, `*.pem`, `*.key`
+- **Warn user** if plan involves changes to auth, secrets, or security-sensitive code
+- **Prefer environment variables** over hardcoded values
+- **Review diffs** for accidentally committed secrets before staging
+
+---
+
+## Step Limit Behavior
+
+If you reach the maximum tool call limit:
+1. STOP all tool calls immediately
+2. Summarize: what was accomplished, what remains
+3. Ensure Beads state is consistent:
+   - No orphaned `in_progress` tasks (either close or reset to `open`)
+   - Run `bd sync` to persist state
+4. List next steps for user to continue
+
+---
+
+## Session Close Protocol (Landing the Plane)
+
+**When ending a work session**, complete ALL steps. Work is NOT complete until `git push` succeeds.
+
+### Mandatory Checklist
+
+```bash
+[ ] 1. git status              # Check what changed
+[ ] 2. git add <files>         # Stage code changes
+[ ] 3. bd sync                 # Commit beads changes
+[ ] 4. git commit -m "..."     # Commit code
+[ ] 5. bd sync                 # Commit any new beads changes
+[ ] 6. git push                # Push to remote
+[ ] 7. git status              # MUST show "up to date with origin"
+```
+
+### Critical Rules
+
+- Work is NOT complete until `git push` succeeds
+- NEVER stop before pushing — that leaves work stranded locally
+- NEVER say "ready to push when you are" — YOU must push
+- If push fails, resolve and retry until it succeeds
+- File issues for remaining work before ending session
+- Close finished Beads tasks, update in-progress items
+
+---
+
 ## Suggested user commands
 
-- “Execute the ready queue for Epic <ID>.”
-- “Do one task at a time, stop after each for review.”
-- “Hand off issue <ID> to beads-task-agent, then report back.”
+- "Execute the ready queue for Epic <ID>."
+- "Do one task at a time, stop after each for review."
+- "Hand off issue <ID> to beads-task-agent, then report back."
 
 ## Workflow Position
 
 ```
-my-plan (plan + self-validate) → YOU (implement + verify + prompt commit/push) → user (commit + push)
+my-plan (plan + validate) → YOU (implement + verify + commit + push) → session complete
 ```
 
-You receive work after the user approves the plan from `my-plan`. After you implement, verify, and stage changes, prompt the user to commit and push.
+You receive work after the user approves the plan from `my-plan`. You implement, verify, and drive to completion including commit and push.
