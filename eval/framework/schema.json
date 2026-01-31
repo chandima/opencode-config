@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Skill Invocation Test Case Schema",
+  "description": "Schema for defining test cases that validate skill invocation in OpenCode agents",
+  "type": "object",
+  "required": ["id", "agent", "query", "expected"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the test case",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "agent": {
+      "type": "string",
+      "description": "Agent mode to test",
+      "enum": ["my-plan", "my-plan-exec"]
+    },
+    "query": {
+      "type": "string",
+      "description": "User query/prompt to send to the agent"
+    },
+    "expected": {
+      "type": "object",
+      "required": ["skill_triggered"],
+      "properties": {
+        "skill": {
+          "type": "string",
+          "description": "Expected skill to be invoked (if any)"
+        },
+        "skill_triggered": {
+          "type": "boolean",
+          "description": "Whether a skill should be triggered"
+        },
+        "tools": {
+          "type": "array",
+          "description": "Expected tools to be used after skill invocation",
+          "items": {
+            "type": "string"
+          }
+        },
+        "agent_behavior": {
+          "type": "string",
+          "description": "Expected high-level agent behavior",
+          "enum": ["plan", "execute", "ask", "delegate"]
+        }
+      }
+    },
+    "context": {
+      "type": "object",
+      "description": "Optional context for the test case",
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Files that should exist in the working directory"
+        },
+        "environment": {
+          "type": "object",
+          "description": "Environment variables to set"
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "category": {
+          "type": "string",
+          "description": "Skill category being tested"
+        },
+        "complexity": {
+          "type": "string",
+          "enum": ["simple", "medium", "complex"]
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

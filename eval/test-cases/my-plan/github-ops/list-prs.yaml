@@ -1,0 +1,18 @@
+test_case:
+  id: my-plan-github-002
+  agent: my-plan
+  query: "Show me recent pull requests in vercel/next.js"
+  expected:
+    skill: github-ops
+    skill_triggered: true
+    tools:
+      - Bash(gh:pr)
+    agent_behavior: plan
+  metadata:
+    category: github-ops
+    complexity: simple
+    priority: 1
+    tags:
+      - github
+      - pr
+      - read-only

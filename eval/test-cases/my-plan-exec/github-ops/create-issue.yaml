@@ -1,0 +1,18 @@
+test_case:
+  id: my-plan-exec-github-001
+  agent: my-plan-exec
+  query: "Create a new issue titled 'Bug: Login fails' in my-repo"
+  expected:
+    skill: github-ops
+    skill_triggered: true
+    tools:
+      - Bash(gh:issue)
+    agent_behavior: execute
+  metadata:
+    category: github-ops
+    complexity: medium
+    priority: 1
+    tags:
+      - github
+      - issues
+      - write

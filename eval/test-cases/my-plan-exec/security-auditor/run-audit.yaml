@@ -1,0 +1,19 @@
+test_case:
+  id: my-plan-exec-security-001
+  agent: my-plan-exec
+  query: "Run a security audit on this codebase"
+  expected:
+    skill: security-auditor
+    skill_triggered: true
+    tools:
+      - skill(security-auditor)
+      - Bash(semgrep)
+    agent_behavior: execute
+  metadata:
+    category: security-auditor
+    complexity: medium
+    priority: 1
+    tags:
+      - security
+      - audit
+      - scan

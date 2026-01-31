@@ -1,0 +1,18 @@
+test_case:
+  id: my-plan-github-001
+  agent: my-plan
+  query: "List open issues in the facebook/react repository"
+  expected:
+    skill: github-ops
+    skill_triggered: true
+    tools:
+      - Bash(gh:issue)
+    agent_behavior: plan
+  metadata:
+    category: github-ops
+    complexity: simple
+    priority: 1
+    tags:
+      - github
+      - issues
+      - read-only
