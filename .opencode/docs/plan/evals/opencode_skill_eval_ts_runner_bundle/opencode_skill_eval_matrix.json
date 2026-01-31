@@ -1,0 +1,25 @@
+{
+  "runs": [
+    {
+      "name": "build_litellm_gpt-5.1-codex",
+      "agent": "build",
+      "model": "litellm/gpt-5.1-codex"
+    },
+    {
+      "name": "build_litellm_kimi-k2-thinking",
+      "agent": "build",
+      "model": "litellm/kimi-k2-thinking"
+    },
+    {
+      "name": "plan_litellm_gpt-5.1-codex",
+      "agent": "plan",
+      "model": "litellm/gpt-5.1-codex"
+    },
+    {
+      "name": "plan_litellm_kimi-k2-thinking",
+      "agent": "plan",
+      "model": "litellm/kimi-k2-thinking"
+    }
+  ],
+  "notes": "Agent names assume OpenCode built-ins (build/plan). Models are provider/model as required by opencode CLI."
+}
