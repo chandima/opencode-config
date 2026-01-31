@@ -30,18 +30,16 @@ If the user is already in the `my-plan` agent, proceed with the workflow below.
 | Agent | When to Use | Capabilities |
 |-------|-------------|--------------|
 | **my-plan** | Planning phase | READ-ONLY. Creates Beads epics/tasks, builds dependency DAG, produces Ready Queue. Bash limited to bd/bdui only. |
-| **my-plan-review** | Review phase (plan + code) | READ-ONLY. Approves plan before exec, approves code before push. Bash limited to bd/bdui only. |
-| **my-plan-exec** | Implementation phase | Full access. Implements ready work, commits locally (no push until review approves). |
+| **my-plan-exec** | Implementation phase | Full access. Implements ready work, runs tests, verifies changes, prompts user to commit/push. |
 
-**Workflow with review gates:**
+**Workflow:**
 ```
-my-plan (create plan) → my-plan-review (approve plan) → my-plan-exec (implement, commit locally) → my-plan-review (approve code) → push
+my-plan (create plan) → user approval → my-plan-exec (implement, verify, commit, push)
 ```
 
 **Key points:**
-- Plan must be reviewed BEFORE execution begins
-- Code must be reviewed BEFORE pushing
-- `my-plan-exec` commits locally but does NOT push
+- Plan should be reviewed by user BEFORE execution begins
+- `my-plan-exec` implements, verifies, and prompts user to commit/push
 
 ---
 
@@ -57,7 +55,6 @@ Beads is the single planning ledger.
 This is designed to work with:
 - **my-plan** (planning + Beads)
 - **my-plan-exec** (implementation from ready work)
-- **my-plan-review** (verification + Beads hygiene)
 
 Beads integration is provided by `opencode-beads` (auto `bd prime`, `/bd-*`, and `beads-task-agent`). :contentReference[oaicite:2]{index=2}  
 Optional UI via `beads-ui` (`bdui start --open`, board/epics/issues). :contentReference[oaicite:3]{index=3}
@@ -146,20 +143,7 @@ Mention:
 When the user approves the plan, do **one** of the following:
 
 **Option A (recommended):**
-- Tell the user: “Switch to `my-plan-exec` and execute READY tasks for Epic <ID>, one at a time.”
+- Tell the user: "Switch to `my-plan-exec` and execute READY tasks for Epic <ID>, one at a time."
 
 **Option B (autonomous execution):**
 - Only if the user explicitly asks: delegate specific issues to `beads-task-agent`.
-
-### Handoff to review (my-plan-exec → my-plan-review)
-After implementation for a task/phase:
-- Tell the user to switch to `my-plan-review` to verify acceptance criteria and run safe checks.
-- Review updates Beads notes/statuses (close/reopen/block) but never edits repo files.
-
----
-
-## What this skill should NOT do anymore (removed on purpose)
-
-The prior workflow required maintaining `.opencode/docs/PLANNING.md`, archiving sources, and creating TodoWrite tasks from phases :contentReference[oaicite:11]{index=11}. That is redundant with Beads’ persistent issue ledger + dependency readiness + UI board, so it is removed.
-
-If the user explicitly requests a human-facing plan document for stakeholders, create it as a one-off deliverable—but do not make it the primary workflow.
