@@ -55,6 +55,7 @@ The script will:
 
 - **OpenCode**: Symlink `opencode.json`, `skills/`, and `agents/` to `~/.config/opencode/`
 - **Codex**: Symlink individual skills to `~/.codex/skills/` (preserves `.system/` directory)
+- **Codex**: Remove stale symlinks pointing to this repo and sync `[permission.skill]` into `~/.codex/config.toml` (if present)
 - **Respects disabled skills**: Skills with `"deny"` permission in `opencode.json` are skipped for Codex
 
 <details>

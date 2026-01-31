@@ -20,13 +20,70 @@ EOF
 # Read disabled skills from opencode.json
 get_disabled_skills() {
     node -e "
-const config = require('./opencode.json');
+const config = require(process.argv[1]);
 const perms = config.permission?.skill || {};
 const disabled = Object.keys(perms)
   .filter(k => k !== '*' && perms[k] === 'deny')
   .map(k => k.replace(/\*/g, '.*'));
 console.log(disabled.join('|'));
-"
+" "$SCRIPT_DIR/opencode.json"
+}
+
+skill_in_list() {
+    local needle="$1"
+    shift
+    local item
+    for item in "$@"; do
+        if [[ "$item" == "$needle" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+update_codex_permissions() {
+    local config_dir="$HOME/.codex"
+    local config_file="$config_dir/config.toml"
+
+    if [[ ! -f "$config_file" ]]; then
+        echo "  Skipping config.toml update (not found)"
+        return
+    fi
+
+    node -e "
+const fs = require('fs');
+const configFile = process.argv[1];
+const opencodePath = process.argv[2];
+
+const opencode = JSON.parse(fs.readFileSync(opencodePath, 'utf8'));
+const perms = opencode.permission?.skill || {};
+const entries = Object.entries(perms);
+
+if (!entries.length) process.exit(0);
+
+const lines = ['[permission.skill]'];
+for (const [key, value] of entries) {
+  const needsQuote = !/^[A-Za-z0-9_]+$/.test(key);
+  const escapedKey = key.replace(/\\\\/g, '\\\\\\\\').replace(/\"/g, '\\\\\"');
+  const escapedValue = String(value).replace(/\\\\/g, '\\\\\\\\').replace(/\"/g, '\\\\\"');
+  lines.push((needsQuote ? '\"' + escapedKey + '\"' : escapedKey) + ' = \"' + escapedValue + '\"');
+}
+const block = lines.join('\\n');
+
+let content = fs.readFileSync(configFile, 'utf8');
+const sectionRegex = /(^|\\n)\\[permission\\.skill\\][\\s\\S]*?(?=\\n\\[|\\s*$)/;
+
+if (sectionRegex.test(content)) {
+  content = content.replace(sectionRegex, (match, lead) => (lead + block));
+} else {
+  const needsNewline = content.length && !content.endsWith('\\n');
+  content = content + (needsNewline ? '\\n' : '') + '\\n' + block + '\\n';
+}
+
+fs.writeFileSync(configFile, content);
+" "$config_file" "$SCRIPT_DIR/opencode.json"
+
+    echo "  Synced: config.toml permissions"
 }
 
 setup_opencode() {
@@ -67,6 +124,8 @@ setup_codex() {
     # Get disabled skills
     local disabled_skills
     disabled_skills=$(get_disabled_skills)
+
+    local desired_skills=()
     
     # Symlink each skill individually (preserves .system/)
     for skill_dir in "$SCRIPT_DIR/skills"/*; do
@@ -81,6 +140,8 @@ setup_codex() {
             echo "  Skipping disabled: $skill_name"
             continue
         fi
+
+        desired_skills+=("$skill_name")
         
         if [[ -L "$target" ]]; then
             rm "$target"
@@ -92,6 +153,25 @@ setup_codex() {
         ln -sfn "$skill_dir" "$target"
         echo "  Linked: $skill_name"
     done
+
+    # Remove stale symlinks pointing to this repo
+    for target in "$config_dir/skills"/*; do
+        [[ ! -L "$target" ]] && continue
+
+        local skill_name
+        skill_name=$(basename "$target")
+        local link_target
+        link_target=$(readlink "$target")
+
+        if [[ "$link_target" == "$SCRIPT_DIR/skills/"* ]]; then
+            if [[ ! -d "$link_target" ]] || ! skill_in_list "$skill_name" "${desired_skills[@]}"; then
+                rm "$target"
+                echo "  Removed stale: $skill_name"
+            fi
+        fi
+    done
+
+    update_codex_permissions
     
     echo "  Done!"
 }
