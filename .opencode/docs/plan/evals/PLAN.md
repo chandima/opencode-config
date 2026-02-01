@@ -29,6 +29,8 @@ Purpose: establish a deterministic, CI-friendly evaluation framework for OpenCod
 - Runner sets `OPENCODE_REPO_ROOT` so eval-mode scripts can write outputs at repo root (security-auditor report path).
 - Matrix updated to `openai/gpt-5.2-codex` after `github-copilot/gpt-5.2-codex` returned model_not_supported.
 - Current baseline (openai/gpt-5.2-codex, minimal guard): 12/13 PASS. Known fail: `scaffold_new_skill_jira` (model does not invoke `skill-creator` despite explicit request). Treat as legitimate model/tool-use limitation for now.
+- Added `skill-testcase-steering.md` and referenced it in eval docs for future test case authoring.
+- Dataset review: current 13-case set covers all 6 skills and includes negative and permission-deny checks. Gaps to address when expanding: implicit cases for mcporter/security-auditor, near-miss cases for each skill, multi-skill confusion pairs, and a second denial case (keep existing 13-case baseline unchanged).
 
 ## Phase 1 — Align goals and success criteria
 - Confirm the four evaluation buckets: **Process**, **Outcome**, **Style/Policy**, **Efficiency**.

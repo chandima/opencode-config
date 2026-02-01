@@ -11,6 +11,7 @@ Deterministic eval runner for OpenCode skill routing + loading. It runs a JSONL 
 - `opencode_skill_loading_eval_dataset.full.jsonl` — full dataset (archived)
 - `opencode_skill_eval_matrix.json` — agent/model matrix (GPT only)
 - `opencode_skill_eval_gradespec.md` — grading rules
+- `skill-testcase-steering.md` — guidance for writing new eval cases
 
 ## Prereqs
 
@@ -114,3 +115,4 @@ node .opencode/evals/skill-loading/opencode_skill_eval_runner.mjs \
 - Plan agent runs skip tests that require output files.
 - Update `opencode_skill_eval_matrix.json` for your model list.
 - If your environment blocks outbound access to `models.dev`, pass `--disable-models-fetch`.
+- For new test cases, follow the rubric in `skill-testcase-steering.md`.
