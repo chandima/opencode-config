@@ -10,9 +10,10 @@ Usage: ./setup.sh [TARGET]
 Install OpenCode/Codex configuration by symlinking skills and config files.
 
 TARGETS:
-    (none)      Install for both OpenCode and Codex (default)
+    (none)      Install for OpenCode only (default)
     opencode    Install for OpenCode only
-    codex       Install for Codex only
+    --codex     Install for Codex only
+    --both      Install for both OpenCode and Codex
     --help, -h  Show this help message
 EOF
 }
@@ -97,7 +98,7 @@ setup_codex() {
 }
 
 # Parse arguments
-TARGET="${1:-both}"
+TARGET="${1:-opencode}"
 
 case "$TARGET" in
     --help|-h)
@@ -107,10 +108,10 @@ case "$TARGET" in
     opencode)
         setup_opencode
         ;;
-    codex)
+    --codex)
         setup_codex
         ;;
-    both|"")
+    --both)
         setup_opencode
         echo ""
         setup_codex
