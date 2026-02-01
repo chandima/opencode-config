@@ -21,17 +21,17 @@ skipped=0
 
 log_pass() {
     echo -e "${GREEN}[PASS]${NC} $1"
-    ((passed++))
+    passed=$((passed + 1))
 }
 
 log_fail() {
     echo -e "${RED}[FAIL]${NC} $1"
-    ((failed++))
+    failed=$((failed + 1))
 }
 
 log_skip() {
     echo -e "${YELLOW}[SKIP]${NC} $1"
-    ((skipped++))
+    skipped=$((skipped + 1))
 }
 
 echo "========================================"
@@ -134,7 +134,7 @@ fi
 
 # Test 5: detect-monorepo.sh produces valid JSON
 monorepo_output=$("$SCRIPTS_DIR/detect-monorepo.sh" 2>/dev/null || echo "{}")
-if echo "$monorepo_output" | jq -e '.is_monorepo' > /dev/null 2>&1; then
+if echo "$monorepo_output" | jq -e 'has("is_monorepo")' > /dev/null 2>&1; then
     log_pass "detect-monorepo.sh produces valid JSON with 'is_monorepo' field"
 else
     log_fail "detect-monorepo.sh output is not valid JSON"

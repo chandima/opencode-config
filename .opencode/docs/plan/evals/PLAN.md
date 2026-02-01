@@ -24,6 +24,10 @@ Purpose: establish a deterministic, CI-friendly evaluation framework for OpenCod
 - Added a hard timeout fallback to prevent hangs after timeout.
 - Added `--shell-run` (default on non-Windows) to launch OpenCode via `bash -lc` for better compatibility; can be disabled with `--no-shell-run`.
 - The runner now sets `OPENCODE_TEST_HOME` per worker to avoid log-path errors when `opencode` runs as a child process.
+- The runner now sets `OPENCODE_EVAL=1` and `MCPORTER_TIMEOUT=20`; skill scripts add eval-mode fast paths/timeouts (mcporter/context7, security-auditor).
+- Minimal eval config now allows `external_directory` to avoid permission prompts during skill script execution.
+- Runner sets `OPENCODE_REPO_ROOT` so eval-mode scripts can write outputs at repo root (security-auditor report path).
+- Matrix updated to `openai/gpt-5.2-codex` after `github-copilot/gpt-5.2-codex` returned model_not_supported.
 
 ## Phase 1 — Align goals and success criteria
 - Confirm the four evaluation buckets: **Process**, **Outcome**, **Style/Policy**, **Efficiency**.

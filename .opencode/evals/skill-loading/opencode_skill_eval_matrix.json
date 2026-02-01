@@ -1,9 +1,9 @@
 {
   "runs": [
     {
-      "name": "build_github-copilot_gpt-5.1-codex",
+      "name": "build_openai_gpt-5.2-codex",
       "agent": "build",
-      "model": "github-copilot/gpt-5.1-codex"
+      "model": "openai/gpt-5.2-codex"
     }
   ],
   "notes": "Agent names assume OpenCode built-ins (build/plan). Models are provider/model as required by opencode CLI."

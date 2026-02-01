@@ -108,6 +108,9 @@ node .opencode/evals/skill-loading/opencode_skill_eval_runner.mjs \
 - The runner injects a minimal `AGENTS.md` guard into temp workspaces to forbid Beads usage during evals. Add `--disable-project-config` only if you explicitly want to ignore `AGENTS.md`.
 - By default, the runner also prepends a short **prompt guard** to each test to forbid Beads and to require loading a named skill via the `skill` tool. Disable with `--no-guard` if you want raw prompts.
 - Use `--shell-run` or `--no-shell-run` to control the launch mode.
+- The runner sets `OPENCODE_EVAL=1` and a default `MCPORTER_TIMEOUT=20` to keep skill scripts fast and deterministic. Override via environment if needed.
+- The minimal eval config allows `external_directory` to avoid permission prompts when skills execute scripts.
+- The runner sets `OPENCODE_REPO_ROOT` so eval-mode scripts can write outputs into the repo tree.
 - Plan agent runs skip tests that require output files.
 - Update `opencode_skill_eval_matrix.json` for your model list.
 - If your environment blocks outbound access to `models.dev`, pass `--disable-models-fetch`.

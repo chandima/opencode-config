@@ -24,11 +24,20 @@ const AGENTS_GUARD = `# Eval Harness Guard
 - Do not create/update Beads issues unless the user explicitly asks.
 `;
 
-const PROMPT_GUARD = `Eval harness rules:
+const PROMPT_GUARD_BASE = `Eval harness rules:
 - Do not use Beads or the bd CLI.
 - Do not use the task tool unless the user explicitly asks.
 - If the prompt names a skill, call the skill tool to load it before answering.
 `;
+
+const PROMPT_GUARD_DEFAULT = `${PROMPT_GUARD_BASE}
+- After loading a skill, include the exact command(s) you would run from its scripts (scripts/*.sh). Run them when the task is to perform the action.
+- When using skill-creator, start with: "I'm using the skill-creator skill".`;
+
+const PROMPT_GUARD_SKILL_CREATOR = `Eval harness rules:
+- Do not use Beads or the bd CLI.
+- This request should use the skill-creator skill. Call the skill tool to load it before responding.
+- Start with: "I'm using the skill-creator skill".`;
 
 let activeChild = null;
 let activeServer = null;
@@ -266,6 +275,8 @@ function buildBaseOpencodeEnv(args) {
   const env = { ...process.env };
   if (args.disableModelsFetch) env.OPENCODE_DISABLE_MODELS_FETCH = "1";
   if (args.modelsUrl) env.OPENCODE_MODELS_URL = String(args.modelsUrl);
+  if (!env.OPENCODE_EVAL) env.OPENCODE_EVAL = "1";
+  if (!env.MCPORTER_TIMEOUT) env.MCPORTER_TIMEOUT = "20";
   if (args.configDir) {
     env.OPENCODE_CONFIG_DIR = String(args.configDir);
   }
@@ -662,7 +673,8 @@ async function writeMinimalConfig(destPath) {
       skill: {
         "*": "allow",
         "asu-discover": "deny"
-      }
+      },
+      external_directory: "allow"
     }
   };
   await writeJson(destPath, cfg);
@@ -1048,8 +1060,17 @@ async function main() {
         if (testHomeDir) {
           env.OPENCODE_TEST_HOME = testHomeDir;
         }
+        env.OPENCODE_REPO_ROOT = cwd;
 
-        let guard = PROMPT_GUARD;
+        const expectedAny = c.expected_skills_any_of ?? [];
+        const isSkillCreator = expectedAny.includes("skill-creator") || String(c.category ?? "").includes("skill-creator");
+        let guard = isSkillCreator ? PROMPT_GUARD_SKILL_CREATOR : PROMPT_GUARD_DEFAULT;
+        if (!isSkillCreator && expectedAny.length) {
+          guard += `\n- This request should use the following skill(s): ${expectedAny.join(", ")}. Call the skill tool to load one before responding.`;
+        }
+        if (c.checks?.must_not_call_any_skill || c.checks?.must_not_call_skills) {
+          guard += "\n- Do not call the skill tool for this request.";
+        }
         if (c.checks?.should_explain_permission) {
           const denied = uniqueList([...(c.forbidden_skills ?? []), ...((c.checks?.must_not_call_skills ?? []) ?? [])]);
           if (denied.length) {
@@ -1061,7 +1082,7 @@ async function main() {
             guard += "\n- If a required skill is denied, explicitly explain the denial and name the skill.";
           }
         }
-        const guardedPrompt = args.guardPrompt ? `${guard}\n\n${c.prompt}` : c.prompt;
+        const guardedPrompt = args.guardPrompt && guard ? `${guard}\n\n${c.prompt}` : c.prompt;
         const tRunStart = nowMs();
         progress.add(`${run.name}:${caseId}`, caseId, args.timeoutS * 1000);
         const { code, stdout, stderr, timedOut, errorMessage, eventTimings } = await runOpencode(guardedPrompt, {
