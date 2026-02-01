@@ -1,6 +1,6 @@
 ---
 name: github-ops
-description: "Full GitHub MCP Server parity via gh CLI. Use for ALL GitHub operations: repos, issues, PRs, actions, releases, code security, discussions, notifications, search, users, orgs, gists, projects. ALWAYS use instead of WebFetch for github.com URLs."
+description: "GitHub operations via gh CLI. Use for ANY GitHub task (repos, issues, PRs, releases, actions, security, search) or when asked to draft GitHub CLI commands. Always use instead of WebFetch for github.com."
 allowed-tools: Bash(gh:*) Bash(git:*) Bash(./scripts/*) Read Glob Grep Task
 context: fork
 ---

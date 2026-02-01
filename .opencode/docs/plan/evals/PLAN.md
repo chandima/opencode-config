@@ -18,7 +18,7 @@ Purpose: establish a deterministic, CI-friendly evaluation framework for OpenCod
 - `--isolate-config` now skips auto-loading repo `opencode.json` unless `--config` is explicitly provided (prevents beads/plugin contamination). It sets `OPENCODE_CONFIG_DIR` to a temp dir. Project config is only disabled if `--disable-project-config` is passed.
 - When `--isolate-config` is used without `--config`, the runner writes a minimal config (plugins disabled, `asu-discover` denied) to keep evals deterministic.
 - The runner injects a minimal `AGENTS.md` guard in temp workspaces to forbid Beads usage during eval runs.
-- The runner now prepends a short prompt guard that forbids Beads and requires calling `skill` when a skill is named (disable with `--no-guard`).
+- The runner now prepends a minimal prompt guard that only forbids Beads/bd and the task tool (disable with `--no-guard`).
 - Added parallel execution (`--parallel`) with per-test timeout progress bars and per-run `progress.json`.
 - Parallel runs now isolate OpenCode cache per worker to avoid cache corruption/race conditions.
 - Added a hard timeout fallback to prevent hangs after timeout.
@@ -28,6 +28,7 @@ Purpose: establish a deterministic, CI-friendly evaluation framework for OpenCod
 - Minimal eval config now allows `external_directory` to avoid permission prompts during skill script execution.
 - Runner sets `OPENCODE_REPO_ROOT` so eval-mode scripts can write outputs at repo root (security-auditor report path).
 - Matrix updated to `openai/gpt-5.2-codex` after `github-copilot/gpt-5.2-codex` returned model_not_supported.
+- Current baseline (openai/gpt-5.2-codex, minimal guard): 12/13 PASS. Known fail: `scaffold_new_skill_jira` (model does not invoke `skill-creator` despite explicit request). Treat as legitimate model/tool-use limitation for now.
 
 ## Phase 1 — Align goals and success criteria
 - Confirm the four evaluation buckets: **Process**, **Outcome**, **Style/Policy**, **Efficiency**.

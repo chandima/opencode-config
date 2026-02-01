@@ -106,7 +106,7 @@ node .opencode/evals/skill-loading/opencode_skill_eval_runner.mjs \
 - Use `--isolate-config` to avoid global OpenCode config contamination (sets `OPENCODE_CONFIG_DIR` to a temp dir). When enabled, the runner **does not auto‑load** the repo `opencode.json` unless you pass `--config`, which avoids plugins like `opencode-beads` during evals.
 - When `--isolate-config` is used without `--config`, the runner writes a minimal config (no plugins; `asu-discover` denied) to keep eval behavior deterministic.
 - The runner injects a minimal `AGENTS.md` guard into temp workspaces to forbid Beads usage during evals. Add `--disable-project-config` only if you explicitly want to ignore `AGENTS.md`.
-- By default, the runner also prepends a short **prompt guard** to each test to forbid Beads and to require loading a named skill via the `skill` tool. Disable with `--no-guard` if you want raw prompts.
+- By default, the runner prepends a short **prompt guard** that only forbids Beads/bd and the task tool. It does **not** instruct skill usage. Disable with `--no-guard` for fully raw prompts.
 - Use `--shell-run` or `--no-shell-run` to control the launch mode.
 - The runner sets `OPENCODE_EVAL=1` and a default `MCPORTER_TIMEOUT=20` to keep skill scripts fast and deterministic. Override via environment if needed.
 - The minimal eval config allows `external_directory` to avoid permission prompts when skills execute scripts.

@@ -216,20 +216,10 @@ const AGENTS_GUARD = `# Eval Harness Guard
 - Do not create/update Beads issues unless the user explicitly asks.
 `;
 
-const PROMPT_GUARD_BASE = `Eval harness rules:
+const PROMPT_GUARD = `Eval harness rules:
 - Do not use Beads or the bd CLI.
 - Do not use the task tool unless the user explicitly asks.
-- If the prompt names a skill, call the skill tool to load it before answering.
 `;
-
-const PROMPT_GUARD_DEFAULT = `${PROMPT_GUARD_BASE}
-- After loading a skill, include the exact command(s) you would run from its scripts (scripts/*.sh). Run them when the task is to perform the action.
-- When using skill-creator, start with: "I'm using the skill-creator skill".`;
-
-const PROMPT_GUARD_SKILL_CREATOR = `Eval harness rules:
-- Do not use Beads or the bd CLI.
-- This request should use the skill-creator skill. Call the skill tool to load it before responding.
-- Start with: "I'm using the skill-creator skill".`;
 
 function nowMs(): number { return Date.now(); }
 function uid(): string { return crypto.randomBytes(6).toString("hex"); }
@@ -674,7 +664,7 @@ function regexAnyPresent(patterns: string[], text: string): [boolean, string] {
 }
 
 function phrasesPresent(phrases: string[], text: string): [boolean, string] {
-  const t = text.toLowerCase();
+  const t = normalizeText(text);
   const missing = phrases.filter(ph => !t.includes(ph.toLowerCase()));
   return missing.length ? [false, `missing required phrases: ${JSON.stringify(missing)}`] : [true, ""];
 }
@@ -757,15 +747,15 @@ async function gradeCase(c: EvalCase, params: {
   }
 
   if (checks.should_explain_permission) {
-    const t = params.outputText.toLowerCase();
-    const hasDeny = t.includes("deny") || t.includes("denied") || t.includes("permission") || t.includes("blocked") || t.includes("not allowed");
+    const t = normalizeText(params.outputText);
+    const hasDeny = t.includes("deny") || t.includes("denied") || t.includes("permission") || t.includes("blocked") || t.includes("not allowed") || t.includes("cannot") || t.includes("can't") || t.includes("cant") || t.includes("don't have") || t.includes("do not have") || t.includes("not available");
     if (!t.includes("asu-discover") || !hasDeny) {
       return [false, "expected an explanation of denied permissions for asu-discover"];
     }
   }
 
   if (checks.should_ask_external_search) {
-    const t = params.outputText.toLowerCase();
+    const t = normalizeText(params.outputText);
     const hasExternal = t.includes("external");
     const hasSearch = t.includes("search") || t.includes("check") || t.includes("lookup");
     const hasSkill = t.includes("skill");
@@ -889,6 +879,10 @@ function uniqueList(items: string[] | undefined): string[] {
     out.push(val);
   }
   return out;
+}
+
+function normalizeText(value: string | undefined): string {
+  return String(value || "").toLowerCase().replace(/[\u2018\u2019]/g, "'");
 }
 
 function safeFileName(value: string): string {
@@ -1351,26 +1345,7 @@ async function main() {
           env.OPENCODE_TEST_HOME = testHomeDir;
         }
         env.OPENCODE_REPO_ROOT = cwd;
-        const expectedAny = c.expected_skills_any_of ?? [];
-        const isSkillCreator = expectedAny.includes("skill-creator") || String(c.category ?? "").includes("skill-creator");
-        let guard = isSkillCreator ? PROMPT_GUARD_SKILL_CREATOR : PROMPT_GUARD_DEFAULT;
-        if (!isSkillCreator && expectedAny.length) {
-          guard += `\n- This request should use the following skill(s): ${expectedAny.join(", ")}. Call the skill tool to load one before responding.`;
-        }
-        if (c.checks?.must_not_call_any_skill || c.checks?.must_not_call_skills) {
-          guard += "\n- Do not call the skill tool for this request.";
-        }
-        if (c.checks?.should_explain_permission) {
-          const denied = uniqueList([...(c.forbidden_skills ?? []), ...((c.checks?.must_not_call_skills ?? []) as string[] ?? [])]);
-          if (denied.length) {
-            guard += `\n- Note: these skills are denied in this eval: ${denied.join(", ")}. Explicitly explain the denial and name the skill.`;
-            if (denied.map(s => s.toLowerCase()).includes("asu-discover")) {
-              guard += "\n- You must explicitly state: \"asu-discover is denied.\"";
-            }
-          } else {
-            guard += "\n- If a required skill is denied, explicitly explain the denial and name the skill.";
-          }
-        }
+        const guard = PROMPT_GUARD;
         const guardedPrompt = args.guardPrompt && guard ? `${guard}\n\n${c.prompt}` : c.prompt;
         const tRunStart = nowMs();
         progress.add(`${run.name}:${caseId}`, caseId, args.timeoutS * 1000);

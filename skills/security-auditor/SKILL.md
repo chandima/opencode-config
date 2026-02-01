@@ -1,10 +1,11 @@
 ---
 name: security-auditor
 description: |
-  Pre-deployment security audit for production releases.
-  Use BEFORE deploying to production, staging, or any non-sandbox environment.
+  Pre-deployment security audit for production releases and PR checks.
+  Use BEFORE deploying to production/staging or when asked for a changed-only audit.
   Triggers: "deploy to production", "release", "pre-release", "security check",
-  "merge to main", "audit before deploy", "security audit".
+  "merge to main", "audit before deploy", "security audit", "PR security audit",
+  "changed-only audit".
   DO NOT use for: local dev, sandbox, feature branch testing.
   Requires fixing CRITICAL vulnerabilities before proceeding.
   Supports monorepos with scoped audits per app/package.
@@ -58,6 +59,10 @@ Pre-deployment security audit that blocks on critical vulnerabilities. Context-a
 ```
 
 ## Running the Audit
+
+**Always use the skill scripts (do not invent ad-hoc commands).**
+- Full audit: `./scripts/audit.sh`
+- Changed-only/PR checks: `./scripts/audit.sh --changed-only`
 
 ### Full Audit (default for single-app repos)
 ```bash
