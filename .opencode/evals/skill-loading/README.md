@@ -46,6 +46,7 @@ Artifacts:
 
 Runtime UI:
 - When running in a TTY, active tests show per‑test timeout progress bars.
+- By default (non‑Windows), the runner launches `opencode` via `bash -lc` for better compatibility. It also sets `OPENCODE_TEST_HOME` to a temp dir per worker to avoid log‑path issues in child processes. Use `--no-shell-run` to disable.
 
 ## Persistent server mode (optional)
 
@@ -106,6 +107,7 @@ node .opencode/evals/skill-loading/opencode_skill_eval_runner.mjs \
 - When `--isolate-config` is used without `--config`, the runner writes a minimal config (no plugins; `asu-discover` denied) to keep eval behavior deterministic.
 - The runner injects a minimal `AGENTS.md` guard into temp workspaces to forbid Beads usage during evals. Add `--disable-project-config` only if you explicitly want to ignore `AGENTS.md`.
 - By default, the runner also prepends a short **prompt guard** to each test to forbid Beads and to require loading a named skill via the `skill` tool. Disable with `--no-guard` if you want raw prompts.
+- Use `--shell-run` or `--no-shell-run` to control the launch mode.
 - Plan agent runs skip tests that require output files.
 - Update `opencode_skill_eval_matrix.json` for your model list.
 - If your environment blocks outbound access to `models.dev`, pass `--disable-models-fetch`.

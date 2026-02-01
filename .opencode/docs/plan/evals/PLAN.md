@@ -21,7 +21,9 @@ Purpose: establish a deterministic, CI-friendly evaluation framework for OpenCod
 - The runner now prepends a short prompt guard that forbids Beads and requires calling `skill` when a skill is named (disable with `--no-guard`).
 - Added parallel execution (`--parallel`) with per-test timeout progress bars and per-run `progress.json`.
 - Parallel runs now isolate OpenCode cache per worker to avoid cache corruption/race conditions.
-- `opencode run` is now spawned in its own process group with a hard timeout fallback to prevent hangs after timeout.
+- Added a hard timeout fallback to prevent hangs after timeout.
+- Added `--shell-run` (default on non-Windows) to launch OpenCode via `bash -lc` for better compatibility; can be disabled with `--no-shell-run`.
+- The runner now sets `OPENCODE_TEST_HOME` per worker to avoid log-path errors when `opencode` runs as a child process.
 
 ## Phase 1 — Align goals and success criteria
 - Confirm the four evaluation buckets: **Process**, **Outcome**, **Style/Policy**, **Efficiency**.

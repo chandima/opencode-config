@@ -161,6 +161,7 @@ function parseArgs(argv) {
     disableProjectConfig: false,
     guardPrompt: true,
     parallel: 1,
+    shellRun: (process.platform !== "win32"),
     timingDetail: false,
     traceEvents: false,
     serverReset: "reset",
@@ -189,6 +190,8 @@ function parseArgs(argv) {
     else if (a === "--no-guard") args.guardPrompt = false;
     else if (a === "--parallel") args.parallel = parseInt(next(), 10);
     else if (a === "--timing-detail") args.timingDetail = true;
+    else if (a === "--shell-run") args.shellRun = true;
+    else if (a === "--no-shell-run") args.shellRun = false;
     else if (a === "--trace-events") args.traceEvents = true;
     else if (a === "--server-reset") args.serverReset = next();
     else if (a === "--server-port") args.serverPort = parseInt(next(), 10);
@@ -217,6 +220,8 @@ Options:
   --disable-project-config    Disable project config/AGENTS loading
   --no-guard                  Disable eval harness prompt guard rules
   --parallel <n>              Run up to n tests in parallel (default: 1)
+  --shell-run                 Run opencode via bash -lc (default on non-Windows)
+  --no-shell-run              Run opencode directly (disable shell-run)
   --timing-detail             Record per-case timing breakdown in results.json
   --trace-events              Write per-case event timelines to run output (implies timing detail)
   --server-reset reset|none|restart  How to reset between tests when using --start-server:
@@ -289,13 +294,48 @@ function buildRunCommand(prompt, { agent, model, title, attach, port }) {
   return cmd;
 }
 
-async function runOpencodeStreaming(prompt, { cwd, agent, model, title, attach, port, timeoutS, opencodeBin, env, traceEventsPath, captureEventTimings }) {
-  const cmd = buildRunCommand(prompt, { agent, model, title, attach, port });
-  const proc = spawn(opencodeBin, cmd, {
-    cwd,
-    env,
-    stdio: ["ignore", "pipe", "pipe"]
-  });
+function shellEscape(value) {
+  if (value === "") return "''";
+  return `'${String(value).replace(/'/g, `'\\''`)}'`;
+}
+
+function buildRunShellCommand(promptPath, { agent, model, title, attach, port, opencodeBin }) {
+  const tokens = [];
+  if (attach) {
+    tokens.push("--attach", attach);
+  }
+  tokens.push("run", "--format", "json", "--agent", agent, "--model", model, "--title", title);
+  if (typeof port === "number") tokens.push("--port", String(port));
+  const args = tokens.map(shellEscape).join(" ");
+  const promptExpr = `"$(cat ${shellEscape(promptPath)})"`;
+  return `exec ${shellEscape(opencodeBin)} ${args} ${promptExpr}`;
+}
+
+function buildServeShellCommand({ hostname, port, opencodeBin }) {
+  const args = ["serve", "--hostname", hostname, "--port", String(port)].map(shellEscape).join(" ");
+  return `exec ${shellEscape(opencodeBin)} ${args}`;
+}
+
+async function runOpencodeStreaming(prompt, { cwd, agent, model, title, attach, port, timeoutS, opencodeBin, env, traceEventsPath, captureEventTimings, shellRun }) {
+  let promptPath = null;
+  let proc = null;
+  if (shellRun) {
+    promptPath = path.join(os.tmpdir(), `opencode-prompt-${uid()}.txt`);
+    await fsp.writeFile(promptPath, prompt, "utf8");
+    const shellCmd = buildRunShellCommand(promptPath, { agent, model, title, attach, port, opencodeBin });
+    proc = spawn("bash", ["-lc", shellCmd], {
+      cwd,
+      env,
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+  } else {
+    const cmd = buildRunCommand(prompt, { agent, model, title, attach, port });
+    proc = spawn(opencodeBin, cmd, {
+      cwd,
+      env,
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+  }
   activeChild = proc;
 
   const startedAt = nowMs();
@@ -364,7 +404,7 @@ async function runOpencodeStreaming(prompt, { cwd, agent, model, title, attach, 
   let forceResolveTimer = null;
   let resolveFn = null;
 
-  const finalize = (code) => {
+  const finalize = async (code) => {
     if (resolved) return;
     resolved = true;
     if (timeout) clearTimeout(timeout);
@@ -373,6 +413,9 @@ async function runOpencodeStreaming(prompt, { cwd, agent, model, title, attach, 
     rl.close();
     if (traceStream) traceStream.end();
     if (activeChild === proc) activeChild = null;
+    if (promptPath) {
+      try { await rmrf(promptPath); } catch {}
+    }
     if (resolveFn) {
       resolveFn({
         code: code ?? 1,
@@ -387,7 +430,7 @@ async function runOpencodeStreaming(prompt, { cwd, agent, model, title, attach, 
 
   const done = new Promise((resolve) => {
     resolveFn = resolve;
-    proc.on("close", (code) => finalize(code ?? 1));
+    proc.on("close", (code) => { finalize(code ?? 1); });
   });
 
   timeout = setTimeout(() => {
@@ -816,9 +859,15 @@ async function waitForServerHealth(url, timeoutMs) {
   return false;
 }
 
-function startServer({ cwd, opencodeBin, hostname, port, env }) {
+function startServer({ cwd, opencodeBin, hostname, port, env, shellRun }) {
   const url = `http://${hostname}:${port}`;
-  const proc = spawn(opencodeBin, ["serve", "--hostname", hostname, "--port", String(port)], { cwd, env, stdio: ["ignore","pipe","pipe"] });
+  let proc;
+  if (shellRun) {
+    const shellCmd = buildServeShellCommand({ hostname, port, opencodeBin });
+    proc = spawn("bash", ["-lc", shellCmd], { cwd, env, stdio: ["ignore","pipe","pipe"] });
+  } else {
+    proc = spawn(opencodeBin, ["serve", "--hostname", hostname, "--port", String(port)], { cwd, env, stdio: ["ignore","pipe","pipe"] });
+  }
   activeServer = proc;
   return { proc, url };
 }
@@ -906,7 +955,7 @@ async function main() {
       attachPort = port;
       const configPath = resolveConfigPath(resolvedConfig, workspaceDir, baseEnv.OPENCODE_DISABLE_PROJECT_CONFIG === "1");
       const env = buildOpencodeEnv(baseEnv, configPath);
-      const { proc, url } = startServer({ cwd: workspaceDir, opencodeBin: args.opencodeBin, hostname: args.serverHostname, port, env });
+      const { proc, url } = startServer({ cwd: workspaceDir, opencodeBin: args.opencodeBin, hostname: args.serverHostname, port, env, shellRun: args.shellRun });
       serverProc = proc;
       attachUrl = url;
 
@@ -918,7 +967,7 @@ async function main() {
     const caseQueue = [...selectedCases];
     let nextIndex = 0;
 
-    const runCase = async (cacheDir) => {
+    const runCase = async (cacheDir, testHomeDir) => {
       while (true) {
         const idx = nextIndex++;
         const c = caseQueue[idx];
@@ -969,7 +1018,7 @@ async function main() {
             attachPort = port;
             const configPath = resolveConfigPath(resolvedConfig, workspaceDir, baseEnv.OPENCODE_DISABLE_PROJECT_CONFIG === "1");
             const env = buildOpencodeEnv(baseEnv, configPath);
-            const { proc, url } = startServer({ cwd: workspaceDir, opencodeBin: args.opencodeBin, hostname: args.serverHostname, port, env });
+            const { proc, url } = startServer({ cwd: workspaceDir, opencodeBin: args.opencodeBin, hostname: args.serverHostname, port, env, shellRun: args.shellRun });
             serverProc = proc; attachUrl = url;
             const ok = await waitForServerHealth(url, 15000);
             if (!ok) { stopServer(proc); throw new Error(`Server not healthy after restart at ${url}`); }
@@ -996,6 +1045,9 @@ async function main() {
           env.XDG_CACHE_HOME = cacheDir;
           env.OPENCODE_CACHE_DIR = path.join(cacheDir, "opencode");
         }
+        if (testHomeDir) {
+          env.OPENCODE_TEST_HOME = testHomeDir;
+        }
 
         let guard = PROMPT_GUARD;
         if (c.checks?.should_explain_permission) {
@@ -1018,6 +1070,7 @@ async function main() {
           port: args.startServer ? attachPort : undefined,
           timeoutS: args.timeoutS, opencodeBin: args.opencodeBin,
           env,
+          shellRun: args.shellRun,
           captureEventTimings,
           traceEventsPath: tracePath
         });
@@ -1087,17 +1140,20 @@ async function main() {
 
     const workerCount = Math.min(parallel, selectedCases.length || 1);
     const workerCacheDirs = [];
-    if (workerCount > 1) {
-      for (let i = 0; i < workerCount; i++) {
-        workerCacheDirs.push(await fsp.mkdtemp(path.join(os.tmpdir(), "opencode-cache-")));
-      }
+    const workerTestHomes = [];
+    for (let i = 0; i < workerCount; i++) {
+      workerCacheDirs.push(await fsp.mkdtemp(path.join(os.tmpdir(), "opencode-cache-")));
+      workerTestHomes.push(await fsp.mkdtemp(path.join(os.tmpdir(), "opencode-test-home-")));
     }
 
-    const workers = Array.from({ length: workerCount }, (_, i) => runCase(workerCacheDirs[i]));
+    const workers = Array.from({ length: workerCount }, (_, i) => runCase(workerCacheDirs[i], workerTestHomes[i]));
     await Promise.all(workers);
     await enqueueWrite(async () => {});
 
     for (const dir of workerCacheDirs) {
+      await rmrf(dir);
+    }
+    for (const dir of workerTestHomes) {
       await rmrf(dir);
     }
 
