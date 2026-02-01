@@ -1,6 +1,6 @@
 ---
 name: mcporter
-description: "Direct MCP access via MCPorter. Use for MCPs not covered by specific skills, or for advanced/ad-hoc MCP operations. Supports any configured MCP server."
+description: "Direct MCP access via MCPorter. Use to discover MCP servers, list MCP tools, or call an MCP tool (e.g., chrome-devtools screenshot, firecrawl scrape) when no specific skill exists. Supports any configured MCP server."
 allowed-tools: Bash(npx:*) Bash(./scripts/*) Read Glob Grep
 context: fork
 ---
