@@ -47,8 +47,8 @@ cd opencode-config
 ```bash
 ./setup.sh              # Install OpenCode only (default)
 ./setup.sh opencode     # Install OpenCode only
-./setup.sh --codex      # Install Codex only
-./setup.sh --both       # Install both OpenCode and Codex
+./setup.sh codex        # Install Codex only
+./setup.sh both         # Install both OpenCode and Codex
 ./setup.sh --help       # Show help
 ```
 
