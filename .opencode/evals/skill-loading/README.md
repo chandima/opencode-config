@@ -26,7 +26,7 @@ Deterministic eval runner for OpenCode skill routing + loading. It runs a JSONL 
   --matrix .opencode/evals/skill-loading/opencode_skill_eval_matrix.json \
   --disable-models-fetch \
   --isolate-config \
-  --outdir opencode-eval-results \
+  --outdir .opencode/evals/skill-loading/.tmp/opencode-eval-results \
   --parallel 3
 ```
 
@@ -35,14 +35,14 @@ Exit code:
 - `1` any FAIL/ERROR
 
 Artifacts:
-- `opencode-eval-results/junit.all.xml`
-- `opencode-eval-results/results.all.json`
-- `opencode-eval-results/summary.json`
-- per-run `opencode-eval-results/<run>/results.json`
-- per-run `opencode-eval-results/<run>/junit.xml`
-- optional per-run traces `opencode-eval-results/<run>/trace/<caseId>.ndjson` (when `--trace-events`)
-- per-run progress `opencode-eval-results/<run>/progress.json` (updated after each case)
-- run lock `opencode-eval-results/.lock` (prevents concurrent runs in the same outdir)
+- `.opencode/evals/skill-loading/.tmp/opencode-eval-results/junit.all.xml`
+- `.opencode/evals/skill-loading/.tmp/opencode-eval-results/results.all.json`
+- `.opencode/evals/skill-loading/.tmp/opencode-eval-results/summary.json`
+- per-run `.opencode/evals/skill-loading/.tmp/opencode-eval-results/<run>/results.json`
+- per-run `.opencode/evals/skill-loading/.tmp/opencode-eval-results/<run>/junit.xml`
+- optional per-run traces `.opencode/evals/skill-loading/.tmp/opencode-eval-results/<run>/trace/<caseId>.ndjson` (when `--trace-events`)
+- per-run progress `.opencode/evals/skill-loading/.tmp/opencode-eval-results/<run>/progress.json` (updated after each case)
+- run lock `.opencode/evals/skill-loading/.tmp/opencode-eval-results/.lock` (prevents concurrent runs in the same outdir)
 
 Runtime UI:
 - When running in a TTY, active tests show per‑test timeout progress bars.
@@ -96,7 +96,7 @@ node .opencode/evals/skill-loading/opencode_skill_eval_runner.mjs \
   --repo "$PWD" \
   --dataset .opencode/evals/skill-loading/opencode_skill_loading_eval_dataset.jsonl \
   --matrix .opencode/evals/skill-loading/opencode_skill_eval_matrix.json \
-  --outdir opencode-eval-results
+  --outdir .opencode/evals/skill-loading/.tmp/opencode-eval-results
 ```
 
 ## Notes
