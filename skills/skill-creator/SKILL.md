@@ -1,6 +1,6 @@
 ---
 name: skill-creator
-description: "AI-assisted skill creation for OpenCode. Use when creating a new skill, designing skill structure, or scaffolding skill files. Handles search-before-create, adaptive interview, and generation."
+description: "Create OpenCode skills. ALWAYS use when asked to create a new skill, design a skill, or scaffold skill files (SKILL.md outline, folder structure, quick scaffold), when asked to package repeated steps into a reusable skill, or when the user explicitly says \"skill-creator\" or \"skill creator\"."
 allowed-tools: Read Write Edit Glob Grep Bash Task WebFetch
 context: fork
 ---

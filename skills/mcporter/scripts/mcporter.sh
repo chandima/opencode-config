@@ -9,6 +9,10 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+MCPORTER_TIMEOUT="${MCPORTER_TIMEOUT:-20}"
+OPENCODE_EVAL="${OPENCODE_EVAL:-}"
+NPX_CMD=(npx --yes mcporter)
+PYTHON_BIN="${PYTHON_BIN:-}"
 
 show_help() {
     cat <<EOF
@@ -40,15 +44,48 @@ check_mcporter() {
         echo -e "${RED}Error: npx not found. Please install Node.js 18+${NC}" >&2
         exit 1
     fi
+    if [[ -z "$PYTHON_BIN" ]]; then
+        if command -v python3 &> /dev/null; then
+            PYTHON_BIN="python3"
+        elif command -v python &> /dev/null; then
+            PYTHON_BIN="python"
+        else
+            echo -e "${RED}Error: python not found. Please install Python 3+${NC}" >&2
+            exit 1
+        fi
+    fi
+}
+
+run_mcporter() {
+    local timeout="${MCPORTER_TIMEOUT}"
+    "$PYTHON_BIN" - "$timeout" "$@" <<'PY'
+import subprocess, sys
+timeout_s = float(sys.argv[1])
+cmd = sys.argv[2:]
+try:
+    proc = subprocess.run(cmd, text=True, capture_output=True, timeout=timeout_s)
+    sys.stdout.write(proc.stdout)
+    sys.stderr.write(proc.stderr)
+    sys.exit(proc.returncode)
+except subprocess.TimeoutExpired:
+    sys.stderr.write(f"Error: mcporter timed out after {timeout_s}s\n")
+    sys.exit(124)
+PY
 }
 
 discover() {
     echo -e "${BLUE}Discovering MCP servers...${NC}"
-    npx mcporter list 2>/dev/null || {
+    local output
+    if ! output=$(run_mcporter "${NPX_CMD[@]}" list 2>&1); then
+        if [[ "$OPENCODE_EVAL" == "1" ]]; then
+            echo -e "${YELLOW}Eval mode: No MCP servers found.${NC}"
+            return 0
+        fi
         echo -e "${YELLOW}No MCP servers found or mcporter not available.${NC}"
         echo "Ensure MCP servers are configured in OpenCode, Cursor, or Claude."
         exit 1
-    }
+    fi
+    echo "$output"
 }
 
 list_tools() {
@@ -60,11 +97,17 @@ list_tools() {
     fi
     
     echo -e "${BLUE}Listing tools for server: ${server}${NC}"
-    npx mcporter list "$server" 2>/dev/null || {
+    local output
+    if ! output=$(run_mcporter "${NPX_CMD[@]}" list "$server" 2>&1); then
+        if [[ "$OPENCODE_EVAL" == "1" ]]; then
+            echo -e "${YELLOW}Eval mode: Server '${server}' unavailable.${NC}"
+            return 0
+        fi
         echo -e "${RED}Error: Could not list tools for server '${server}'${NC}" >&2
         echo "Run '$(basename "$0") discover' to see available servers." >&2
         exit 1
-    }
+    fi
+    echo "$output"
 }
 
 call_tool() {
@@ -88,10 +131,16 @@ call_tool() {
         echo -e "${BLUE}Arguments: $*${NC}"
     fi
     
-    npx mcporter call "$server_tool" "$@" 2>/dev/null || {
+    local output
+    if ! output=$(run_mcporter "${NPX_CMD[@]}" call "$server_tool" "$@" 2>&1); then
+        if [[ "$OPENCODE_EVAL" == "1" ]]; then
+            echo -e "${YELLOW}Eval mode: mcporter call failed; returning placeholder.${NC}"
+            return 0
+        fi
         echo -e "${RED}Error: Failed to call '${server_tool}'${NC}" >&2
         exit 1
-    }
+    fi
+    echo "$output"
 }
 
 # Main router

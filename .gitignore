@@ -28,3 +28,8 @@ pnpm-lock.yaml
 
 # Generated audit reports (point-in-time, not source-controlled)
 .opencode/docs/SECURITY-AUDIT.md
+
+# Eval run artifacts
+opencode-eval-results/
+opencode-eval-results-*/
+.opencode/evals/skill-loading/.tmp/
