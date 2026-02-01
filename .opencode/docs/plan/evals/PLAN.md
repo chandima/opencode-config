@@ -11,7 +11,7 @@ Purpose: establish a deterministic, CI-friendly evaluation framework for OpenCod
 - Runner now excludes `AGENTS.md` and `.opencode/` from test copies to avoid workflow instructions contaminating eval runs.
 - Command regex checks consider `bash` tool inputs (not just assistant text).
 - Added `--disable-models-fetch` to avoid `models.dev` access in offline/CI environments.
-- Default dataset reduced to a small starter set; full dataset preserved as `opencode_skill_loading_eval_dataset.full.jsonl`.
+- Dataset now consolidated into `opencode_skill_loading_eval_dataset.jsonl` (balanced explicit/implicit/near-miss/negative cases).
 - Eval matrix now GPT-only to keep early runs small.
 - Server mode now uses `--port` to reuse the running server (avoids `--attach` context errors). Default remains per-test until server mode proves faster.
 - Added timing instrumentation: per-case prep/run/parse/grade breakdowns (`--timing-detail`) plus optional timestamped event traces (`--trace-events`) and time-to-first-event/tool/skill fields.
@@ -31,7 +31,7 @@ Purpose: establish a deterministic, CI-friendly evaluation framework for OpenCod
 - Current baseline (openai/gpt-5.2-codex, minimal guard): 12/13 PASS. Known fail: `scaffold_new_skill_jira` (model does not invoke `skill-creator` despite explicit request). Treat as legitimate model/tool-use limitation for now.
 - Added `skill-testcase-steering.md` and referenced it in eval docs for future test case authoring.
 - Dataset review: current 13-case set covers all 6 skills and includes negative and permission-deny checks. Gaps to address when expanding: implicit cases for mcporter/security-auditor, near-miss cases for each skill, multi-skill confusion pairs, and a second denial case (keep existing 13-case baseline unchanged).
-- Rewrote the expanded dataset (`opencode_skill_loading_eval_dataset.full.jsonl`) to 25 cases aligned with the steering rubric; kept the 13-case baseline unchanged.
+- Rebalanced the consolidated dataset to 25 cases aligned with the steering rubric (kept explicit cases limited; added implicit + near-miss coverage).
 
 ## Phase 1 — Align goals and success criteria
 - Confirm the four evaluation buckets: **Process**, **Outcome**, **Style/Policy**, **Efficiency**.

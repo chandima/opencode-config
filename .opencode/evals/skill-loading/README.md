@@ -7,8 +7,7 @@ Deterministic eval runner for OpenCode skill routing + loading. It runs a JSONL 
 - `opencode_skill_eval_runner.mjs` — runnable Node runner (no deps)
 - `opencode_skill_eval_runner.ts` — TypeScript source
 - `opencode_skill_eval_runner.sh` — shell wrapper
-- `opencode_skill_loading_eval_dataset.jsonl` — **small** dataset (couple cases per skill)
-- `opencode_skill_loading_eval_dataset.full.jsonl` — full dataset (archived)
+- `opencode_skill_loading_eval_dataset.jsonl` — balanced dataset (explicit + implicit + near-miss + negatives)
 - `opencode_skill_eval_matrix.json` — agent/model matrix (GPT only)
 - `opencode_skill_eval_gradespec.md` — grading rules
 - `skill-testcase-steering.md` — guidance for writing new eval cases
