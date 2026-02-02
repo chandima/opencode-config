@@ -18,7 +18,7 @@ Purpose: establish a deterministic, CI-friendly evaluation framework for OpenCod
 - `--isolate-config` now skips auto-loading repo `opencode.json` unless `--config` is explicitly provided (prevents beads/plugin contamination). It sets `OPENCODE_CONFIG_DIR` to a temp dir. Project config is only disabled if `--disable-project-config` is passed.
 - When `--isolate-config` is used without `--config`, the runner writes a minimal config (plugins disabled, `asu-discover` denied) to keep evals deterministic.
 - The runner injects a minimal `AGENTS.md` guard in temp workspaces to forbid Beads usage during eval runs.
-- The runner now prepends a minimal prompt guard that only forbids Beads/bd and the task tool (disable with `--no-guard`).
+- The runner now prepends a prompt guard that forbids Beads/bd and the task tool, and enforces explicit skill usage when users name a skill or request exact gh/GitHub CLI commands (disable with `--no-guard`).
 - Added parallel execution (`--parallel`) with per-test timeout progress bars and per-run `progress.json`.
 - Parallel runs now isolate OpenCode cache per worker to avoid cache corruption/race conditions.
 - Added a hard timeout fallback to prevent hangs after timeout.
@@ -28,7 +28,7 @@ Purpose: establish a deterministic, CI-friendly evaluation framework for OpenCod
 - Minimal eval config now allows `external_directory` to avoid permission prompts during skill script execution.
 - Runner sets `OPENCODE_REPO_ROOT` so eval-mode scripts can write outputs at repo root (security-auditor report path).
 - Matrix updated to `openai/gpt-5.2-codex` after `github-copilot/gpt-5.2-codex` returned model_not_supported.
-- Current baseline (openai/gpt-5.2-codex, minimal guard): 12/13 PASS. Known fail: `scaffold_new_skill_jira` (model does not invoke `skill-creator` despite explicit request). Treat as legitimate model/tool-use limitation for now.
+- Baseline should be re-run under the updated prompt guard. Prior minimal-guard baseline was 12/13 PASS with `scaffold_new_skill_jira` failing to invoke `skill-creator`.
 - Added `docs/skill-testcase-steering.md` and referenced it in eval docs for future test case authoring.
 - Dataset review: current 13-case set covers all 6 skills and includes negative and permission-deny checks. Gaps to address when expanding: implicit cases for mcporter/security-auditor, near-miss cases for each skill, multi-skill confusion pairs, and a second denial case (keep existing 13-case baseline unchanged).
 - Rebalanced the consolidated dataset to 25 cases aligned with the steering rubric (kept explicit cases limited; added implicit + near-miss coverage).
@@ -39,6 +39,8 @@ Purpose: establish a deterministic, CI-friendly evaluation framework for OpenCod
 - Codex setup remains all-or-nothing (no selective install UI).
 - `--isolate-config` now disables project config by default to avoid repo plugin contamination during evals.
 - Added `/skill-evals-run` and `/skill-evals-optimize` commands plus matching Codex skills; optimize includes helper scripts and a 2-iteration cap.
+- Prompt guard now enforces explicit skill usage on named-skill requests and gh CLI command requests.
+- github-ops guidance tightened to require literal `gh` commands for PR list/exact-command prompts.
 
 ## Phase 1 — Align goals and success criteria
 - Confirm the four evaluation buckets: **Process**, **Outcome**, **Style/Policy**, **Efficiency**.

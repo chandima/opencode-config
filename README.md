@@ -231,6 +231,25 @@ Skills with a `tests/` directory should have smoke tests run after modifications
 
 All tests should pass before committing changes.
 
+### Skill Loading Evals
+
+The skill-loading eval harness lives in `.opencode/evals/skill-loading/` and includes a runner, dataset, and grading spec.
+
+Quick run (deterministic):
+
+```bash
+./.opencode/evals/skill-loading/opencode_skill_eval_runner.sh \
+  --repo "$(pwd)" \
+  --dataset .opencode/evals/skill-loading/opencode_skill_loading_eval_dataset.jsonl \
+  --matrix .opencode/evals/skill-loading/opencode_skill_eval_matrix.json \
+  --disable-models-fetch \
+  --outdir .opencode/evals/skill-loading/.tmp/opencode-eval-results
+```
+
+OpenCode commands:
+- `/skill-evals-run` — run the eval suite
+- `/skill-evals-optimize` — triage failed cases and re-test (2-iteration cap)
+
 ### Testing Agents
 
 To verify agent permission enforcement:
