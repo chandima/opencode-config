@@ -1,28 +1,3 @@
-## Planning protocol (PLAN.md is the source of truth)
-- Always read `PLAN.md` before making changes.
-- If the user says "continue", use the newest entry in **STATUS UPDATES** to determine:
-  - what changed last,
-  - current intended behavior ("Behavior now"),
-  - and how to validate ("Validate" command).
-- Treat `PLAN.md` as a *resume log*, not a task tracker:
-  - Do NOT add TODO lists, checkboxes, or task-management structures.
-  - Keep entries short and factual.
-
-## Updating PLAN.md (required when you change behavior)
-- After completing meaningful work, append a new **STATUS UPDATES** entry (newest first) using the template fields:
-  - Change
-  - Behavior now
-  - Validate (one command; two max if needed: quick/full)
-  - Notes (optional)
-- If you make a notable tradeoff, add a one-line entry to **DECISIONS**.
-- If you discover a pitfall or non-obvious constraint, add a one-line entry to **DISCOVERIES / GOTCHAS**.
-
-## Validation
-- Before claiming completion, run the `Validate:` command from the most recent STATUS UPDATE.
-- Prefer minimal command output in chat (summarize; do not paste huge logs unless asked).
-
----
-
 # PLAN - <project/feature name>
 
 ## PURPOSE (1-2 sentences)

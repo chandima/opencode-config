@@ -7,26 +7,49 @@ context: fork
 
 # Planning Doc
 
+## Plan steering
+
+- Always read `PLAN.md` before making changes.
+- If the user says "continue", use the newest entry in **STATUS UPDATES** to determine:
+  - what changed last,
+  - current intended behavior ("Behavior now"),
+  - and how to validate ("Validate" command).
+- Treat `PLAN.md` as a resume log, not a task tracker:
+  - Do NOT add TODO lists, checkboxes, or task-management structures.
+  - Keep entries short and factual.
+
 ## Workflow
 
-1. Always read the current PLAN.md first (if it exists). It is the source of truth.
-2. Determine the current branch: `git rev-parse --abbrev-ref HEAD`.
-3. If on the default branch (usually `main` or the branch pointed to by `refs/remotes/origin/HEAD`):
+1. Determine the current branch: `git rev-parse --abbrev-ref HEAD`.
+2. If on the default branch (usually `main` or the branch pointed to by `refs/remotes/origin/HEAD`):
    - Stop and prompt the user to create and check out a feature branch before proceeding.
    - Use the git skill or git commands to guide branch creation.
-4. Derive the plan path:
+3. Derive the plan path:
    - If the branch matches `^(feat|fix|chore)/(.+)$`, use prefix = match 1 and feature = match 2.
    - Otherwise use prefix = `feat` and feature = full branch name.
    - Plan path: `docs/plans/<prefix>/<feature>/PLAN.md`.
-5. If PLAN.md does not exist:
+4. If PLAN.md does not exist:
    - Create directories and create the plan from `references/plan-template.md`.
    - Replace the header placeholder with the feature name.
    - Fill in PURPOSE and the PHASE PLAN based on the user request.
-6. If PLAN.md exists:
+5. If PLAN.md exists:
    - Do not overwrite. Add to the plan for the current feature.
    - Append or refine the PHASE PLAN as needed; keep STATUS UPDATES newest-first.
-7. When you complete meaningful work, append a STATUS UPDATES entry (newest first) and run the latest Validate command before claiming completion.
-8. Before stopping, update DECISIONS or DISCOVERIES / GOTCHAS if any new tradeoffs or surprises occurred.
+
+## Updating PLAN.md
+
+- After completing meaningful work, append a new **STATUS UPDATES** entry (newest first) using the template fields:
+  - Change
+  - Behavior now
+  - Validate (one command; two max if needed: quick/full)
+  - Notes (optional)
+- If you make a notable tradeoff, add a one-line entry to **DECISIONS**.
+- If you discover a pitfall or non-obvious constraint, add a one-line entry to **DISCOVERIES / GOTCHAS**.
+
+## Validation
+
+- Before claiming completion, run the `Validate:` command from the most recent STATUS UPDATE.
+- Prefer minimal command output in chat (summarize; do not paste huge logs unless asked).
 
 ## Resource
 
