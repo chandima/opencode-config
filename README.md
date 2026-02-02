@@ -49,6 +49,9 @@ cd opencode-config
 ./setup.sh opencode     # Install OpenCode only
 ./setup.sh codex        # Install Codex only
 ./setup.sh both         # Install both OpenCode and Codex
+./setup.sh opencode --remove  # Remove OpenCode symlinks
+./setup.sh codex --remove     # Remove Codex symlinks
+./setup.sh both --remove      # Remove both OpenCode + Codex symlinks
 ./setup.sh --help       # Show help
 ```
 
@@ -58,6 +61,7 @@ The script will:
 - **Codex**: Symlink individual skills to `~/.codex/skills/` (preserves `.system/` directory)
 - **Codex**: Remove stale symlinks pointing to this repo and sync `[permission.skill]` into `~/.codex/config.toml` (if present)
 - **Respects disabled skills**: Skills with `"deny"` permission in `opencode.json` are skipped for Codex
+- **Remove mode**: Use `[target] --remove` to delete only symlinks created by the script (non-symlink directories are left intact)
 
 <details>
 <summary>Manual alternative (without script)</summary>
