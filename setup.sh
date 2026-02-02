@@ -70,154 +70,18 @@ setup_codex() {
     local disabled_skills
     disabled_skills=$(get_disabled_skills)
 
-    local all_skills=()
+    # Symlink each skill individually (preserves .system/)
     local skill_dir
     for skill_dir in "$SCRIPT_DIR/skills"/*; do
         [[ -d "$skill_dir" ]] || continue
-        all_skills+=("$(basename "$skill_dir")")
-    done
 
-    if [[ "${#all_skills[@]}" -eq 0 ]]; then
-        echo "  No skills found."
-        return 0
-    fi
-
-    local payload=""
-    local skill_name
-    for skill_name in "${all_skills[@]}"; do
-        local target="$config_dir/skills/$skill_name"
-        local installed=0
-        local disabled=0
-
-        if [[ -e "$target" ]]; then
-            installed=1
-        fi
-
-        if [[ -n "$disabled_skills" ]] && echo "$skill_name" | grep -qE "^($disabled_skills)$"; then
-            disabled=1
-        fi
-
-        payload+="${skill_name}"$'\t'"${installed}"$'\t'"${disabled}"$'\n'
-    done
-
-    payload="${payload%$'\n'}"
-
-    local selected_skills=""
-    if [[ -t 0 && -t 1 && -n "${payload}" ]] && command -v python3 >/dev/null 2>&1; then
-        echo "  Select skills to install (existing unselected symlinks are left unchanged)."
-        if ! selected_skills=$(SKILLS_PAYLOAD="$payload" python3 - << 'PY'
-import curses
-import os
-import sys
-
-payload = os.environ.get("SKILLS_PAYLOAD", "")
-lines = [line for line in payload.splitlines() if line.strip()]
-skills = []
-for line in lines:
-    parts = line.split("\t")
-    if len(parts) != 3:
-        continue
-    name, installed, disabled = parts
-    skills.append({
-        "name": name,
-        "selected": installed == "1" and disabled != "1",
-        "disabled": disabled == "1",
-    })
-
-if not skills:
-    sys.exit(0)
-
-def run(stdscr):
-    curses.curs_set(0)
-    stdscr.keypad(True)
-    index = 0
-    top = 0
-
-    while True:
-        stdscr.clear()
-        height, width = stdscr.getmaxyx()
-        list_height = max(1, height - 3)
-
-        header = "Up/Down: navigate  Space: toggle  Enter: confirm  q: cancel"
-        stdscr.addnstr(0, 0, header, width - 1)
-
-        if index < top:
-            top = index
-        elif index >= top + list_height:
-            top = index - list_height + 1
-
-        for i in range(list_height):
-            item_index = top + i
-            if item_index >= len(skills):
-                break
-            item = skills[item_index]
-            marker = "[x]" if item["selected"] else "[ ]"
-            label = item["name"]
-            if item["disabled"]:
-                label = f"{label} (disabled)"
-            line = f"{marker} {label}"
-            if item_index == index:
-                stdscr.attron(curses.A_REVERSE)
-                stdscr.addnstr(i + 1, 0, line, width - 1)
-                stdscr.attroff(curses.A_REVERSE)
-            else:
-                stdscr.addnstr(i + 1, 0, line, width - 1)
-
-        stdscr.refresh()
-        key = stdscr.getch()
-
-        if key in (curses.KEY_UP, ord("k")):
-            index = max(0, index - 1)
-        elif key in (curses.KEY_DOWN, ord("j")):
-            index = min(len(skills) - 1, index + 1)
-        elif key in (ord(" "),):
-            item = skills[index]
-            if not item["disabled"]:
-                item["selected"] = not item["selected"]
-        elif key in (curses.KEY_ENTER, 10, 13):
-            break
-        elif key in (ord("q"), 27):
-            raise KeyboardInterrupt
-
-def main():
-    try:
-        curses.wrapper(run)
-    except KeyboardInterrupt:
-        sys.exit(1)
-
-    selected = [item["name"] for item in skills if item["selected"]]
-    sys.stdout.write("\n".join(selected))
-
-main()
-PY
-); then
-            echo "  Selection cancelled."
-            exit 1
-        fi
-    else
-        echo "  Interactive selection unavailable; installing all enabled skills."
-        local fallback_skills=()
-        for skill_name in "${all_skills[@]}"; do
-            if [[ -n "$disabled_skills" ]] && echo "$skill_name" | grep -qE "^($disabled_skills)$"; then
-                continue
-            fi
-            fallback_skills+=("$skill_name")
-        done
-        selected_skills=$(printf '%s\n' "${fallback_skills[@]}")
-    fi
-
-    for skill_dir in "$SCRIPT_DIR/skills"/*; do
-        [[ -d "$skill_dir" ]] || continue
-
+        local skill_name
         skill_name=$(basename "$skill_dir")
-        target="$config_dir/skills/$skill_name"
+        local target="$config_dir/skills/$skill_name"
 
+        # Skip disabled skills
         if [[ -n "$disabled_skills" ]] && echo "$skill_name" | grep -qE "^($disabled_skills)$"; then
             echo "  Skipping disabled: $skill_name"
-            continue
-        fi
-
-        if ! printf '%s\n' "$selected_skills" | grep -qx "$skill_name"; then
             continue
         fi
 
@@ -231,18 +95,6 @@ PY
         ln -sfn "$skill_dir" "$target"
         echo "  Linked: $skill_name"
     done
-
-    if [[ -n "$disabled_skills" ]]; then
-        local disabled_list=""
-        for skill_name in "${all_skills[@]}"; do
-            if echo "$skill_name" | grep -qE "^($disabled_skills)$"; then
-                disabled_list+="${skill_name} "
-            fi
-        done
-        if [[ -n "$disabled_list" ]]; then
-            echo "  Disabled skills skipped: ${disabled_list% }"
-        fi
-    fi
 
     echo "  Done!"
 }
