@@ -1,6 +1,6 @@
 ---
 name: context7-docs
-description: "Fetch documentation via Context7 MCP. Use for React, Next.js, Vue, Tailwind CSS, MCP, OpenCode docs, or any npm library documentation. Always use BEFORE searching external docs."
+description: "Fetch official library docs via Context7 MCP. Use for Tailwind CSS docs (grid, responsive variants), React, Next.js, Vue, MCP, OpenCode, or any npm library. Always use before external web search."
 allowed-tools: Bash(npx:*) Bash(./scripts/*) Read Glob Grep
 context: fork
 ---

@@ -37,6 +37,8 @@ Purpose: establish a deterministic, CI-friendly evaluation framework for OpenCod
 
 - Added `--remove` support to `setup.sh` for removing OpenCode/Codex symlinks.
 - Codex setup remains all-or-nothing (no selective install UI).
+- `--isolate-config` now disables project config by default to avoid repo plugin contamination during evals.
+- Added `/skill-evals-run` and `/skill-evals-optimize` commands plus matching Codex skills; optimize includes helper scripts and a 2-iteration cap.
 
 ## Phase 1 — Align goals and success criteria
 - Confirm the four evaluation buckets: **Process**, **Outcome**, **Style/Policy**, **Efficiency**.

@@ -1,6 +1,6 @@
 ---
 name: github-ops
-description: "GitHub operations via gh CLI. Use for ANY GitHub task (repos, issues, pull requests, releases, actions, security, search) or when asked to draft gh/GitHub CLI commands, including prompts that only mention owner/repo. Always use instead of WebFetch for github.com."
+description: "GitHub operations via gh CLI. Use for pull requests/PRs, GitHub code search, or drafting exact gh commands (owner/repo, gh pr list, gh search). Always use instead of WebFetch for github.com."
 allowed-tools: Bash(gh:*) Bash(git:*) Bash(./scripts/*) Read Glob Grep Task
 context: fork
 ---
@@ -67,6 +67,7 @@ bash scripts/router.sh search repos --query "language:go stars:>10000"
 ### Command-first responses
 
 When the user asks for commands or "exact gh commands", respond with the command(s) first (gh or scripts), then brief notes if needed. Avoid prose-only answers for command requests.
+If the user asks to list pull requests or to show the exact commands, always include a literal `gh` command line in the response.
 
 ## Script Reference
 

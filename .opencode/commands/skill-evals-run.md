@@ -1,6 +1,6 @@
 ---
-name: skill-evals
-description: Run the OpenCode skill-loading eval suite for this repo
+name: skill-evals-run
+description: Run the OpenCode skill-loading eval tests for this repo
 arguments:
   - name: filter-id
     description: Regex of case IDs to run (optional)
@@ -13,7 +13,7 @@ arguments:
     required: false
 ---
 
-# Skill Evals Command
+# Skill Evals Run Command
 
 Run the skill-loading eval suite for this repository using the local runner.
 
@@ -21,7 +21,7 @@ Run the skill-loading eval suite for this repository using the local runner.
 
 1. Build the base command (repo-scoped defaults):
    ```
-   node .opencode/evals/skill-loading/opencode_skill_eval_runner.mjs \
+   .opencode/evals/skill-loading/opencode_skill_eval_runner.sh \
      --repo "$PWD" \
      --dataset .opencode/evals/skill-loading/opencode_skill_loading_eval_dataset.jsonl \
      --matrix .opencode/evals/skill-loading/opencode_skill_eval_matrix.json \
@@ -40,11 +40,11 @@ Run the skill-loading eval suite for this repository using the local runner.
 
 ```bash
 # Full run (default parallel=3)
-/skill-evals
+/skill-evals-run
 
 # Run only cases matching IDs
-/skill-evals --filter-id "gh_|mcp_"
+/skill-evals-run --filter-id "gh_|mcp_"
 
 # Run only a category
-/skill-evals --filter-category "github-ops"
+/skill-evals-run --filter-category "github-ops"
 ```

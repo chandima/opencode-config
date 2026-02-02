@@ -1,6 +1,6 @@
 ---
 name: skill-creator
-description: "Create OpenCode skills. ALWAYS use when asked to create a new skill, design a skill, or scaffold skill files (SKILL.md outline, folder structure, quick scaffold), when asked to package repeated steps into a reusable skill, or when the user explicitly says \"skill-creator\" or \"skill creator\"."
+description: "Create/scaffold OpenCode skills (SKILL.md outline, folder structure, quick scaffold). Use when asked to create or scaffold a skill, or when the user says \"use the skill-creator skill\" / \"skill-creator\"."
 allowed-tools: Read Write Edit Glob Grep Bash Task WebFetch
 context: fork
 ---

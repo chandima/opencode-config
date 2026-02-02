@@ -61,21 +61,25 @@ Pre-deployment security audit that blocks on critical vulnerabilities. Context-a
 ## Running the Audit
 
 **Always use the skill scripts (do not invent ad-hoc commands).**
+Scripts live in `skills/security-auditor/scripts/`; `cd` into the skill directory before running them.
 - Full audit: `./scripts/audit.sh`
 - Changed-only/PR checks: `./scripts/audit.sh --changed-only`
 
 ### Full Audit (default for single-app repos)
 ```bash
+cd skills/security-auditor
 ./scripts/audit.sh
 ```
 
 ### Scoped Audit (monorepos)
 ```bash
+cd skills/security-auditor
 ./scripts/audit.sh --scope apps/my-api
 ```
 
 ### Changed-Only Audit (CI/PR checks)
 ```bash
+cd skills/security-auditor
 ./scripts/audit.sh --changed-only
 ```
 

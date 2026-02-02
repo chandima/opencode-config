@@ -219,6 +219,8 @@ const AGENTS_GUARD = `# Eval Harness Guard
 const PROMPT_GUARD = `Eval harness rules:
 - Do not use Beads or the bd CLI.
 - Do not use the task tool unless the user explicitly asks.
+- If the user explicitly names a skill (e.g., "use the skill-creator skill"), you MUST call the skill tool for that skill before answering.
+- If the user asks for exact gh/GitHub CLI commands, you MUST call the skill tool for github-ops before answering.
 `;
 
 function nowMs(): number { return Date.now(); }
@@ -273,7 +275,10 @@ function parseArgs(argv: string[]) {
     else if (a === "--start-server") args.startServer = true;
     else if (a === "--disable-models-fetch") args.disableModelsFetch = true;
     else if (a === "--models-url") args.modelsUrl = next();
-    else if (a === "--isolate-config") args.isolateConfig = true;
+    else if (a === "--isolate-config") {
+      args.isolateConfig = true;
+      args.disableProjectConfig = true;
+    }
     else if (a === "--config-dir") args.configDir = next();
     else if (a === "--config") args.config = next();
     else if (a === "--disable-project-config") args.disableProjectConfig = true;
