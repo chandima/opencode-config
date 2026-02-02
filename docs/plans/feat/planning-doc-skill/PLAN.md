@@ -6,6 +6,19 @@ Provide a planning-doc skill that creates or updates PLAN.md files based on bran
 ## STATUS UPDATES (append-only; newest first)
 ### 2026-02-02
 Change:
+- Added planning-doc eval cases to the skill-loading dataset.
+
+Behavior now:
+- Skill-loading evals include explicit, implicit, near-miss, and negative coverage for planning-doc.
+
+Validate:
+- `rg -n "planning_doc_" .opencode/evals/skill-loading/opencode_skill_loading_eval_dataset.jsonl` -> four cases listed
+
+Notes:
+- None.
+
+### 2026-02-02
+Change:
 - Moved PLAN.md steering instructions into the planning-doc SKILL.md and removed them from the template.
 
 Behavior now:
