@@ -251,8 +251,8 @@ esac
 
 ---
 
-## Session Completion
+## Commit and Push
 
-Session close protocol is defined in `.opencode/agents/my-plan-exec.md` under "Session Close Protocol (Landing the Plane)".
-
-**Key rule:** Work is NOT complete until `git push` succeeds.
+- Stage changes and ask before committing.
+- Commit or push only after explicit user approval.
+- Do not auto-push as part of session completion unless requested.

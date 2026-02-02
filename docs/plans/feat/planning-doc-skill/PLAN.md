@@ -6,6 +6,19 @@ Provide a planning-doc skill that creates or updates PLAN.md files based on bran
 ## STATUS UPDATES (append-only; newest first)
 ### 2026-02-02
 Change:
+- Updated AGENTS.md to require explicit approval before commit or push.
+
+Behavior now:
+- Repo guidance aligns with default behavior: stage changes and ask before committing/pushing.
+
+Validate:
+- `rg -n "Commit and Push" AGENTS.md` -> section present
+
+Notes:
+- None.
+
+### 2026-02-02
+Change:
 - Added planning-doc eval cases to the skill-loading dataset.
 
 Behavior now:
