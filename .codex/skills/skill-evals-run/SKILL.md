@@ -36,7 +36,8 @@ If `--parallel` is omitted, keep the default of 3.
 ## After the run
 
 - Summarize PASS/FAIL counts and list failed case IDs.
-- If failures exist, reference `.opencode/evals/skill-loading/docs/skill-optimization-steering.md` and suggest the next remediation step.
+- If failures exist (PASS/FAIL, not ERROR), reference `.opencode/evals/skill-loading/docs/skill-optimization-steering.md` and suggest the next remediation step.
+- If any cases are ERROR, do not suggest optimization. Instead, inspect `.opencode/evals/skill-loading/.tmp/opencode-eval-results/<run>/results.json` and any traces to identify the crash, then re-run the evals once the error is resolved.
 
 ## Notes
 

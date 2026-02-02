@@ -6,6 +6,19 @@ Provide a planning-doc skill that creates or updates PLAN.md files based on bran
 ## STATUS UPDATES (append-only; newest first)
 ### 2026-02-02
 Change:
+- Clarified skill-evals-run guidance to treat ERROR cases as runner failures, not optimization targets.
+
+Behavior now:
+- Eval guidance distinguishes ERRORs from PASS/FAIL and directs diagnosis before optimization.
+
+Validate:
+- `rg -n "ERROR" .codex/skills/skill-evals-run/SKILL.md` -> error handling guidance present
+
+Notes:
+- None.
+
+### 2026-02-02
+Change:
 - Updated AGENTS.md to require explicit approval before commit or push.
 
 Behavior now:
