@@ -33,6 +33,11 @@ Purpose: establish a deterministic, CI-friendly evaluation framework for OpenCod
 - Dataset review: current 13-case set covers all 6 skills and includes negative and permission-deny checks. Gaps to address when expanding: implicit cases for mcporter/security-auditor, near-miss cases for each skill, multi-skill confusion pairs, and a second denial case (keep existing 13-case baseline unchanged).
 - Rebalanced the consolidated dataset to 25 cases aligned with the steering rubric (kept explicit cases limited; added implicit + near-miss coverage).
 
+## Status update (2026-02-02)
+
+- Added `--remove` support to `setup.sh` for removing OpenCode/Codex symlinks.
+- Codex setup remains all-or-nothing (no selective install UI).
+
 ## Phase 1 — Align goals and success criteria
 - Confirm the four evaluation buckets: **Process**, **Outcome**, **Style/Policy**, **Efficiency**.
 - Define pass/fail thresholds and what constitutes a “must-load” vs “allowed” vs “forbidden” skill.
