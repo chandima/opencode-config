@@ -97,13 +97,13 @@ setup_codex() {
             disabled=1
         fi
 
-        payload+="${skill_name}\t${installed}\t${disabled}\n"
+        payload+="${skill_name}"$'\t'"${installed}"$'\t'"${disabled}"$'\n'
     done
 
     payload="${payload%$'\n'}"
 
     local selected_skills=""
-    if [[ -t 0 && -t 1 && -n "${payload}" && -x "$(command -v python3)" ]]; then
+    if [[ -t 0 && -t 1 && -n "${payload}" ]] && command -v python3 >/dev/null 2>&1; then
         echo "  Select skills to install (existing unselected symlinks are left unchanged)."
         if ! selected_skills=$(SKILLS_PAYLOAD="$payload" python3 - << 'PY'
 import curses
@@ -196,11 +196,15 @@ PY
         fi
     else
         echo "  Interactive selection unavailable; installing all enabled skills."
-        selected_skills=$(printf '%s\n' "${all_skills[@]}")
+        local fallback_skills=()
+        for skill_name in "${all_skills[@]}"; do
+            if [[ -n "$disabled_skills" ]] && echo "$skill_name" | grep -qE "^($disabled_skills)$"; then
+                continue
+            fi
+            fallback_skills+=("$skill_name")
+        done
+        selected_skills=$(printf '%s\n' "${fallback_skills[@]}")
     fi
-
-    local selected_lookup
-    selected_lookup="$(printf '%s\n' "$selected_skills" | tr '\n' ' ')"
 
     for skill_dir in "$SCRIPT_DIR/skills"/*; do
         [[ -d "$skill_dir" ]] || continue
