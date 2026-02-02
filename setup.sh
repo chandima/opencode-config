@@ -299,30 +299,45 @@ remove_codex() {
 
 # Parse arguments
 ACTION="install"
-TARGET=""
+TARGET="opencode"
+TARGET_SET=0
+REMOVE_SEEN=0
 
-for arg in "$@"; do
-    case "$arg" in
+while [[ $# -gt 0 ]]; do
+    case "$1" in
         --help|-h)
             show_help
             exit 0
             ;;
         --remove|-r)
             ACTION="remove"
+            REMOVE_SEEN=1
             ;;
         opencode|codex|both)
-            TARGET="$arg"
+            if [[ "$TARGET_SET" -eq 1 ]]; then
+                echo "Error: Multiple targets specified."
+                echo ""
+                show_help
+                exit 1
+            fi
+            if [[ "$REMOVE_SEEN" -eq 1 ]]; then
+                echo "Error: Target must come before --remove."
+                echo ""
+                show_help
+                exit 1
+            fi
+            TARGET="$1"
+            TARGET_SET=1
             ;;
         *)
-            echo "Error: Invalid option '$arg'"
+            echo "Error: Invalid option '$1'"
             echo ""
             show_help
             exit 1
             ;;
     esac
+    shift
 done
-
-TARGET="${TARGET:-opencode}"
 
 if [[ "$ACTION" == "install" ]]; then
     case "$TARGET" in
