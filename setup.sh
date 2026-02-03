@@ -7,12 +7,12 @@ show_help() {
     cat << 'EOF'
 Usage: ./setup.sh [TARGET] [--remove]
 
-Install OpenCode/Codex configuration by symlinking skills and config files.
+Install OpenCode/Codex configuration by symlinking skills and merging Codex config.
 
 TARGETS:
     (none)      Install for OpenCode only (default)
     opencode    Install for OpenCode only
-    codex       Install for Codex only
+    codex       Install for Codex only (skills under ~/.codex, config under ~/.config/.codex)
     both        Install for both OpenCode and Codex
     --remove, -r  Remove symlinks instead of installing
     --help, -h  Show this help message
@@ -43,49 +43,172 @@ skill_in_list() {
     return 1
 }
 
-update_codex_permissions() {
-    local config_dir="$HOME/.codex"
-    local config_file="$config_dir/config.toml"
+require_python3() {
+    local python_cmd
+    python_cmd="$(command -v python3 || true)"
+    if [[ -z "$python_cmd" ]]; then
+        echo "Error: python3 is required for Codex config merging."
+        exit 1
+    fi
+}
 
-    if [[ ! -f "$config_file" ]]; then
-        echo "  Skipping config.toml update (not found)"
-        return
+codex_config_root() {
+    echo "$HOME/.config/.codex"
+}
+
+codex_config_file() {
+    echo "$(codex_config_root)/config.toml"
+}
+
+codex_state_file() {
+    echo "$(codex_config_root)/.opencode-config-state.json"
+}
+
+codex_backup_dir() {
+    echo "$(codex_config_root)/.opencode-config-backups"
+}
+
+merge_codex_config() {
+    local repo_config="$SCRIPT_DIR/.codex/config.toml"
+    local target_config
+    target_config="$(codex_config_file)"
+    local state_file
+    state_file="$(codex_state_file)"
+
+    if [[ ! -f "$repo_config" ]]; then
+        echo "  Skipping Codex config (repo config not found)"
+        return 0
     fi
 
-    node -e "
-const fs = require('fs');
-const configFile = process.argv[1];
-const opencodePath = process.argv[2];
+    require_python3
 
-const opencode = JSON.parse(fs.readFileSync(opencodePath, 'utf8'));
-const perms = opencode.permission?.skill || {};
-const entries = Object.entries(perms);
+    python3 "$SCRIPT_DIR/scripts/codex-config.py" install \
+        --repo "$repo_config" \
+        --target "$target_config" \
+        --state "$state_file" \
+        --opencode "$SCRIPT_DIR/opencode.json"
 
-if (!entries.length) process.exit(0);
-
-const lines = ['[permission.skill]'];
-for (const [key, value] of entries) {
-  const needsQuote = !/^[A-Za-z0-9_]+$/.test(key);
-  const escapedKey = key.replace(/\\\\/g, '\\\\\\\\').replace(/\"/g, '\\\\\"');
-  const escapedValue = String(value).replace(/\\\\/g, '\\\\\\\\').replace(/\"/g, '\\\\\"');
-  lines.push((needsQuote ? '\"' + escapedKey + '\"' : escapedKey) + ' = \"' + escapedValue + '\"');
-}
-const block = lines.join('\\n');
-
-let content = fs.readFileSync(configFile, 'utf8');
-const sectionRegex = /(^|\\n)\\[permission\\.skill\\][\\s\\S]*?(?=\\n\\[|\\s*$)/;
-
-if (sectionRegex.test(content)) {
-  content = content.replace(sectionRegex, (match, lead) => (lead + block));
-} else {
-  const needsNewline = content.length && !content.endsWith('\\n');
-  content = content + (needsNewline ? '\\n' : '') + '\\n' + block + '\\n';
+    echo "  Merged: .config/.codex/config.toml"
 }
 
-fs.writeFileSync(configFile, content);
-" "$config_file" "$SCRIPT_DIR/opencode.json"
+install_codex_rules() {
+    local repo_rules_dir="$SCRIPT_DIR/.codex/rules"
+    local target_rules_dir
+    target_rules_dir="$(codex_config_root)/rules"
+    local backup_dir
+    backup_dir="$(codex_backup_dir)/rules"
 
-    echo "  Synced: config.toml permissions"
+    if [[ ! -d "$repo_rules_dir" ]]; then
+        echo "  Skipping Codex rules (repo rules not found)"
+        return 0
+    fi
+
+    mkdir -p "$target_rules_dir"
+    mkdir -p "$backup_dir"
+
+    local rule_file
+    for rule_file in "$repo_rules_dir"/*; do
+        [[ -f "$rule_file" ]] || continue
+        local rule_name
+        rule_name="$(basename "$rule_file")"
+        local target="$target_rules_dir/$rule_name"
+        local backup="$backup_dir/$rule_name"
+
+        if [[ -L "$target" ]]; then
+            local link_target
+            link_target="$(readlink "$target")"
+            if [[ "$link_target" == "$rule_file" ]]; then
+                echo "  Linked: rules/$rule_name (already)"
+                continue
+            fi
+        fi
+
+        if [[ -e "$target" || -L "$target" ]]; then
+            rm -rf "$backup"
+            mv "$target" "$backup"
+            echo "  Backed up: rules/$rule_name"
+        fi
+
+        ln -sfn "$rule_file" "$target"
+        echo "  Linked: rules/$rule_name"
+    done
+}
+
+remove_codex_rules() {
+    local repo_rules_dir="$SCRIPT_DIR/.codex/rules"
+    local target_rules_dir
+    target_rules_dir="$(codex_config_root)/rules"
+    local backup_dir
+    backup_dir="$(codex_backup_dir)/rules"
+
+    if [[ ! -d "$repo_rules_dir" ]]; then
+        return 0
+    fi
+
+    if [[ ! -d "$target_rules_dir" ]]; then
+        return 0
+    fi
+
+    local rule_file
+    for rule_file in "$repo_rules_dir"/*; do
+        [[ -f "$rule_file" ]] || continue
+        local rule_name
+        rule_name="$(basename "$rule_file")"
+        local target="$target_rules_dir/$rule_name"
+        local backup="$backup_dir/$rule_name"
+
+        if [[ -L "$target" ]]; then
+            local link_target
+            link_target="$(readlink "$target")"
+            if [[ "$link_target" == "$rule_file" ]]; then
+                rm "$target"
+                echo "  Removed: rules/$rule_name"
+            else
+                echo "  Skipped (not our symlink): rules/$rule_name"
+                continue
+            fi
+        elif [[ -e "$target" ]]; then
+            echo "  Skipped (not a symlink): rules/$rule_name"
+            continue
+        fi
+
+        if [[ ! -e "$target" && ! -L "$target" && -e "$backup" ]]; then
+            mv "$backup" "$target"
+            echo "  Restored: rules/$rule_name"
+        fi
+    done
+}
+
+setup_codex_config() {
+    local config_root
+    config_root="$(codex_config_root)"
+    echo "  Config target: $config_root"
+
+    mkdir -p "$config_root"
+    install_codex_rules
+    merge_codex_config
+}
+
+remove_codex_config() {
+    local config_root
+    config_root="$(codex_config_root)"
+    local state_file
+    state_file="$(codex_state_file)"
+    local target_config
+    target_config="$(codex_config_file)"
+
+    if [[ ! -d "$config_root" ]]; then
+        return 0
+    fi
+
+    remove_codex_rules
+
+    if [[ -f "$state_file" || -f "$target_config" ]]; then
+        require_python3
+        python3 "$SCRIPT_DIR/scripts/codex-config.py" remove \
+            --target "$target_config" \
+            --state "$state_file"
+    fi
 }
 
 setup_opencode() {
@@ -119,7 +242,7 @@ setup_opencode() {
 setup_codex() {
     local config_dir="$HOME/.codex"
     echo "Setting up Codex..."
-    echo "  Target: $config_dir/skills/"
+    echo "  Skills target: $config_dir/skills/"
     
     mkdir -p "$config_dir/skills"
     
@@ -174,7 +297,7 @@ setup_codex() {
         fi
     done
 
-    update_codex_permissions
+    setup_codex_config
     
     echo "  Done!"
 }
@@ -208,23 +331,24 @@ remove_codex() {
 
     if [[ ! -d "$config_dir/skills" ]]; then
         echo "  No Codex skills directory found."
-        return 0
+    else
+        local skill_dir
+        for skill_dir in "$SCRIPT_DIR/skills"/*; do
+            [[ -d "$skill_dir" ]] || continue
+            local skill_name
+            skill_name=$(basename "$skill_dir")
+            local target="$config_dir/skills/$skill_name"
+
+            if [[ -L "$target" ]]; then
+                rm "$target"
+                echo "  Removed: $skill_name"
+            elif [[ -e "$target" ]]; then
+                echo "  Skipped (not a symlink): $skill_name"
+            fi
+        done
     fi
 
-    local skill_dir
-    for skill_dir in "$SCRIPT_DIR/skills"/*; do
-        [[ -d "$skill_dir" ]] || continue
-        local skill_name
-        skill_name=$(basename "$skill_dir")
-        local target="$config_dir/skills/$skill_name"
-
-        if [[ -L "$target" ]]; then
-            rm "$target"
-            echo "  Removed: $skill_name"
-        elif [[ -e "$target" ]]; then
-            echo "  Skipped (not a symlink): $skill_name"
-        fi
-    done
+    remove_codex_config
 
     echo "  Done!"
 }
