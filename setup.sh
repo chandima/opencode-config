@@ -12,7 +12,7 @@ Install OpenCode/Codex configuration by symlinking skills and merging Codex conf
 TARGETS:
     (none)      Install for OpenCode only (default)
     opencode    Install for OpenCode only
-    codex       Install for Codex only (skills under ~/.codex, config under ~/.config/.codex)
+    codex       Install for Codex only (skills and config under ~/.codex)
     both        Install for both OpenCode and Codex
     --remove, -r  Remove symlinks instead of installing
     --help, -h  Show this help message
@@ -53,7 +53,7 @@ require_python3() {
 }
 
 codex_config_root() {
-    echo "$HOME/.config/.codex"
+    echo "$HOME/.codex"
 }
 
 codex_config_file() {
@@ -88,7 +88,7 @@ merge_codex_config() {
         --state "$state_file" \
         --opencode "$SCRIPT_DIR/opencode.json"
 
-    echo "  Merged: .config/.codex/config.toml"
+    echo "  Merged: ~/.codex/config.toml"
 }
 
 install_codex_rules() {

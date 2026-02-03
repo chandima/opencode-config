@@ -13,6 +13,9 @@ opencode-config/                      # This git repo (your config)
 ├── setup.sh                          # Setup script for OpenCode and Codex
 ├── opencode.json                     # OpenCode config file (tracked)
 ├── skills/                           # Custom skills (tracked, works with both CLIs)
+├── .codex/                           # Codex config + rules (tracked)
+│   ├── config.toml                   # Codex config (TOML format)
+│   └── rules/                        # Codex rules
 └── .opencode/
     └── agents/                       # Custom agents (OpenCode only)
 
@@ -27,6 +30,7 @@ opencode-config/                      # This git repo (your config)
 ~/.codex/                             # Codex runtime directory
 ├── config.toml                       # Codex config (user-managed, TOML format)
 ├── config.json                       # Runtime settings (not tracked)
+├── rules/                            # Codex rules (from setup.sh)
 └── skills/                           # Skills directory
     ├── .system/                      # Codex system skills (managed by Codex)
     ├── github-ops/ -> <repo>/skills/github-ops/  # Custom skill (via setup.sh)
@@ -59,7 +63,7 @@ The script will:
 
 - **OpenCode**: Symlink `opencode.json`, `skills/`, and `agents/` to `~/.config/opencode/`
 - **Codex**: Symlink individual skills to `~/.codex/skills/` (preserves `.system/` directory)
-- **Codex**: Remove stale symlinks pointing to this repo and sync `[permission.skill]` into `~/.codex/config.toml` (if present)
+- **Codex**: Merge repo `.codex/config.toml` into `~/.codex/config.toml` (repo precedence) and install `.codex/rules/*` into `~/.codex/rules/` (backing up conflicts)
 - **Respects disabled skills**: Skills with `"deny"` permission in `opencode.json` are skipped for Codex
 - **Remove mode**: Use `[target] --remove` to delete only symlinks created by the script (non-symlink directories are left intact)
 

@@ -1,10 +1,10 @@
 # PLAN - setup.sh codex config deployment
 
 ## GOAL (optional; 1-2 sentences)
-Provide a safe, repeatable setup flow that installs/removes Codex rules and config under XDG `~/.config/` without clobbering user settings.
+Provide a safe, repeatable setup flow that installs/removes Codex rules and config under `~/.codex` without clobbering user settings.
 
 ## PURPOSE (1-2 sentences)
-Update `setup.sh` so Codex assets in `.codex/` can be deployed to `~/.config/` with deterministic merge behavior and clean removal that preserves user-owned settings.
+Update `setup.sh` so Codex assets in `.codex/` can be deployed to `~/.codex` with deterministic merge behavior and clean removal that preserves user-owned settings.
 
 ## REFERENCES (optional)
 - `setup.sh`
@@ -13,7 +13,7 @@ Update `setup.sh` so Codex assets in `.codex/` can be deployed to `~/.config/` w
 
 ## SCOPE
 In scope:
-- Add install/remove handling for `.codex/rules/` and `.codex/config.toml` under `~/.config/`.
+- Add install/remove handling for `.codex/rules/` and `.codex/config.toml` under `~/.codex`.
 - Implement TOML merge with repo precedence and reversible removal semantics.
 - Update help text/output to reflect new behavior and target paths.
 
@@ -24,9 +24,24 @@ Out of scope:
 ## CURRENT BASELINE (optional)
 - `setup.sh` manages OpenCode symlinks under `~/.config/opencode/` and Codex skills under `~/.codex/skills/`.
 - Codex `config.toml` is only patched for `[permission.skill]` when present under `~/.codex/config.toml`.
-- No current handling for `.codex/rules/` or `.codex/config.toml` under `~/.config/`.
+- No current handling for `.codex/rules/` or `.codex/config.toml` under `~/.codex`.
 
 ## STATUS UPDATES (append-only; newest first)
+### 2026-02-03
+Change:
+- Corrected Codex config/rules target to `~/.codex` (from `~/.config/.codex`).
+- Updated README to reflect Codex config/rules deployment behavior.
+
+Behavior now:
+- `./setup.sh codex` merges repo `.codex/config.toml` into `~/.codex/config.toml` with repo precedence and installs repo rules as symlinks (backing up conflicts).
+- `./setup.sh codex --remove` restores pre-merge values when unchanged and restores backed-up rules.
+
+Validate:
+- `bash -c 'tmp=$(mktemp -d); HOME="$tmp" ./setup.sh codex; HOME="$tmp" ./setup.sh codex --remove'` -> completes without errors.
+
+Notes:
+- Aligns with Codex's standard config location.
+
 ### 2026-02-03
 Change:
 - Implemented Codex config/rules install/remove with TOML merge + state tracking.
@@ -56,7 +71,7 @@ Validate:
 
 ### Phase 1 - Requirements + Path Decisions
 Goal: Lock down target paths, merge semantics, and removal behavior.
-Scope: Inspect existing `.codex/` assets, confirm desired target directory (e.g., `~/.config/.codex/` vs `~/.config/codex/`), define merge rules for nested tables/arrays, and removal expectations when user edits after install.
+Scope: Inspect existing `.codex/` assets, confirm desired target directory (`~/.codex`), define merge rules for nested tables/arrays, and removal expectations when user edits after install.
 Done when: Target path and merge/removal rules are documented and agreed.
 Verify: `rg -n "\.codex|config.toml|rules" setup.sh` -> relevant sections identified.
 Notes: Capture open questions in the plan if needed.
@@ -64,7 +79,7 @@ Notes: Capture open questions in the plan if needed.
 ### Phase 2 - Install/Merge Implementation
 Goal: Implement install logic for `.codex/rules/` and merged `config.toml`.
 Scope:
-- Create or ensure target config directory under `~/.config/`.
+- Create or ensure target config directory under `~/.codex`.
 - Deploy rules without hiding user rules (likely per-file symlinks or guarded copies).
 - Merge TOML with repo precedence (deep merge for tables; repo values override conflicts).
 - Record merge state needed for clean removal (e.g., previous values for overridden keys).
@@ -83,7 +98,7 @@ Verify: `HOME="$(mktemp -d)" ./setup.sh codex && HOME="<same>" ./setup.sh codex 
 Notes: If no merge-state file exists, perform a conservative cleanup and warn.
 
 ## DEFINITION OF DONE (optional)
-- `setup.sh` installs and removes `.codex/rules/` and merged `config.toml` under `~/.config/`.
+- `setup.sh` installs and removes `.codex/rules/` and merged `config.toml` under `~/.codex`.
 - Merge honors repo precedence while preserving unrelated user settings.
 - Remove does not delete or reset user-only config.
 
@@ -94,10 +109,12 @@ Notes: If no merge-state file exists, perform a conservative cleanup and warn.
 - 2026-02-03 - Created plan - user requested setup.sh update plan.
 
 ## TEST RESULTS (optional; newest first)
+- 2026-02-03 - `/tmp/opencode-setup-test.sh` -> install/merge/remove assertions passed for `~/.codex` target.
 - 2026-02-03 - `/tmp/opencode-setup-test.sh` -> install/merge/remove assertions passed.
 - 2026-02-03 - `cat docs/plans/feat/setup-update/PLAN.md` -> plan created.
 
 ## DECISIONS (short; newest first)
+- 2026-02-03 - Target Codex config/rules at `~/.codex` (not `~/.config/.codex`) - aligns with Codex standard location.
 - 2026-02-03 - Target Codex config/rules at `~/.config/.codex` with deep-merge tables and repo precedence - aligns with request to deploy under `~/.config/`.
 - 2026-02-03 - On remove, restore overridden values only when unchanged; remove repo-added keys and keep user-modified values - preserves user edits safely.
 - 2026-02-03 - Use phased plan with explicit merge/removal semantics - to de-risk data loss.
