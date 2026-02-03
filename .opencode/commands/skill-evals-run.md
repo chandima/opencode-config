@@ -17,6 +17,14 @@ arguments:
 
 Run the skill-loading eval suite for this repository using the local runner.
 
+## Prerequisites
+
+- `opencode` is installed and on PATH.
+- Provider config is available under `~/.config/opencode/` (used even with `--isolate-config`).
+- If using `--disable-models-fetch`, `~/.cache/opencode/models.json` exists and includes the target model.
+- Auth/credentials are present (typically `~/.local/share/opencode/auth.json`).
+- Network access is available for model calls.
+
 ## Instructions
 
 1. Build the base command (repo-scoped defaults):
@@ -35,6 +43,9 @@ Run the skill-loading eval suite for this repository using the local runner.
 3. After the run:
    - Summarize PASS/FAIL counts and list failed case IDs.
    - If there are failures, reference `.opencode/evals/skill-loading/docs/skill-optimization-steering.md` and suggest the next remediation step.
+
+Notes:
+- With `--disable-models-fetch`, the runner will fall back to `~/.cache/opencode/models.json` when available. Use `--models-url file://...` if you need a different cache file.
 
 ## Usage Examples
 

@@ -24,6 +24,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import * as crypto from "node:crypto";
 import * as readline from "node:readline";
+import { pathToFileURL } from "node:url";
 
 type Json = any;
 
@@ -380,7 +381,12 @@ function buildBaseOpencodeEnv(args: {
 }) {
   const env = { ...process.env } as Record<string, string>;
   if (args.disableModelsFetch) env.OPENCODE_DISABLE_MODELS_FETCH = "1";
-  if (args.modelsUrl) env.OPENCODE_MODELS_URL = String(args.modelsUrl);
+  if (args.modelsUrl) {
+    env.OPENCODE_MODELS_URL = String(args.modelsUrl);
+  } else if (args.disableModelsFetch && !env.OPENCODE_MODELS_URL) {
+    const modelsPath = resolveDefaultModelsPath();
+    if (modelsPath) env.OPENCODE_MODELS_URL = pathToFileURL(modelsPath).toString();
+  }
   if (!env.OPENCODE_EVAL) env.OPENCODE_EVAL = "1";
   if (!env.MCPORTER_TIMEOUT) env.MCPORTER_TIMEOUT = "20";
   if (args.configDir) {
@@ -388,6 +394,15 @@ function buildBaseOpencodeEnv(args: {
   }
   if (args.disableProjectConfig) env.OPENCODE_DISABLE_PROJECT_CONFIG = "1";
   return env;
+}
+
+function resolveDefaultModelsPath(): string | undefined {
+  const candidate = path.join(os.homedir(), ".cache", "opencode", "models.json");
+  try {
+    const st = fs.statSync(candidate);
+    if (st.isFile() && st.size > 0) return candidate;
+  } catch {}
+  return undefined;
 }
 
 function resolveConfigPath(preferred: string | undefined, cwd: string, disableProjectConfig?: boolean): string | undefined {

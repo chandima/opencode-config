@@ -7,6 +7,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import * as crypto from "node:crypto";
 import * as readline from "node:readline";
+import { pathToFileURL } from "node:url";
 
 const DEFAULT_IGNORE = new Set([
   "AGENTS.md",
@@ -35,6 +36,7 @@ let activeChild = null;
 let activeServer = null;
 let cleanupRegistered = false;
 let activeLockPath = null;
+let activeXdgDir = null;
 
 function killProcess(proc, signal) {
   if (!proc || proc.exitCode !== null) return;
@@ -56,6 +58,10 @@ function registerCleanupHandlers() {
     if (activeLockPath) {
       try { fs.unlinkSync(activeLockPath); } catch {}
       activeLockPath = null;
+    }
+    if (activeXdgDir) {
+      try { fs.rmSync(activeXdgDir, { recursive: true, force: true }); } catch {}
+      activeXdgDir = null;
     }
   };
 
@@ -266,10 +272,24 @@ async function clearOpencodeState(repoRoot) {
   await rmrf(path.join(repoRoot, ".opencode", "cache"));
 }
 
+function resolveDefaultModelsPath() {
+  const candidate = path.join(os.homedir(), ".cache", "opencode", "models.json");
+  try {
+    const st = fs.statSync(candidate);
+    if (st.isFile() && st.size > 0) return candidate;
+  } catch {}
+  return undefined;
+}
+
 function buildBaseOpencodeEnv(args) {
   const env = { ...process.env };
   if (args.disableModelsFetch) env.OPENCODE_DISABLE_MODELS_FETCH = "1";
-  if (args.modelsUrl) env.OPENCODE_MODELS_URL = String(args.modelsUrl);
+  if (args.modelsUrl) {
+    env.OPENCODE_MODELS_URL = String(args.modelsUrl);
+  } else if (args.disableModelsFetch && !env.OPENCODE_MODELS_URL) {
+    const modelsPath = resolveDefaultModelsPath();
+    if (modelsPath) env.OPENCODE_MODELS_URL = pathToFileURL(modelsPath).toString();
+  }
   if (!env.OPENCODE_EVAL) env.OPENCODE_EVAL = "1";
   if (!env.MCPORTER_TIMEOUT) env.MCPORTER_TIMEOUT = "20";
   if (args.configDir) {
@@ -277,6 +297,57 @@ function buildBaseOpencodeEnv(args) {
   }
   if (args.disableProjectConfig) env.OPENCODE_DISABLE_PROJECT_CONFIG = "1";
   return env;
+}
+
+async function ensureXdgEnv() {
+  const env = {};
+  if (!process.env.XDG_CONFIG_HOME) {
+    env.XDG_CONFIG_HOME = path.join(os.homedir(), ".config");
+  }
+  if (!process.env.XDG_DATA_HOME) {
+    env.XDG_DATA_HOME = path.join(os.homedir(), ".local", "share");
+  }
+
+  const missingKeys = [
+    "XDG_STATE_HOME",
+    "XDG_CACHE_HOME",
+  ].filter((key) => !process.env[key]);
+
+  if (!missingKeys.length) return env;
+
+  const baseDir = await fsp.mkdtemp(path.join(os.tmpdir(), "opencode-eval-xdg-"));
+  activeXdgDir = baseDir;
+  const mapping = {
+    XDG_DATA_HOME: "data",
+    XDG_STATE_HOME: "state",
+    XDG_CACHE_HOME: "cache",
+  };
+
+  for (const key of missingKeys) {
+    const dir = path.join(baseDir, mapping[key]);
+    await ensureDir(dir);
+    env[key] = dir;
+  }
+  return env;
+}
+
+async function ensureConfigSkillsDir(configDir, repoRoot) {
+  if (!configDir) return;
+  const src = path.join(repoRoot, "skills");
+  try {
+    const stat = await fsp.stat(src);
+    if (!stat.isDirectory()) return;
+  } catch {
+    return;
+  }
+
+  const dest = path.join(configDir, "skills");
+  try {
+    await fsp.lstat(dest);
+    return;
+  } catch {}
+
+  await fsp.symlink(src, dest, "dir");
 }
 
 function resolveConfigPath(preferred, cwd, disableProjectConfig) {
@@ -918,6 +989,9 @@ async function main() {
     configDir,
     disableProjectConfig: args.disableProjectConfig,
   });
+  const xdgEnv = await ensureXdgEnv();
+  Object.assign(baseEnv, xdgEnv);
+  await ensureConfigSkillsDir(configDir, repo);
 
   const allResults = [];
   const progress = new ProgressRenderer();

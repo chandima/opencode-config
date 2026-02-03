@@ -9,6 +9,14 @@ context: fork
 
 Run the local skill-loading eval suite with the shell runner.
 
+## Prerequisites
+
+- `opencode` is installed and on PATH.
+- Provider config is available under `~/.config/opencode/` (used even with `--isolate-config`).
+- If using `--disable-models-fetch`, `~/.cache/opencode/models.json` exists and includes the target model.
+- Auth/credentials are present (typically `~/.local/share/opencode/auth.json`).
+- Network access is available for model calls.
+
 ## Command
 
 Run:
@@ -43,4 +51,5 @@ If `--parallel` is omitted, keep the default of 3.
 
 - Run from the repo root so relative paths resolve.
 - `--isolate-config` also disables project config, so no extra flag is required to avoid loading repo config/plugins during evals.
+- With `--disable-models-fetch`, the runner falls back to `~/.cache/opencode/models.json` when present. Use `--models-url file://...` if you need a different cache file.
 - Include the exact command used in the response.
