@@ -56,6 +56,10 @@ context: fork
 - Before claiming completion, run the `Validate:` command from the most recent STATUS UPDATE.
 - Prefer minimal command output in chat (summarize; do not paste huge logs unless asked).
 
+## TDD
+
+- For non-trivial tasks, follow the repository TDD protocol: write a failing test first, then implement the minimal change, then refactor.
+
 ## Resource
 
 - Planning template: `references/plan-template.md` (use this file verbatim as the starting point)

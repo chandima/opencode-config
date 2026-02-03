@@ -178,6 +178,13 @@ case "$ACTION" in
 esac
 ```
 
+## Planning Documents (Execution Mode)
+
+- If a planning document exists at the location derived by the `skills/planning-doc/` rules for the current git branch, keep it updated even when the user did not request planning.
+- Derive the plan path using the same rules as the planning-doc skill: get the branch with `git rev-parse --abbrev-ref HEAD`, map `^(feat|fix|chore)/(.+)$` to `docs/plans/<prefix>/<feature>/PLAN.md`, otherwise use `docs/plans/feat/<branch>/PLAN.md`.
+- Only update if the file already exists; do not create a new plan unless the user explicitly asks for planning.
+- When updating, follow the planning-doc steering: read `PLAN.md` before changes, append a new **STATUS UPDATES** entry after meaningful work, add **DECISIONS**/**DISCOVERIES / GOTCHAS** entries when relevant, and record validation in **TEST RESULTS** when run.
+
 ## Methodology Protocols
 
 ### Debugging Protocol (BEFORE proposing any fix)
@@ -253,6 +260,8 @@ esac
 
 ## Commit and Push
 
-- Stage changes and ask before committing.
-- Commit or push only after explicit user approval.
+- Stage changes before committing.
+- If the commit message is obvious, compose it and commit without asking.
+- If the commit message is ambiguous, propose a message and wait for approval before committing.
+- Push only after explicit user approval (or when the user explicitly asks to push in the current request).
 - Do not auto-push as part of session completion unless requested.
