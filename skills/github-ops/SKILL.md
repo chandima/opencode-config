@@ -68,6 +68,7 @@ bash scripts/router.sh search repos --query "language:go stars:>10000"
 
 When the user asks for commands or "exact gh commands", respond with the command(s) first (gh or scripts), then brief notes if needed. Avoid prose-only answers for command requests.
 If the user asks to list pull requests or to show the exact commands, always include a literal `gh` command line in the response.
+If `owner/repo` is missing, still provide the exact `gh` command with `OWNER/REPO` placeholders, then ask the user to confirm the repo.
 
 ## Script Reference
 

@@ -18,7 +18,7 @@ Triage failing eval cases using the steering guide, apply limited fixes, and ret
 
 1. Locate the latest `results.json` under `.opencode/evals/skill-loading/.tmp/opencode-eval-results/` (or use the helper script):
    ```bash
-   bash .codex/skills/skill-evals-optimize/scripts/list-fails.sh
+   bash scripts/list-fails.sh
    ```
 2. Extract failed case IDs (`status == FAIL`). If `--filter-id` is provided, restrict to those cases.
 3. Read `.opencode/evals/skill-loading/docs/skill-optimization-steering.md` before proposing any fix.
@@ -35,7 +35,7 @@ Triage failing eval cases using the steering guide, apply limited fixes, and ret
      --filter-id "<failed-id-regex>"
    ```
    ```bash
-   bash .codex/skills/skill-evals-optimize/scripts/retest-fails.sh --parallel 3
+   bash scripts/retest-fails.sh --parallel 3
    ```
 6. Enforce the max iteration cap (default 2, or `--max-iterations` if provided). After reaching it, stop optimizing and acknowledge remaining failures as legitimate.
 
