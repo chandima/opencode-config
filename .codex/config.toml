@@ -1,3 +1,4 @@
+#:schema false
 model = "gpt-5.2-codex"
 model_reasoning_effort = "xhigh"
 model_reasoning_summary = "auto"
