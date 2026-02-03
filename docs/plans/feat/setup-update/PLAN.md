@@ -39,6 +39,13 @@ Behavior now:
 Validate:
 - `bash -c 'tmp=$(mktemp -d); HOME="$tmp" ./setup.sh codex; HOME="$tmp" ./setup.sh codex --remove'` -> completes without errors.
 
+Behavior now:
+- `./setup.sh codex` merges repo `.codex/config.toml` into `~/.codex/config.toml` with repo precedence and installs repo rules as symlinks (backing up conflicts).
+- `./setup.sh codex --remove` restores pre-merge values when unchanged and restores backed-up rules.
+
+Validate:
+- `bash -c 'tmp=$(mktemp -d); HOME="$tmp" ./setup.sh codex; HOME="$tmp" ./setup.sh codex --remove'` -> completes without errors.
+
 Notes:
 - Aligns with Codex's standard config location.
 
