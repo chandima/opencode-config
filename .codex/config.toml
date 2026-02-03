@@ -1,0 +1,49 @@
+model = "gpt-5.2-codex"
+model_reasoning_effort = "xhigh"
+model_reasoning_summary = "auto"
+personality = "pragmatic"
+
+approval_policy = "never"
+sandbox_mode = "workspace-write"
+web_search = "live"
+
+tool_output_token_limit = 25000
+model_auto_compact_token_limit = 220000
+compact_prompt = """
+Summarize for continuation. Keep:
+- Current goal and success criteria
+- Key decisions and rationale
+- Active TODOs and next steps
+- Commands run and results
+- Files changed and why
+- Constraints (sandbox, approvals, network)
+Omit chit-chat.
+"""
+
+[features]
+apply_patch_freeform = true
+child_agents_md = true
+collab = true
+collaboration_modes = true
+shell_snapshot = true
+unified_exec = true
+
+[permission.skill]
+"*" = "allow"
+
+[sandbox_workspace_write]
+exclude_slash_tmp = false
+exclude_tmpdir_env_var = false
+network_access = true
+writable_roots = [
+    "/tmp",
+    "/Users/chandima/.codex",
+    "/Users/chandima/Documents/ProjectRepos",
+    "/Users/chandima/Documents/Projects",
+]
+
+[projects."/Users/chandima/Documents/ProjectRepos"]
+trust_level = "trusted"
+
+[projects."/Users/chandima/Documents/Projects"]
+trust_level = "trusted"
