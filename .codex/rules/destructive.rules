@@ -1,0 +1,261 @@
+# Destructive command guards (macOS-focused).
+# Adjust this list to fit your workflow.
+
+# Prompt for recursive deletes anywhere (rm -r/-R or rm -rf/-fr).
+prefix_rule(
+    pattern = ["rm", ["-rf", "-fr", "-r", "-R"]],
+    decision = "prompt",
+    justification = "Recursive deletes are high-risk. Prefer rm -i or a narrower target.",
+    match = [
+        "rm -rf build",
+        "rm -r dist",
+    ],
+    not_match = [
+        "rm -f file.txt",
+    ],
+)
+
+# Block recursive deletes of critical system paths.
+prefix_rule(
+    pattern = [
+        "rm",
+        ["-rf", "-fr", "-r", "-R"],
+        [
+            "/",
+            "/System",
+            "/System/Library",
+            "/Library",
+            "/Applications",
+            "/Users",
+            "/Volumes",
+            "/usr",
+            "/bin",
+            "/sbin",
+            "/etc",
+            "/private",
+        ],
+    ],
+    decision = "forbidden",
+    justification = "Refuse to delete macOS system paths.",
+    match = [
+        "rm -rf /System",
+        "rm -rf /",
+    ],
+)
+
+# Same as above when using an explicit "--".
+prefix_rule(
+    pattern = [
+        "rm",
+        ["-rf", "-fr", "-r", "-R"],
+        "--",
+        [
+            "/",
+            "/System",
+            "/System/Library",
+            "/Library",
+            "/Applications",
+            "/Users",
+            "/Volumes",
+            "/usr",
+            "/bin",
+            "/sbin",
+            "/etc",
+            "/private",
+        ],
+    ],
+    decision = "forbidden",
+    justification = "Refuse to delete macOS system paths.",
+    match = [
+        "rm -rf -- /System",
+        "rm -rf -- /",
+    ],
+)
+
+# Sudo + recursive delete guards.
+prefix_rule(
+    pattern = ["sudo", "rm", ["-rf", "-fr", "-r", "-R"]],
+    decision = "prompt",
+    justification = "Recursive deletes with sudo are high-risk.",
+    match = [
+        "sudo rm -rf /tmp/something",
+    ],
+)
+
+prefix_rule(
+    pattern = [
+        "sudo",
+        "rm",
+        ["-rf", "-fr", "-r", "-R"],
+        [
+            "/",
+            "/System",
+            "/System/Library",
+            "/Library",
+            "/Applications",
+            "/Users",
+            "/Volumes",
+            "/usr",
+            "/bin",
+            "/sbin",
+            "/etc",
+            "/private",
+        ],
+    ],
+    decision = "forbidden",
+    justification = "Refuse to delete macOS system paths.",
+    match = [
+        "sudo rm -rf /System",
+        "sudo rm -rf /",
+    ],
+)
+
+prefix_rule(
+    pattern = [
+        "sudo",
+        "rm",
+        ["-rf", "-fr", "-r", "-R"],
+        "--",
+        [
+            "/",
+            "/System",
+            "/System/Library",
+            "/Library",
+            "/Applications",
+            "/Users",
+            "/Volumes",
+            "/usr",
+            "/bin",
+            "/sbin",
+            "/etc",
+            "/private",
+        ],
+    ],
+    decision = "forbidden",
+    justification = "Refuse to delete macOS system paths.",
+    match = [
+        "sudo rm -rf -- /System",
+        "sudo rm -rf -- /",
+    ],
+)
+
+# VCS destructive operations.
+prefix_rule(
+    pattern = ["git", "reset", "--hard"],
+    decision = "prompt",
+    justification = "Confirm before rewriting the working tree.",
+)
+
+prefix_rule(
+    pattern = ["git", "push", ["--force", "-f"]],
+    decision = "prompt",
+    justification = "Confirm before force-pushing.",
+)
+
+# Disk and volume destructive operations.
+prefix_rule(
+    pattern = [
+        "diskutil",
+        ["eraseDisk", "eraseVolume", "secureErase", "partitionDisk"],
+    ],
+    decision = "forbidden",
+    justification = "Disk destructive operations are blocked.",
+    match = [
+        "diskutil eraseDisk APFS Untitled /dev/disk2",
+    ],
+)
+
+prefix_rule(
+    pattern = [
+        "diskutil",
+        "apfs",
+        ["deleteVolume", "deleteContainer", "eraseVolume"],
+    ],
+    decision = "forbidden",
+    justification = "APFS destructive operations are blocked.",
+    match = [
+        "diskutil apfs deleteVolume disk3s1",
+    ],
+)
+
+prefix_rule(
+    pattern = [
+        "sudo",
+        "diskutil",
+        ["eraseDisk", "eraseVolume", "secureErase", "partitionDisk"],
+    ],
+    decision = "forbidden",
+    justification = "Disk destructive operations are blocked.",
+    match = [
+        "sudo diskutil eraseDisk APFS Untitled /dev/disk2",
+    ],
+)
+
+prefix_rule(
+    pattern = [
+        "sudo",
+        "diskutil",
+        "apfs",
+        ["deleteVolume", "deleteContainer", "eraseVolume"],
+    ],
+    decision = "forbidden",
+    justification = "APFS destructive operations are blocked.",
+    match = [
+        "sudo diskutil apfs deleteVolume disk3s1",
+    ],
+)
+
+# macOS security/system toggles.
+prefix_rule(
+    pattern = ["csrutil", "disable"],
+    decision = "forbidden",
+    justification = "SIP should not be disabled via Codex.",
+    match = [
+        "csrutil disable",
+    ],
+)
+
+prefix_rule(
+    pattern = ["sudo", "csrutil", "disable"],
+    decision = "forbidden",
+    justification = "SIP should not be disabled via Codex.",
+    match = [
+        "sudo csrutil disable",
+    ],
+)
+
+prefix_rule(
+    pattern = ["spctl", "--master-disable"],
+    decision = "prompt",
+    justification = "Gatekeeper disable is a system security change.",
+    match = [
+        "spctl --master-disable",
+    ],
+)
+
+prefix_rule(
+    pattern = ["sudo", "spctl", "--master-disable"],
+    decision = "prompt",
+    justification = "Gatekeeper disable is a system security change.",
+    match = [
+        "sudo spctl --master-disable",
+    ],
+)
+
+prefix_rule(
+    pattern = ["nvram", "-c"],
+    decision = "prompt",
+    justification = "Clearing NVRAM is a system-wide change.",
+    match = [
+        "nvram -c",
+    ],
+)
+
+prefix_rule(
+    pattern = ["sudo", "nvram", "-c"],
+    decision = "prompt",
+    justification = "Clearing NVRAM is a system-wide change.",
+    match = [
+        "sudo nvram -c",
+    ],
+)
