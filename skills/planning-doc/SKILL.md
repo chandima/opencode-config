@@ -15,8 +15,10 @@ context: fork
   - current intended behavior ("Behavior now"),
   - and how to validate ("Validate" command).
 - Treat `PLAN.md` as a resume log, not a task tracker:
-  - Do NOT add TODO lists, checkboxes, or task-management structures.
+  - Do NOT add TODO lists, checkboxes, or task-management structures inside **STATUS UPDATES**.
+  - Checklists are allowed only in dedicated sections like **Gap Report**, **Workstreams**, or **Discovery** when the user provided that structure.
   - Keep entries short and factual.
+  - Preserve user-provided structure if it's already effective; do not forcibly reformat it into the template.
 
 ## Workflow
 
@@ -32,9 +34,11 @@ context: fork
    - Create directories and create the plan from `references/plan-template.md`.
    - Replace the header placeholder with the feature name.
    - Fill in PURPOSE and the PHASE PLAN based on the user request.
+   - Add optional sections (Goal, References, Scope, Current Baseline, Definition of Done, Open Questions, Change Log, Test Results, Gap Report, Workstreams) if they help the request.
 5. If PLAN.md exists:
    - Do not overwrite. Add to the plan for the current feature.
    - Append or refine the PHASE PLAN as needed; keep STATUS UPDATES newest-first.
+   - Add optional sections if missing and clearly useful for the plan's intent (parity/migration, audits, or multi-workstream work).
 
 ## Updating PLAN.md
 
@@ -45,6 +49,7 @@ context: fork
   - Notes (optional)
 - If you make a notable tradeoff, add a one-line entry to **DECISIONS**.
 - If you discover a pitfall or non-obvious constraint, add a one-line entry to **DISCOVERIES / GOTCHAS**.
+ - Record executed validation results in **TEST RESULTS** (dated) when applicable.
 
 ## Validation
 
