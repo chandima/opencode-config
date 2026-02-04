@@ -263,7 +263,6 @@ If no test script or framework can be detected:
 ## TDD Execution
 
 For tasks with the `tdd` label, follow the red-green-refactor cycle strictly.
-See the `test-driven-development` skill for detailed guidance.
 
 ### TDD Cycle
 
