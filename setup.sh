@@ -15,6 +15,7 @@ TARGETS:
     codex       Install for Codex only (skills and config under ~/.codex)
     both        Install for both OpenCode and Codex
     --remove, -r  Remove symlinks instead of installing
+    --skills-only  Install/remove skills only (skip configs, rules, agents)
     --help, -h  Show this help message
 EOF
 }
@@ -219,7 +220,11 @@ setup_opencode() {
     mkdir -p "$config_dir"
     
     # Check for existing symlinks/files and warn
-    for item in opencode.json skills agents; do
+    local items=(opencode.json skills agents)
+    if [[ "$SKILLS_ONLY" -eq 1 ]]; then
+        items=(skills)
+    fi
+    for item in "${items[@]}"; do
         target="$config_dir/$item"
         if [[ -L "$target" ]]; then
             echo "  Replacing existing symlink: $target"
@@ -229,13 +234,15 @@ setup_opencode() {
     done
     
     # Create symlinks
-    ln -sf "$SCRIPT_DIR/opencode.json" "$config_dir/opencode.json"
     ln -sfn "$SCRIPT_DIR/skills" "$config_dir/skills"
-    ln -sfn "$SCRIPT_DIR/.opencode/agents" "$config_dir/agents"
-    
-    echo "  Linked: opencode.json"
     echo "  Linked: skills/"
-    echo "  Linked: agents/"
+
+    if [[ "$SKILLS_ONLY" -eq 0 ]]; then
+        ln -sf "$SCRIPT_DIR/opencode.json" "$config_dir/opencode.json"
+        ln -sfn "$SCRIPT_DIR/.opencode/agents" "$config_dir/agents"
+        echo "  Linked: opencode.json"
+        echo "  Linked: agents/"
+    fi
     echo "  Done!"
 }
 
@@ -297,7 +304,9 @@ setup_codex() {
         fi
     done
 
-    setup_codex_config
+    if [[ "$SKILLS_ONLY" -eq 0 ]]; then
+        setup_codex_config
+    fi
     
     echo "  Done!"
 }
@@ -308,7 +317,11 @@ remove_opencode() {
     echo "Removing OpenCode symlinks..."
     echo "  Target: $config_dir"
 
-    for item in opencode.json skills agents; do
+    local items=(opencode.json skills agents)
+    if [[ "$SKILLS_ONLY" -eq 1 ]]; then
+        items=(skills)
+    fi
+    for item in "${items[@]}"; do
         local target="$config_dir/$item"
         if [[ -L "$target" ]]; then
             rm "$target"
@@ -348,7 +361,9 @@ remove_codex() {
         done
     fi
 
-    remove_codex_config
+    if [[ "$SKILLS_ONLY" -eq 0 ]]; then
+        remove_codex_config
+    fi
 
     echo "  Done!"
 }
@@ -358,6 +373,7 @@ ACTION="install"
 TARGET="opencode"
 TARGET_SET=0
 REMOVE_SEEN=0
+SKILLS_ONLY=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -368,6 +384,9 @@ while [[ $# -gt 0 ]]; do
         --remove|-r)
             ACTION="remove"
             REMOVE_SEEN=1
+            ;;
+        --skills-only)
+            SKILLS_ONLY=1
             ;;
         opencode|codex|both)
             if [[ "$TARGET_SET" -eq 1 ]]; then

@@ -53,9 +53,12 @@ cd opencode-config
 ./setup.sh opencode     # Install OpenCode only
 ./setup.sh codex        # Install Codex only
 ./setup.sh both         # Install both OpenCode and Codex
+./setup.sh opencode --skills-only # OpenCode skills only (skip opencode.json + agents)
+./setup.sh codex --skills-only    # Codex skills only (skip config merge + rules)
 ./setup.sh opencode --remove  # Remove OpenCode symlinks
 ./setup.sh codex --remove     # Remove Codex symlinks
 ./setup.sh both --remove      # Remove both OpenCode + Codex symlinks
+./setup.sh codex --skills-only --remove # Remove Codex skills only
 ./setup.sh --help       # Show help
 ```
 
@@ -66,6 +69,7 @@ The script will:
 - **Codex**: Merge repo `.codex/config.toml` into `~/.codex/config.toml` (repo precedence) and install `.codex/rules/*` into `~/.codex/rules/` (backing up conflicts)
 - **Respects disabled skills**: Skills with `"deny"` permission in `opencode.json` are skipped for Codex
 - **Remove mode**: Use `[target] --remove` to delete only symlinks created by the script (non-symlink directories are left intact)
+- **Skills-only mode**: Use `--skills-only` to skip configs/rules/agents and link/remove only skills
 
 <details>
 <summary>Manual alternative (without script)</summary>
