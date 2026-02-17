@@ -16,6 +16,8 @@ CONTEXT7_SERVER="${CONTEXT7_SERVER:-context7}"
 
 # Context7 ad-hoc URL fallback (used when server not configured locally)
 CONTEXT7_URL="https://mcp.context7.com/mcp"
+CONTEXT7_API_BASE="${CONTEXT7_API_BASE:-https://context7.com/api/v2}"
+CONTEXT7_REST_FALLBACK="${CONTEXT7_REST_FALLBACK:-1}"
 MCPORTER_TIMEOUT="${MCPORTER_TIMEOUT:-20}"
 OPENCODE_EVAL="${OPENCODE_EVAL:-}"
 NPX_CMD=(npx --yes mcporter)
@@ -41,6 +43,8 @@ EXAMPLES:
 
 ENVIRONMENT:
     CONTEXT7_SERVER    MCP server name (default: context7)
+    CONTEXT7_API_BASE  Direct API base URL (default: https://context7.com/api/v2)
+    CONTEXT7_REST_FALLBACK  Enable REST fallback when MCP fails (default: 1)
 
 NOTES:
     - The 'docs' action automatically resolves library name to Context7 ID
@@ -65,6 +69,56 @@ check_dependencies() {
             exit 1
         fi
     fi
+    if ! command -v curl &> /dev/null; then
+        echo -e "${RED}Error: curl not found. Please install curl${NC}" >&2
+        exit 1
+    fi
+}
+
+urlencode() {
+    "$PYTHON_BIN" - "$1" <<'PY'
+import sys
+import urllib.parse
+print(urllib.parse.quote_plus(sys.argv[1]))
+PY
+}
+
+extract_library_id() {
+    local input="${1:-}"
+    local extracted
+    extracted=$(echo "$input" | grep -oE '/[a-zA-Z0-9_./-]+' | head -1) || extracted="$input"
+    echo "$extracted"
+}
+
+resolve_library_id_direct() {
+    local library="${1:-}"
+    local topic="${2:-$library}"
+    local url="${CONTEXT7_API_BASE}/libs/search?libraryName=$(urlencode "$library")&query=$(urlencode "$topic")"
+    local payload
+
+    if ! payload=$(curl -fsS "$url"); then
+        return 1
+    fi
+
+    if command -v jq &> /dev/null; then
+        jq -r '.results[0].id // empty' <<<"$payload"
+    else
+        "$PYTHON_BIN" - "$payload" <<'PY'
+import json
+import sys
+
+payload = json.loads(sys.argv[1])
+results = payload.get("results") or []
+print(results[0].get("id", "") if results else "")
+PY
+    fi
+}
+
+get_docs_direct() {
+    local library_id="${1:-}"
+    local topic="${2:-overview}"
+    local url="${CONTEXT7_API_BASE}/context?libraryId=$(urlencode "$library_id")&query=$(urlencode "$topic")&type=txt"
+    curl -fsS "$url"
 }
 
 run_mcporter() {
@@ -115,6 +169,14 @@ search_library() {
     
     local result
     if ! result=$(run_mcporter "${NPX_CMD[@]}" call "${server}.resolve-library-id" query="$library" libraryName="$library" 2>&1); then
+        if [[ "$CONTEXT7_REST_FALLBACK" == "1" ]]; then
+            echo -e "${YELLOW}MCP resolve failed, trying direct Context7 API fallback...${NC}" >&2
+            local direct_id
+            if direct_id=$(resolve_library_id_direct "$library" "$library") && [[ -n "$direct_id" ]]; then
+                echo "$direct_id"
+                return 0
+            fi
+        fi
         if [[ "$OPENCODE_EVAL" == "1" ]]; then
             echo -e "${YELLOW}Eval mode: Context7 unavailable; returning placeholder result.${NC}" >&2
             echo "/context7/${library}"
@@ -146,6 +208,16 @@ get_docs() {
     
     local resolve_result
     if ! resolve_result=$(run_mcporter "${NPX_CMD[@]}" call "${server}.resolve-library-id" query="$library" libraryName="$library" 2>&1); then
+        resolve_result=""
+        if [[ "$CONTEXT7_REST_FALLBACK" == "1" ]]; then
+            echo -e "${YELLOW}MCP resolve failed, trying direct Context7 API fallback...${NC}" >&2
+            local fallback_id
+            if fallback_id=$(resolve_library_id_direct "$library" "${topic:-$library}") && [[ -n "$fallback_id" ]]; then
+                resolve_result="$fallback_id"
+            fi
+        fi
+
+        if [[ -z "${resolve_result:-}" ]]; then
         if [[ "$OPENCODE_EVAL" == "1" ]]; then
             echo -e "${YELLOW}Eval mode: Context7 unavailable; using placeholder library ID.${NC}" >&2
             resolve_result="/context7/${library}"
@@ -154,12 +226,13 @@ get_docs() {
             echo -e "${YELLOW}Try alternative names or check if Context7 is accessible.${NC}" >&2
             exit 1
         fi
+        fi
     fi
     
     # Extract the library ID from the result
     # Context7 returns the ID directly or in a structured format
     local library_id
-    library_id=$(echo "$resolve_result" | grep -oE '/[a-zA-Z0-9_/-]+' | head -1) || library_id="$resolve_result"
+    library_id=$(extract_library_id "$resolve_result") || library_id="$resolve_result"
     
     if [[ -z "$library_id" ]]; then
         echo -e "${RED}Error: Could not extract library ID from response${NC}" >&2
@@ -180,12 +253,22 @@ get_docs() {
     
     local docs_result
     if ! docs_result=$(run_mcporter "${NPX_CMD[@]}" call "${server}.get-library-docs" $docs_args 2>&1); then
+        docs_result=""
+        if [[ "$CONTEXT7_REST_FALLBACK" == "1" ]]; then
+            echo -e "${YELLOW}MCP docs call failed, trying direct Context7 API fallback...${NC}" >&2
+            if docs_result=$(get_docs_direct "$library_id" "${topic:-overview}" 2>&1); then
+                :
+            fi
+        fi
+
+        if [[ -z "${docs_result:-}" ]]; then
         if [[ "$OPENCODE_EVAL" == "1" ]]; then
             echo -e "${YELLOW}Eval mode: Context7 unavailable; returning placeholder docs.${NC}" >&2
             docs_result="(Eval mode) Context7 docs not available. Please run in a configured environment to fetch authoritative docs."
         else
             echo -e "${RED}Error: Failed to fetch documentation${NC}" >&2
             exit 1
+        fi
         fi
     fi
     

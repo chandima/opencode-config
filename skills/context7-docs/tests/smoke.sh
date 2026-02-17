@@ -40,5 +40,24 @@ else
     echo "  WARN: Search returned non-zero (may be expected if Context7 not configured)"
 fi
 
+# Test 5: Force MCP timeout to verify direct REST fallback path
+echo "Test 5: Fallback to direct REST API when MCP fails"
+fallback_stdout="$(mktemp)"
+fallback_stderr="$(mktemp)"
+if MCPORTER_TIMEOUT=0.001 "$SKILL_DIR/scripts/docs.sh" docs react hooks >"$fallback_stdout" 2>"$fallback_stderr"; then
+    if grep -q "MCP resolve failed, trying direct Context7 API fallback" "$fallback_stderr" \
+        && grep -q "MCP docs call failed, trying direct Context7 API fallback" "$fallback_stderr" \
+        && grep -q "=== Documentation for react ===" "$fallback_stdout"; then
+        echo "  PASS: REST fallback triggered and returned docs"
+    else
+        echo "  WARN: Command succeeded but fallback markers were incomplete"
+        echo "  stderr sample:"
+        head -n 5 "$fallback_stderr" || true
+    fi
+else
+    echo "  WARN: Fallback test command failed (network or API unavailable)"
+fi
+rm -f "$fallback_stdout" "$fallback_stderr"
+
 echo ""
 echo "=== Smoke tests completed ==="

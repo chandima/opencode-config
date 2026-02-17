@@ -97,10 +97,18 @@ Context7 supports thousands of libraries including:
 ## Prerequisites
 
 - Node.js 18+ installed
+- curl installed
 - **Option A:** Install MCPorter via Homebrew: `brew tap steipete/tap && brew install mcporter`
 - **Option B:** Use via npx (no install required): `npx mcporter`
 
 > **Note:** Context7 server configuration is optional. The skill automatically falls back to the Context7 public URL (`https://mcp.context7.com/mcp`) if no local server is configured.
+
+## Environment Variables
+
+- `CONTEXT7_SERVER`: MCP server name (default: `context7`)
+- `CONTEXT7_API_BASE`: Direct Context7 REST base URL (default: `https://context7.com/api/v2`)
+- `CONTEXT7_REST_FALLBACK`: Enable direct REST fallback when MCP calls fail (default: `1`)
+- `MCPORTER_TIMEOUT`: Timeout in seconds for MCPorter calls (default: `20`)
 
 ## Notes
 
@@ -108,4 +116,5 @@ Context7 supports thousands of libraries including:
 - Topic filtering helps reduce context size - use specific topics when possible
 - If a library isn't found, try alternative names (e.g., "nextjs" vs "next.js")
 - For generic MCP access, use the `mcporter` skill instead
-- Falls back to Context7 public URL when server not configured locally
+- Falls back to Context7 public MCP URL when server not configured locally
+- If MCP calls fail (including quota exhaustion), falls back to direct Context7 REST API when enabled
