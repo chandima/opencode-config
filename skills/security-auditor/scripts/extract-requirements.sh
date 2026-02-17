@@ -34,9 +34,12 @@ read_json_array() {
 }
 
 domain_for() {
-    local category="${1,,}"
-    local title="${2,,}"
-    local scanner="${3,,}"
+    local category
+    local title
+    local scanner
+    category="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+    title="$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]')"
+    scanner="$(printf '%s' "$3" | tr '[:upper:]' '[:lower:]')"
 
     if [[ "$category" =~ auth|authorization|access ]]; then
         echo "Authentication & Authorization"
@@ -221,7 +224,7 @@ while IFS= read -r finding; do
 - Priority: ${severity}
 - Domain: $domain
 - Source: $scanner / $rule_ref
-- Trace: \\`$file_ref\\`
+- Trace: $file_ref
 
 **Requirement**
 
