@@ -19,6 +19,11 @@ Out of scope:
 ## CURRENT BASELINE (optional)
 - <current state snapshot>
 
+## SESSION RECOVERY (optional; for resumed work)
+- Last known good state:
+- Drift observed (`git diff --stat`):
+- Recovery actions taken:
+
 ## GAP REPORT (optional; keep factual)
 Missing:
 - <what's absent vs reference>
@@ -75,6 +80,11 @@ Notes: ...
 
 ## TEST RESULTS (optional; newest first)
 - YYYY-MM-DD - `<command>` -> <result summary>
+
+## ERRORS ENCOUNTERED (optional; newest first)
+| Date | Error | Attempt | Resolution / Next Action |
+|------|-------|---------|--------------------------|
+| YYYY-MM-DD | <error text> | 1/2/3 | <fix or escalation path> |
 
 ## DECISIONS (short; newest first)
 - YYYY-MM-DD - <decision> - <rationale>

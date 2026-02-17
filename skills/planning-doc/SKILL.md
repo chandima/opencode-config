@@ -10,6 +10,10 @@ context: fork
 ## Plan steering
 
 - Always read `PLAN.md` before making changes.
+- On resumed sessions, first recover context from disk before acting:
+   - read the latest **STATUS UPDATES** entry,
+   - run `git diff --stat` to detect unstated code changes,
+   - and sync plan notes if code and plan diverged.
 - If the user says "continue", use the newest entry in **STATUS UPDATES** to determine:
   - what changed last,
   - current intended behavior ("Behavior now"),
@@ -23,22 +27,38 @@ context: fork
 ## Workflow
 
 1. Determine the current branch: `git rev-parse --abbrev-ref HEAD`.
-2. If on the default branch (usually `main` or the branch pointed to by `refs/remotes/origin/HEAD`):
+2. If this is a resumed session, run a quick recovery pass:
+   - read PLAN.md,
+   - check `git diff --stat`,
+   - append a brief STATUS UPDATE if recovery discovered drift.
+3. If on the default branch (usually `main` or the branch pointed to by `refs/remotes/origin/HEAD`):
    - Stop and prompt the user to create and check out a feature branch before proceeding.
    - Use the git skill or git commands to guide branch creation.
-3. Derive the plan path:
+4. Derive the plan path:
    - If the branch matches `^(feat|fix|chore)/(.+)$`, use prefix = match 1 and feature = match 2.
    - Otherwise use prefix = `feat` and feature = full branch name.
    - Plan path: `docs/plans/<prefix>/<feature>/PLAN.md`.
-4. If PLAN.md does not exist:
+5. If PLAN.md does not exist:
    - Create directories and create the plan from `references/plan-template.md`.
    - Replace the header placeholder with the feature name.
    - Fill in PURPOSE and the PHASE PLAN based on the user request.
    - Add optional sections (Goal, References, Scope, Current Baseline, Definition of Done, Open Questions, Change Log, Test Results, Gap Report, Workstreams) if they help the request.
-5. If PLAN.md exists:
+6. If PLAN.md exists:
    - Do not overwrite. Add to the plan for the current feature.
    - Append or refine the PHASE PLAN as needed; keep STATUS UPDATES newest-first.
    - Add optional sections if missing and clearly useful for the plan's intent (parity/migration, audits, or multi-workstream work).
+
+## Error Protocol
+
+- Use a three-strike escalation model for recurring failures:
+  1. Diagnose and apply a targeted fix.
+  2. Try a different approach/tool (do not repeat the same failing action).
+  3. Re-check assumptions and update the plan with the new approach.
+- After three failed attempts on the same blocker, escalate to the user with:
+  - what was tried,
+  - the concrete errors,
+  - and the best next options.
+- Log notable errors in **ERRORS ENCOUNTERED** or **DISCOVERIES / GOTCHAS**.
 
 ## Updating PLAN.md
 
@@ -55,6 +75,13 @@ context: fork
 
 - Before claiming completion, run the `Validate:` command from the most recent STATUS UPDATE.
 - Prefer minimal command output in chat (summarize; do not paste huge logs unless asked).
+
+## Anti-patterns to Avoid
+
+- Starting implementation before creating/updating PLAN.md for complex work.
+- Repeating the same failed command without changing approach.
+- Keeping critical discoveries only in transient chat context (persist them to PLAN.md).
+- Overwriting user plan structure when the current structure is already working.
 
 ## TDD
 
