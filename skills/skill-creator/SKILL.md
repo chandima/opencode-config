@@ -41,11 +41,13 @@ Adjust depth based on skill complexity:
 **Always ask:**
 1. What's the primary purpose? (1 sentence)
 2. What tools will it need? (Bash, Read, WebFetch, Task, etc.)
+3. Which runtime profile should this target first? (`opencode`, `codex`, `claude-api`, or `portable`)
 
 **Ask if unclear:**
-3. Will it have executable scripts or just instructions?
-4. Does it need configuration files (YAML/JSON)?
-5. Does it need template assets?
+4. Will it have executable scripts or just instructions?
+5. Does it need configuration files (YAML/JSON)?
+6. Does it need template assets?
+7. Should it include optional cross-runtime metadata (`compatibility`, `metadata`) or remain minimal?
 
 **Determine structure from answers:**
 
@@ -75,6 +77,7 @@ Adjust depth based on skill complexity:
 
 3. **Generate SKILL.md** with:
    - Proper frontmatter (name, description, allowed-tools, context)
+   - Optional portability fields only when requested/compatible (`compatibility`, `metadata`)
    - Purpose and usage sections
    - Quick reference table (if has actions)
    - Script documentation (if has scripts)
@@ -82,6 +85,7 @@ Adjust depth based on skill complexity:
 4. **Generate stub scripts** (if applicable):
    - Main script with action pattern
    - Proper shebang and error handling
+   - Runtime validator helper: `scripts/validate-runtime.sh`
 
 5. **Generate smoke test** (if has scripts):
    - `tests/smoke.sh` that validates basic functionality
@@ -96,6 +100,34 @@ Before finishing, verify:
 - [ ] Scripts have `#!/usr/bin/env bash` and `set -euo pipefail`
 - [ ] Smoke test exists if scripts exist
 - [ ] No duplicate of existing skill
+- [ ] Runtime profile is documented (`opencode`, `codex`, `claude-api`, or `portable`)
+- [ ] Optional fields (`allowed-tools`, `compatibility`, `metadata`) align with target runtime support
+
+### Phase 5: Validation Loop (Recommended)
+
+Use a validator-first loop before final handoff:
+
+1. Validate structure/frontmatter
+2. Fix all reported issues
+3. Re-run validation until clean
+4. Run smoke tests (if scripts exist)
+5. Run runtime-profile check with `scripts/validate-runtime.sh`
+
+If `skills-ref` is available, use:
+
+```bash
+skills-ref validate skills/<name>
+skills-ref read-properties skills/<name>
+skills-ref to-prompt skills/<name>
+```
+
+Then run runtime-specific checks:
+
+```bash
+bash skills/skill-creator/scripts/validate-runtime.sh skills/<name> --runtime opencode
+```
+
+If `skills-ref` is unavailable, run local structural checks and smoke tests.
 
 ## Quick Mode
 
@@ -119,8 +151,10 @@ mkdir -p skills/<name>
 |-------|----------|-------------|
 | `name` | Yes | Matches directory, lowercase-kebab-case |
 | `description` | Yes | Include "Use when..." trigger conditions |
-| `allowed-tools` | Yes | Whitelist, scope bash commands (e.g., `Bash(gh:*)`) |
+| `allowed-tools` | OpenCode/Codex: Yes; Portable/Claude API: Optional | Whitelist, scope bash commands (e.g., `Bash(gh:*)`); treat as experimental outside compatible runtimes |
 | `context` | Recommended | Use `fork` for isolated execution |
+| `compatibility` | Optional | Runtime support notes (only include when target runtime supports it) |
+| `metadata` | Optional | Additional namespaced metadata for tooling |
 
 ### allowed-tools Patterns
 
@@ -187,6 +221,27 @@ Keep skills efficient:
 - **Description** (~100 tokens): Loaded at startup, include trigger keywords
 - **SKILL.md** (<5,000 tokens): Core instructions, loaded on activation
 - **Subdirectories**: Heavy content, loaded on-demand
+- **References**: Prefer one-level links directly from `SKILL.md`; avoid deep nested reference chains
+
+## Runtime Profiles
+
+Choose one default and optimize for it:
+
+- **`opencode`**: Include repo-standard `allowed-tools` and `context: fork`
+- **`codex`**: Keep structure compatible with Codex skill loading; avoid OpenCode-only assumptions in instructions
+- **`claude-api`**: Favor portable frontmatter; avoid relying on runtime package installs/network at execution time
+- **`portable`**: Minimal required fields (`name`, `description`) plus optional fields only when confirmed supported
+
+When uncertain, default to `portable` and add runtime-specific notes in a dedicated compatibility section.
+
+## Experimental Field Policy
+
+`allowed-tools` can vary across implementations. Use this policy:
+
+1. Include it by default for OpenCode/Codex repo skills
+2. Mark it as runtime-dependent in generated docs
+3. For portability-first skills, ask before including it
+4. Never assume optional fields are enforced consistently across runtimes
 
 ## Reference Examples
 
