@@ -52,6 +52,7 @@ scripts=(
     "scan-code.sh"
     "scan-misconfig.sh"
     "github-security.sh"
+    "extract-requirements.sh"
     "report.sh"
 )
 
@@ -164,6 +165,19 @@ if echo "$github_output" | jq -e '.scanner or .error' > /dev/null 2>&1; then
 else
     log_fail "github-security.sh does not produce valid JSON"
 fi
+
+# Test 9: extract-requirements.sh generates markdown output
+requirements_out="$(mktemp)"
+if "$SCRIPTS_DIR/extract-requirements.sh" --output "$requirements_out" > /dev/null 2>&1; then
+    if grep -q "^# Security Requirements" "$requirements_out"; then
+        log_pass "extract-requirements.sh generates requirements markdown"
+    else
+        log_fail "extract-requirements.sh output missing expected heading"
+    fi
+else
+    log_fail "extract-requirements.sh failed to run"
+fi
+rm -f "$requirements_out"
 
 echo ""
 echo "========================================"

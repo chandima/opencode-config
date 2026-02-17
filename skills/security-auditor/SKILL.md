@@ -17,6 +17,10 @@ context: fork
 
 Pre-deployment security audit that blocks on critical vulnerabilities. Context-aware, monorepo-ready, and integrated with GitHub security features.
 
+Enhanced with:
+- Security requirement extraction (threat/finding → requirement with acceptance criteria)
+- Structured pre-deployment security checklist
+
 ## When to Use
 
 - Before deploying to production or staging
@@ -51,8 +55,9 @@ Pre-deployment security audit that blocks on critical vulnerabilities. Context-a
    - Misconfigs (trivy)
    - GitHub alerts (github-ops)
 5. Filter findings by project context
-6. Generate report: .opencode/docs/SECURITY-AUDIT.md
-7. Gate decision:
+6. Extract actionable requirements: .opencode/docs/SECURITY-REQUIREMENTS.md
+7. Generate report: .opencode/docs/SECURITY-AUDIT.md
+8. Gate decision:
    - CRITICAL in scope → BLOCK deployment
    - HIGH → WARN
    - MEDIUM/LOW → Inform
@@ -106,8 +111,13 @@ Report saved to: `.opencode/docs/SECURITY-AUDIT.md`
 Includes:
 - Executive summary with severity counts
 - Critical findings with remediation guidance
+- Security requirement extraction summary and traceability
+- Pre-deployment review checklist
 - Scoped vs out-of-scope findings (monorepos)
 - Full findings appendix
+
+Additional generated artifact:
+- `.opencode/docs/SECURITY-REQUIREMENTS.md` (prioritized requirements + acceptance criteria + test hints)
 
 ### Gitignore Recommendation
 
@@ -144,3 +154,15 @@ If the project is a GitHub repository, the skill will also fetch:
 - Secret scanning alerts
 
 These are merged with local findings for a comprehensive view.
+
+## Security Requirement Extraction
+
+The skill derives concrete security requirements from critical/high findings:
+
+- Maps findings into requirement domains (auth, authorization, input validation, data protection, availability)
+- Produces requirement statements with acceptance criteria and verification tests
+- Adds traceability back to source findings
+- Prioritizes by observed severity (CRITICAL/HIGH)
+
+This helps convert a point-in-time scan into a backlog-ready remediation plan.
+

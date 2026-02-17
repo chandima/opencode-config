@@ -16,6 +16,7 @@ DEPS_FILE=""
 CODE_FILE=""
 MISCONFIG_FILE=""
 GITHUB_FILE=""
+REQUIREMENTS_FILE=""
 OUTPUT_FILE=".opencode/docs/SECURITY-AUDIT.md"
 
 while [[ $# -gt 0 ]]; do
@@ -28,6 +29,7 @@ while [[ $# -gt 0 ]]; do
         --code)      CODE_FILE="$2"; shift 2 ;;
         --misconfig) MISCONFIG_FILE="$2"; shift 2 ;;
         --github)    GITHUB_FILE="$2"; shift 2 ;;
+        --requirements) REQUIREMENTS_FILE="$2"; shift 2 ;;
         --output)    OUTPUT_FILE="$2"; shift 2 ;;
         *)           shift ;;
     esac
@@ -53,6 +55,10 @@ deps=$(read_json "$DEPS_FILE" '{"findings": [], "summary": {"critical": 0, "high
 code=$(read_json "$CODE_FILE" '{"findings": [], "summary": {"critical": 0, "high": 0, "medium": 0, "low": 0}}')
 misconfig=$(read_json "$MISCONFIG_FILE" '{"findings": [], "summary": {"critical": 0, "high": 0, "medium": 0, "low": 0}}')
 github=$(read_json "$GITHUB_FILE" '{"findings": [], "summary": {"critical": 0, "high": 0, "medium": 0, "low": 0}}')
+requirements_count=0
+if [[ -n "$REQUIREMENTS_FILE" && -f "$REQUIREMENTS_FILE" ]]; then
+    requirements_count=$(grep -c '^### SR-' "$REQUIREMENTS_FILE" 2>/dev/null || echo "0")
+fi
 
 # Calculate totals
 total_critical=$((
@@ -148,6 +154,23 @@ cat > "$OUTPUT_FILE" << EOF
 | Code SAST (Semgrep) | $(echo "$code" | jq -r '.summary.critical // 0') | $(echo "$code" | jq -r '.summary.high // 0') | $(echo "$code" | jq -r '.summary.medium // 0') | $(echo "$code" | jq -r '.summary.low // 0') |
 | Misconfig (Trivy) | $(echo "$misconfig" | jq -r '.summary.critical // 0') | $(echo "$misconfig" | jq -r '.summary.high // 0') | $(echo "$misconfig" | jq -r '.summary.medium // 0') | $(echo "$misconfig" | jq -r '.summary.low // 0') |
 | GitHub Security | $(echo "$github" | jq -r '.summary.critical // 0') | $(echo "$github" | jq -r '.summary.high // 0') | $(echo "$github" | jq -r '.summary.medium // 0') | $(echo "$github" | jq -r '.summary.low // 0') |
+
+### Security Requirement Extraction
+
+- Requirements generated from CRITICAL/HIGH findings: $requirements_count
+- Requirements artifact: 
+    $(if [[ -n "$REQUIREMENTS_FILE" && -f "$REQUIREMENTS_FILE" ]]; then echo "\`$REQUIREMENTS_FILE\`"; else echo "Not generated"; fi)
+
+## Pre-Deployment Security Checklist
+
+- [ ] No hardcoded secrets in source/config/history
+- [ ] Inputs validated with allow-list schemas and safe parsing
+- [ ] Queries/commands protected against injection
+- [ ] Authentication and authorization checks enforced server-side
+- [ ] Rate limits configured for public and expensive endpoints
+- [ ] Error responses and logs do not expose sensitive internals
+- [ ] Dependency vulnerabilities reviewed and critical/high remediated
+- [ ] Security headers/configuration reviewed for production baseline
 
 EOF
 

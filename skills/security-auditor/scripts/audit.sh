@@ -13,6 +13,7 @@ SCOPE=""
 CHANGED_ONLY=false
 OUTPUT_DIR=".opencode/docs"
 OUTPUT_FILE="SECURITY-AUDIT.md"
+REQUIREMENTS_FILE="SECURITY-REQUIREMENTS.md"
 VERBOSE=false
 FORCE=false
 
@@ -103,6 +104,7 @@ if [[ "${OPENCODE_EVAL:-}" == "1" ]]; then
     fi
     mkdir -p "$OUTPUT_DIR"
     REPORT_PATH="$OUTPUT_DIR/$OUTPUT_FILE"
+    REQUIREMENTS_PATH="$OUTPUT_DIR/$REQUIREMENTS_FILE"
     cat > "$REPORT_PATH" <<EOF
 # Security Audit Report (Eval Mode)
 
@@ -125,6 +127,16 @@ This report was generated in eval mode to validate workflow wiring.
 ## Notes
 
 - Tool execution is skipped in eval mode.
+EOF
+    cat > "$REQUIREMENTS_PATH" <<EOF
+# Security Requirements (Eval Mode)
+
+Generated in eval mode. No findings were processed.
+
+## Summary
+
+- Source findings (CRITICAL/HIGH): 0
+- Requirements generated: 0
 EOF
     log_success "Eval mode report generated: $REPORT_PATH"
     exit 0
@@ -242,7 +254,18 @@ wait $PID_CODE && log_success "Code scan complete" || log_warn "Code scan had is
 wait $PID_MISCONFIG && log_success "Misconfig scan complete" || log_warn "Misconfig scan had issues"
 wait $PID_GITHUB && log_success "GitHub security check complete" || log_warn "GitHub check had issues"
 
-# Step 6: Generate report
+# Step 6: Extract requirements
+log_info "Extracting security requirements..."
+"$SCRIPT_DIR/extract-requirements.sh" \
+    --secrets "$TEMP_DIR/secrets.json" \
+    --deps "$TEMP_DIR/deps.json" \
+    --code "$TEMP_DIR/code.json" \
+    --misconfig "$TEMP_DIR/misconfig.json" \
+    --github "$TEMP_DIR/github.json" \
+    --output "$OUTPUT_DIR/$REQUIREMENTS_FILE"
+log_success "Requirements extracted: $OUTPUT_DIR/$REQUIREMENTS_FILE"
+
+# Step 7: Generate report
 log_info "Generating security report..."
 mkdir -p "$OUTPUT_DIR"
 
@@ -255,9 +278,10 @@ mkdir -p "$OUTPUT_DIR"
     --code "$TEMP_DIR/code.json" \
     --misconfig "$TEMP_DIR/misconfig.json" \
     --github "$TEMP_DIR/github.json" \
+    --requirements "$OUTPUT_DIR/$REQUIREMENTS_FILE" \
     --output "$OUTPUT_DIR/$OUTPUT_FILE"
 
-# Step 7: Determine gate decision
+# Step 8: Determine gate decision
 REPORT_PATH="$OUTPUT_DIR/$OUTPUT_FILE"
 log_success "Report generated: $REPORT_PATH"
 

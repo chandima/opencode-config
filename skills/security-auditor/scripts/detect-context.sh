@@ -66,8 +66,12 @@ detect_languages() {
         languages+=("php")
     fi
     
-    # Output as JSON array
-    printf '%s\n' "${languages[@]}" | jq -R . | jq -s .
+    # Output as JSON array (safe when empty under `set -u`)
+    if [[ ${#languages[@]} -eq 0 ]]; then
+        echo "[]"
+    else
+        printf '%s\n' "${languages[@]}" | jq -R . | jq -s .
+    fi
 }
 
 # Detect frameworks from dependencies
@@ -119,7 +123,11 @@ detect_frameworks() {
         grep -qE "sinatra" Gemfile 2>/dev/null && frameworks+=("sinatra")
     fi
     
-    printf '%s\n' "${frameworks[@]}" | jq -R . | jq -s . 2>/dev/null || echo "[]"
+    if [[ ${#frameworks[@]} -eq 0 ]]; then
+        echo "[]"
+    else
+        printf '%s\n' "${frameworks[@]}" | jq -R . | jq -s . 2>/dev/null || echo "[]"
+    fi
 }
 
 # Detect project type based on indicators
