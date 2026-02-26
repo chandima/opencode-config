@@ -152,7 +152,7 @@ async function rmrf(p) { await fsp.rm(p, { recursive: true, force: true }); }
 
 function parseArgs(argv) {
   const args = {
-    outdir: ".opencode/evals/skill-loading/.tmp/opencode-eval-results",
+    outdir: "evals/skill-loading/.tmp/opencode-eval-results",
     opencodeBin: "opencode",
     timeoutS: 600,
     workdir: "copy",
@@ -214,7 +214,7 @@ Usage:
   node opencode_skill_eval_runner.mjs --repo /path/to/repo --dataset dataset.jsonl --matrix matrix.json [options]
 
 Options:
-  --outdir <dir>              Output directory (default: .opencode/evals/skill-loading/.tmp/opencode-eval-results)
+  --outdir <dir>              Output directory (default: evals/skill-loading/.tmp/opencode-eval-results)
   --opencode-bin <bin>        OpenCode binary (default: opencode)
   --timeout-s <sec>           Per-test timeout (default: 600)
   --workdir copy|inplace      Copy repo for isolation (default: copy)

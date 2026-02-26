@@ -1,7 +1,7 @@
 ---
 name: skill-evals-optimize
 description: "Optimize OpenCode skill-loading eval failures. Use when triaging failed eval cases, applying limited fixes, and re-running targeted evals."
-allowed-tools: Bash(./.opencode/evals/skill-loading/opencode_skill_eval_runner.sh) Bash(./scripts/*) Bash(python:*) Read Glob Grep
+allowed-tools: Bash(./evals/skill-loading/opencode_skill_eval_runner.sh) Bash(./scripts/*) Bash(python:*) Read Glob Grep
 context: fork
 ---
 
@@ -11,9 +11,9 @@ Triage failed eval cases using the steering guide, apply limited fixes, and rete
 
 ## Inputs
 
-- Results root: `.opencode/evals/skill-loading/.tmp/opencode-eval-results`
+- Results root: `evals/skill-loading/.tmp/opencode-eval-results`
 - Max optimization iterations: **2**
-- Steering guide: `.opencode/evals/skill-loading/docs/skill-optimization-steering.md`
+- Steering guide: `evals/skill-loading/docs/skill-optimization-steering.md`
 
 ## Workflow
 

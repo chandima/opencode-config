@@ -4,7 +4,7 @@ Purpose: establish a deterministic, CI-friendly evaluation framework for OpenCod
 
 ## Status update (2026-02-01)
 
-- Implemented the evaluation framework in `.opencode/evals/skill-loading/` with runner, dataset, matrix, grading spec, and docs.
+- Implemented the evaluation framework in `evals/skill-loading/` with runner, dataset, matrix, grading spec, and docs.
 - Added `summary.json` output (precision/recall, confusion pairs, per-skill stats).
 - Enforced `checks.should_ask_external_search` for skill-creator cases.
 - `checks.optional_skills` is treated as **allowed extras for diagnostics** (not pass/fail).

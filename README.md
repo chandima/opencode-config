@@ -13,6 +13,8 @@ opencode-config/                      # This git repo (your config)
 ├── setup.sh                          # Setup script for OpenCode, Codex, and Copilot
 ├── opencode.json                     # OpenCode config file (tracked)
 ├── skills/                           # Custom skills (tracked, works with all CLIs)
+├── evals/                            # Evaluation framework (harness-agnostic)
+│   └── skill-loading/                # Skill-loading eval suite
 ├── scripts/
 │   └── codex-config.py               # Codex config merging
 ├── .codex/                           # Codex config + rules (tracked)
@@ -210,17 +212,17 @@ All tests should pass before committing changes.
 
 ### Skill Loading Evals
 
-The skill-loading eval harness lives in `.opencode/evals/skill-loading/` and includes a runner, dataset, and grading spec.
+The skill-loading eval harness lives in `evals/skill-loading/` and includes a runner, dataset, and grading spec.
 
 Quick run (deterministic):
 
 ```bash
-./.opencode/evals/skill-loading/opencode_skill_eval_runner.sh \
+./evals/skill-loading/opencode_skill_eval_runner.sh \
   --repo "$(pwd)" \
-  --dataset .opencode/evals/skill-loading/opencode_skill_loading_eval_dataset.jsonl \
-  --matrix .opencode/evals/skill-loading/opencode_skill_eval_matrix.json \
+  --dataset evals/skill-loading/opencode_skill_loading_eval_dataset.jsonl \
+  --matrix evals/skill-loading/opencode_skill_eval_matrix.json \
   --disable-models-fetch \
-  --outdir .opencode/evals/skill-loading/.tmp/opencode-eval-results
+  --outdir evals/skill-loading/.tmp/opencode-eval-results
 ```
 
 OpenCode commands:

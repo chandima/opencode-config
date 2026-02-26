@@ -32,4 +32,4 @@ pnpm-lock.yaml
 # Eval run artifacts
 opencode-eval-results/
 opencode-eval-results-*/
-.opencode/evals/skill-loading/.tmp/
+evals/skill-loading/.tmp/

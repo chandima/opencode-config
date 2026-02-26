@@ -38,7 +38,7 @@ Behavior now:
 - Skill-loading evals include explicit, implicit, near-miss, and negative coverage for planning-doc.
 
 Validate:
-- `rg -n "planning_doc_" .opencode/evals/skill-loading/opencode_skill_loading_eval_dataset.jsonl` -> four cases listed
+- `rg -n "planning_doc_" evals/skill-loading/opencode_skill_loading_eval_dataset.jsonl` -> four cases listed
 
 Notes:
 - None.

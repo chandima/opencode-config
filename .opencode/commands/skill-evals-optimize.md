@@ -16,19 +16,19 @@ Triage failing eval cases using the steering guide, apply limited fixes, and ret
 
 ## Instructions
 
-1. Locate the latest `results.json` under `.opencode/evals/skill-loading/.tmp/opencode-eval-results/` (or use the helper script):
+1. Locate the latest `results.json` under `evals/skill-loading/.tmp/opencode-eval-results/` (or use the helper script):
    ```bash
    bash scripts/list-fails.sh
    ```
 2. Extract failed case IDs (`status == FAIL`). If `--filter-id` is provided, restrict to those cases.
-3. Read `.opencode/evals/skill-loading/docs/skill-optimization-steering.md` before proposing any fix.
+3. Read `evals/skill-loading/docs/skill-optimization-steering.md` before proposing any fix.
 4. For each failed case, propose the smallest targeted change and apply it.
 5. Re-run only the failed cases using the eval runner (or use the helper script):
    ```bash
-   .opencode/evals/skill-loading/opencode_skill_eval_runner.sh \
+   evals/skill-loading/opencode_skill_eval_runner.sh \
      --repo "$PWD" \
-     --dataset .opencode/evals/skill-loading/opencode_skill_loading_eval_dataset.jsonl \
-     --matrix .opencode/evals/skill-loading/opencode_skill_eval_matrix.json \
+     --dataset evals/skill-loading/opencode_skill_loading_eval_dataset.jsonl \
+     --matrix evals/skill-loading/opencode_skill_eval_matrix.json \
      --disable-models-fetch \
      --isolate-config \
      --parallel 3 \

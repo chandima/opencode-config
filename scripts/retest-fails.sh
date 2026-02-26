@@ -34,7 +34,7 @@ done
 latest_results_json() {
   python - <<'PY'
 import pathlib
-root = pathlib.Path(".opencode/evals/skill-loading/.tmp/opencode-eval-results")
+root = pathlib.Path("evals/skill-loading/.tmp/opencode-eval-results")
 if not root.exists():
     print("")
     raise SystemExit(0)
@@ -81,10 +81,10 @@ if [ -z "$fail_regex" ]; then
 fi
 
 cmd=(
-  ./.opencode/evals/skill-loading/opencode_skill_eval_runner.sh
+  ./evals/skill-loading/opencode_skill_eval_runner.sh
   --repo "$PWD"
-  --dataset .opencode/evals/skill-loading/opencode_skill_loading_eval_dataset.jsonl
-  --matrix .opencode/evals/skill-loading/opencode_skill_eval_matrix.json
+  --dataset evals/skill-loading/opencode_skill_loading_eval_dataset.jsonl
+  --matrix evals/skill-loading/opencode_skill_eval_matrix.json
   --disable-models-fetch
   --isolate-config
   --parallel "$PARALLEL"

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-RESULTS_DIR=".opencode/evals/skill-loading/.tmp/opencode-eval-results"
+RESULTS_DIR="evals/skill-loading/.tmp/opencode-eval-results"
 
 latest_results_json() {
   python - <<'PY'
 import pathlib
-root = pathlib.Path(".opencode/evals/skill-loading/.tmp/opencode-eval-results")
+root = pathlib.Path("evals/skill-loading/.tmp/opencode-eval-results")
 if not root.exists():
     print("")
     raise SystemExit(0)

@@ -22,13 +22,13 @@ Deterministic eval runner for OpenCode skill routing + loading. It runs a JSONL 
 ## Run (deterministic, recommended)
 
 ```bash
-./.opencode/evals/skill-loading/opencode_skill_eval_runner.sh \
+./evals/skill-loading/opencode_skill_eval_runner.sh \
   --repo /path/to/your/repo \
-  --dataset .opencode/evals/skill-loading/opencode_skill_loading_eval_dataset.jsonl \
-  --matrix .opencode/evals/skill-loading/opencode_skill_eval_matrix.json \
+  --dataset evals/skill-loading/opencode_skill_loading_eval_dataset.jsonl \
+  --matrix evals/skill-loading/opencode_skill_eval_matrix.json \
   --disable-models-fetch \
   --isolate-config \
-  --outdir .opencode/evals/skill-loading/.tmp/opencode-eval-results \
+  --outdir evals/skill-loading/.tmp/opencode-eval-results \
   --parallel 3
 ```
 
@@ -37,14 +37,14 @@ Exit code:
 - `1` any FAIL/ERROR
 
 Artifacts:
-- `.opencode/evals/skill-loading/.tmp/opencode-eval-results/junit.all.xml`
-- `.opencode/evals/skill-loading/.tmp/opencode-eval-results/results.all.json`
-- `.opencode/evals/skill-loading/.tmp/opencode-eval-results/summary.json`
-- per-run `.opencode/evals/skill-loading/.tmp/opencode-eval-results/<run>/results.json`
-- per-run `.opencode/evals/skill-loading/.tmp/opencode-eval-results/<run>/junit.xml`
-- optional per-run traces `.opencode/evals/skill-loading/.tmp/opencode-eval-results/<run>/trace/<caseId>.ndjson` (when `--trace-events`)
-- per-run progress `.opencode/evals/skill-loading/.tmp/opencode-eval-results/<run>/progress.json` (updated after each case)
-- run lock `.opencode/evals/skill-loading/.tmp/opencode-eval-results/.lock` (prevents concurrent runs in the same outdir)
+- `evals/skill-loading/.tmp/opencode-eval-results/junit.all.xml`
+- `evals/skill-loading/.tmp/opencode-eval-results/results.all.json`
+- `evals/skill-loading/.tmp/opencode-eval-results/summary.json`
+- per-run `evals/skill-loading/.tmp/opencode-eval-results/<run>/results.json`
+- per-run `evals/skill-loading/.tmp/opencode-eval-results/<run>/junit.xml`
+- optional per-run traces `evals/skill-loading/.tmp/opencode-eval-results/<run>/trace/<caseId>.ndjson` (when `--trace-events`)
+- per-run progress `evals/skill-loading/.tmp/opencode-eval-results/<run>/progress.json` (updated after each case)
+- run lock `evals/skill-loading/.tmp/opencode-eval-results/.lock` (prevents concurrent runs in the same outdir)
 
 Runtime UI:
 - When running in a TTY, active tests show per‑test timeout progress bars.
@@ -55,10 +55,10 @@ Runtime UI:
 This starts `opencode serve` and attaches each run to it. It resets the workspace between tests for determinism.
 
 ```bash
-./.opencode/evals/skill-loading/opencode_skill_eval_runner.sh \
+./evals/skill-loading/opencode_skill_eval_runner.sh \
   --repo /path/to/your/repo \
-  --dataset .opencode/evals/skill-loading/opencode_skill_loading_eval_dataset.jsonl \
-  --matrix .opencode/evals/skill-loading/opencode_skill_eval_matrix.json \
+  --dataset evals/skill-loading/opencode_skill_loading_eval_dataset.jsonl \
+  --matrix evals/skill-loading/opencode_skill_eval_matrix.json \
   --start-server \
   --disable-models-fetch \
   --isolate-config \
@@ -94,11 +94,11 @@ Add `--trace-events` to write timestamped event timelines per case (NDJSON). Eac
 ## CI snippet (generic)
 
 ```bash
-node .opencode/evals/skill-loading/opencode_skill_eval_runner.mjs \
+node evals/skill-loading/opencode_skill_eval_runner.mjs \
   --repo "$PWD" \
-  --dataset .opencode/evals/skill-loading/opencode_skill_loading_eval_dataset.jsonl \
-  --matrix .opencode/evals/skill-loading/opencode_skill_eval_matrix.json \
-  --outdir .opencode/evals/skill-loading/.tmp/opencode-eval-results
+  --dataset evals/skill-loading/opencode_skill_loading_eval_dataset.jsonl \
+  --matrix evals/skill-loading/opencode_skill_eval_matrix.json \
+  --outdir evals/skill-loading/.tmp/opencode-eval-results
 ```
 
 ## Notes

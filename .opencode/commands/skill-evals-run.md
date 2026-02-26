@@ -29,10 +29,10 @@ Run the skill-loading eval suite for this repository using the local runner.
 
 1. Build the base command (repo-scoped defaults):
    ```
-   .opencode/evals/skill-loading/opencode_skill_eval_runner.sh \
+   evals/skill-loading/opencode_skill_eval_runner.sh \
      --repo "$PWD" \
-     --dataset .opencode/evals/skill-loading/opencode_skill_loading_eval_dataset.jsonl \
-     --matrix .opencode/evals/skill-loading/opencode_skill_eval_matrix.json \
+     --dataset evals/skill-loading/opencode_skill_loading_eval_dataset.jsonl \
+     --matrix evals/skill-loading/opencode_skill_eval_matrix.json \
      --disable-models-fetch \
      --isolate-config \
      --parallel 3
@@ -42,7 +42,7 @@ Run the skill-loading eval suite for this repository using the local runner.
 
 3. After the run:
    - Summarize PASS/FAIL counts and list failed case IDs.
-   - If there are failures, reference `.opencode/evals/skill-loading/docs/skill-optimization-steering.md` and suggest the next remediation step.
+   - If there are failures, reference `evals/skill-loading/docs/skill-optimization-steering.md` and suggest the next remediation step.
 
 Notes:
 - With `--disable-models-fetch`, the runner will fall back to `~/.cache/opencode/models.json` when available. Use `--models-url file://...` if you need a different cache file.

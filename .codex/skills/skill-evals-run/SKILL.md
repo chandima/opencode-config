@@ -1,7 +1,7 @@
 ---
 name: skill-evals-run
 description: "Run the OpenCode skill-loading eval suite for this repo. Use when asked to run skill evals, skill-loading evals, or the skill-evals-run command."
-allowed-tools: Bash(./.opencode/evals/skill-loading/opencode_skill_eval_runner.sh) Read
+allowed-tools: Bash(./evals/skill-loading/opencode_skill_eval_runner.sh) Read
 context: fork
 ---
 
@@ -22,10 +22,10 @@ Run the local skill-loading eval suite with the shell runner.
 Run:
 
 ```bash
-.opencode/evals/skill-loading/opencode_skill_eval_runner.sh \
+evals/skill-loading/opencode_skill_eval_runner.sh \
   --repo "$PWD" \
-  --dataset .opencode/evals/skill-loading/opencode_skill_loading_eval_dataset.jsonl \
-  --matrix .opencode/evals/skill-loading/opencode_skill_eval_matrix.json \
+  --dataset evals/skill-loading/opencode_skill_loading_eval_dataset.jsonl \
+  --matrix evals/skill-loading/opencode_skill_eval_matrix.json \
   --disable-models-fetch \
   --isolate-config \
   --parallel 3
@@ -44,8 +44,8 @@ If `--parallel` is omitted, keep the default of 3.
 ## After the run
 
 - Summarize PASS/FAIL counts and list failed case IDs.
-- If failures exist (PASS/FAIL, not ERROR), reference `.opencode/evals/skill-loading/docs/skill-optimization-steering.md` and suggest the next remediation step.
-- If any cases are ERROR, do not suggest optimization. Instead, inspect `.opencode/evals/skill-loading/.tmp/opencode-eval-results/<run>/results.json` and any traces to identify the crash, then re-run the evals once the error is resolved.
+- If failures exist (PASS/FAIL, not ERROR), reference `evals/skill-loading/docs/skill-optimization-steering.md` and suggest the next remediation step.
+- If any cases are ERROR, do not suggest optimization. Instead, inspect `evals/skill-loading/.tmp/opencode-eval-results/<run>/results.json` and any traces to identify the crash, then re-run the evals once the error is resolved.
 
 ## Notes
 

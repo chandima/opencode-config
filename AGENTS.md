@@ -74,6 +74,8 @@ opencode-config/
 ├── skills/           # Custom OpenCode skills
 │   ├── github-ops/   # GitHub operations via gh CLI
 │   └── skill-creator/ # AI-assisted skill creation
+├── evals/            # Evaluation framework
+│   └── skill-loading/ # Skill-loading eval suite
 ├── .opencode/        # OpenCode commands and config
 │   └── commands/     # Custom slash commands
 └── opencode.json     # Provider configuration (LiteLLM)
