@@ -1,20 +1,21 @@
 # OpenCode Configuration Repository
 
-This repository contains custom skills and configuration for OpenCode and Codex CLI. It is symlinked to extend both CLIs' capabilities.
+This repository contains custom skills and configuration for OpenCode, Codex CLI, and GitHub Copilot. It is symlinked to extend all three CLIs' capabilities.
 
 **This is NOT application code** - it contains AI agent skills, commands, and templates.
 
 ## CLI Support
 
-This repository supports both **OpenCode** and **Codex CLI**:
+This repository supports **OpenCode**, **Codex CLI**, and **GitHub Copilot**:
 
-| Aspect | OpenCode | Codex |
-|--------|----------|-------|
-| Config directory | `~/.config/opencode/` | `~/.codex/` |
-| Config file | `opencode.json` (JSON) | `config.toml` (TOML) |
-| Skills directory | `~/.config/opencode/skills/` | `~/.codex/skills/` |
-| Setup script | `./setup.sh` (automated) | Manual symlinking required |
-| System skills | None | `.system/` subdirectory (skill-creator, skill-installer) |
+| Aspect | OpenCode | Codex | Copilot |
+|--------|----------|-------|---------|
+| Config directory | `~/.config/opencode/` | `~/.codex/` | `~/.copilot/` |
+| Config file | `opencode.json` (JSON) | `config.toml` (TOML) | VS Code settings |
+| Skills directory | `~/.config/opencode/skills/` | `~/.codex/skills/` | `~/.copilot/skills/` |
+| Setup script | `./setup.sh` or `./setup.sh opencode` | `./setup.sh codex` | `./setup.sh copilot` |
+| System skills | None | `.system/` subdirectory | Built-in tools |
+| Skill format | `SKILL.md` (YAML frontmatter) | `SKILL.md` (YAML frontmatter) | `SKILL.md` ([Agent Skills standard](https://agentskills.io/)) |
 
 ### OpenCode Setup (Automated)
 
@@ -26,13 +27,45 @@ Run the setup script to automatically configure OpenCode:
 
 This creates symlinks for `opencode.json` and `skills/` in `~/.config/opencode/`.
 
-### Codex Setup (Manual)
+### Codex Setup
 
-To use these skills with Codex CLI, manually symlink individual skills. See the README.md "Codex CLI Setup" section for detailed instructions, including how to respect disabled skills from `opencode.json`.
+Run the setup script with the `codex` target:
+
+```bash
+./setup.sh codex
+```
+
+This symlinks individual skills to `~/.codex/skills/` and merges Codex config.
 
 **Important:** Do NOT symlink the entire `skills/` directory to `~/.codex/skills/`, as this will hide Codex's system skills in `.system/`.
 
 **Configuration:** Codex uses `config.toml` (TOML format), not `opencode.json`. Manage your Codex configuration separately.
+
+### Copilot Setup
+
+Run the setup script with the `copilot` target:
+
+```bash
+./setup.sh copilot
+```
+
+This symlinks individual skill directories to `~/.copilot/skills/`. Copilot natively supports the same `SKILL.md` format via the [Agent Skills standard](https://agentskills.io/) — no conversion needed.
+
+Copilot discovers skills automatically. You can also configure additional search locations in VS Code `settings.json`:
+
+```json
+{
+  "chat.agentSkillsLocations": [
+    { "path": "~/.copilot/skills" }
+  ]
+}
+```
+
+### All Targets
+
+```bash
+./setup.sh all    # Install for OpenCode, Codex, and Copilot
+```
 
 ## Repository Structure
 

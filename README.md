@@ -1,8 +1,8 @@
 # OpenCode Config
 
-Centralized OpenCode and Codex CLI configuration for syncing across multiple machines.
+Centralized OpenCode, Codex CLI, and GitHub Copilot configuration for syncing across multiple machines.
 
-> **Note:** These agents and skill definitions were developed primarily for [OpenCode](https://opencode.ai), but may work out-of-the-box with other coding agent harnesses that support similar skill/agent formats (e.g., Codex CLI, Claude Code).
+> **Note:** These agents and skill definitions were developed primarily for [OpenCode](https://opencode.ai), but work with Codex CLI and GitHub Copilot as well. They may also work out-of-the-box with other coding agent harnesses that support similar skill/agent formats.
 
 ## Structure
 
@@ -10,9 +10,11 @@ Centralized OpenCode and Codex CLI configuration for syncing across multiple mac
 opencode-config/                      # This git repo (your config)
 ├── .gitignore
 ├── README.md
-├── setup.sh                          # Setup script for OpenCode and Codex
+├── setup.sh                          # Setup script for OpenCode, Codex, and Copilot
 ├── opencode.json                     # OpenCode config file (tracked)
-├── skills/                           # Custom skills (tracked, works with both CLIs)
+├── skills/                           # Custom skills (tracked, works with all CLIs)
+├── scripts/
+│   └── codex-config.py               # Codex config merging
 ├── .codex/                           # Codex config + rules (tracked)
 │   ├── config.toml                   # Codex config (TOML format)
 │   └── rules/                        # Codex rules
@@ -35,6 +37,12 @@ opencode-config/                      # This git repo (your config)
     ├── .system/                      # Codex system skills (managed by Codex)
     ├── github-ops/ -> <repo>/skills/github-ops/  # Custom skill (via setup.sh)
     └── ...other custom skills...     # (via setup.sh)
+
+~/.copilot/                           # Copilot runtime directory
+└── skills/                           # Skills directory (via setup.sh copilot)
+    ├── github-ops/ -> <repo>/skills/github-ops/  # Custom skill (via setup.sh)
+    ├── context7-docs/ -> <repo>/skills/context7-docs/
+    └── ...other custom skills...     # One symlink per enabled skill
 ```
 
 ## Setup on a New Machine
@@ -52,11 +60,15 @@ cd opencode-config
 ./setup.sh              # Install OpenCode only (default)
 ./setup.sh opencode     # Install OpenCode only
 ./setup.sh codex        # Install Codex only
-./setup.sh both         # Install both OpenCode and Codex
+./setup.sh copilot      # Install Copilot only (symlink skills)
+./setup.sh all          # Install for OpenCode, Codex, and Copilot
+./setup.sh both         # Install for OpenCode and Codex
 ./setup.sh opencode --skills-only # OpenCode skills only (skip opencode.json + agents)
 ./setup.sh codex --skills-only    # Codex skills only (skip config merge + rules)
 ./setup.sh opencode --remove  # Remove OpenCode symlinks
 ./setup.sh codex --remove     # Remove Codex symlinks
+./setup.sh copilot --remove   # Remove Copilot symlinks
+./setup.sh all --remove       # Remove all
 ./setup.sh both --remove      # Remove both OpenCode + Codex symlinks
 ./setup.sh codex --skills-only --remove # Remove Codex skills only
 ./setup.sh --help       # Show help
@@ -67,8 +79,9 @@ The script will:
 - **OpenCode**: Symlink `opencode.json`, `skills/`, and `agents/` to `~/.config/opencode/`
 - **Codex**: Symlink individual skills to `~/.codex/skills/` (preserves `.system/` directory)
 - **Codex**: Merge repo `.codex/config.toml` into `~/.codex/config.toml` (repo precedence) and install `.codex/rules/*` into `~/.codex/rules/` (backing up conflicts)
-- **Respects disabled skills**: Skills with `"deny"` permission in `opencode.json` are skipped for Codex
-- **Remove mode**: Use `[target] --remove` to delete only symlinks created by the script (non-symlink directories are left intact)
+- **Copilot**: Symlink individual skill directories to `~/.copilot/skills/` (uses [Agent Skills standard](https://agentskills.io/) natively)
+- **Respects disabled skills**: Skills with `"deny"` permission in `opencode.json` are skipped for all targets
+- **Remove mode**: Use `[target] --remove` to delete only symlinks created by the script
 - **Skills-only mode**: Use `--skills-only` to skip configs/rules/agents and link/remove only skills
 
 <details>
@@ -91,6 +104,14 @@ for skill in skills/*; do
 done
 ```
 
+**Copilot:**
+
+```bash
+for skill in skills/*; do
+  ln -sfn "$(pwd)/$skill" ~/.copilot/skills/$(basename "$skill")
+done
+```
+
 </details>
 
 ### 3. Verify
@@ -98,6 +119,7 @@ done
 ```bash
 ls -la ~/.config/opencode/    # OpenCode: opencode.json and skills/ symlinked
 ls -la ~/.codex/skills/       # Codex: custom skills alongside .system/
+ls ~/.copilot/skills/         # Copilot: custom skills symlinked
 ```
 
 ## Updating Config
