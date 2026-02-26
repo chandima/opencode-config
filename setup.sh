@@ -17,7 +17,7 @@ TARGETS:
     all         Install for OpenCode, Codex, and Copilot
     both        Install for OpenCode and Codex (legacy alias for backward compat)
     --remove, -r  Remove symlinks/files instead of installing
-    --skills-only  Install/remove skills only (skip configs, rules, agents)
+    --skills-only  Install/remove skills only (skip configs and rules)
     --help, -h  Show this help message
 EOF
 }
@@ -222,7 +222,7 @@ setup_opencode() {
     mkdir -p "$config_dir"
     
     # Check for existing symlinks/files and warn
-    local items=(opencode.json skills agents)
+    local items=(opencode.json skills)
     if [[ "$SKILLS_ONLY" -eq 1 ]]; then
         items=(skills)
     fi
@@ -241,9 +241,7 @@ setup_opencode() {
 
     if [[ "$SKILLS_ONLY" -eq 0 ]]; then
         ln -sf "$SCRIPT_DIR/opencode.json" "$config_dir/opencode.json"
-        ln -sfn "$SCRIPT_DIR/.opencode/agents" "$config_dir/agents"
         echo "  Linked: opencode.json"
-        echo "  Linked: agents/"
     fi
     echo "  Done!"
 }
@@ -426,7 +424,7 @@ remove_opencode() {
     echo "Removing OpenCode symlinks..."
     echo "  Target: $config_dir"
 
-    local items=(opencode.json skills agents)
+    local items=(opencode.json skills)
     if [[ "$SKILLS_ONLY" -eq 1 ]]; then
         items=(skills)
     fi

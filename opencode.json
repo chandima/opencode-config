@@ -1,6 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["@tarquinen/opencode-dcp", "opencode-beads"],
+  "plugin": ["@tarquinen/opencode-dcp"],
   "permission": {
     "skill": {
       "*": "allow",

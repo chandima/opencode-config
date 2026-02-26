@@ -15,10 +15,9 @@ Purpose: establish a deterministic, CI-friendly evaluation framework for OpenCod
 - Eval matrix now GPT-only to keep early runs small.
 - Server mode now uses `--port` to reuse the running server (avoids `--attach` context errors). Default remains per-test until server mode proves faster.
 - Added timing instrumentation: per-case prep/run/parse/grade breakdowns (`--timing-detail`) plus optional timestamped event traces (`--trace-events`) and time-to-first-event/tool/skill fields.
-- `--isolate-config` now skips auto-loading repo `opencode.json` unless `--config` is explicitly provided (prevents beads/plugin contamination). It sets `OPENCODE_CONFIG_DIR` to a temp dir. Project config is only disabled if `--disable-project-config` is passed.
+- `--isolate-config` now skips auto-loading repo `opencode.json` unless `--config` is explicitly provided (prevents plugin contamination). It sets `OPENCODE_CONFIG_DIR` to a temp dir. Project config is only disabled if `--disable-project-config` is passed.
 - When `--isolate-config` is used without `--config`, the runner writes a minimal config (plugins disabled, `asu-discover` denied) to keep evals deterministic.
-- The runner injects a minimal `AGENTS.md` guard in temp workspaces to forbid Beads usage during eval runs.
-- The runner now prepends a prompt guard that forbids Beads/bd and the task tool, and enforces explicit skill usage when users name a skill or request exact gh/GitHub CLI commands (disable with `--no-guard`).
+- The runner now prepends a prompt guard that enforces explicit skill usage when users name a skill or request exact gh/GitHub CLI commands (disable with `--no-guard`).
 - Added parallel execution (`--parallel`) with per-test timeout progress bars and per-run `progress.json`.
 - Parallel runs now isolate OpenCode cache per worker to avoid cache corruption/race conditions.
 - Added a hard timeout fallback to prevent hangs after timeout.

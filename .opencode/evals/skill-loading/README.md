@@ -105,10 +105,10 @@ node .opencode/evals/skill-loading/opencode_skill_eval_runner.mjs \
 
 - Default mode copies the repo per test; your working tree is not mutated.
 - The runner excludes `AGENTS.md` and `.opencode/` from test copies to avoid workflow instructions interfering with evals.
-- Use `--isolate-config` to avoid global/project OpenCode config contamination (sets `OPENCODE_CONFIG_DIR` to a temp dir and disables project config). This prevents loading the repo `opencode.json` and skips repo `AGENTS.md`, avoiding plugins like `opencode-beads` during evals.
+- Use `--isolate-config` to avoid global/project OpenCode config contamination (sets `OPENCODE_CONFIG_DIR` to a temp dir and disables project config). This prevents loading the repo `opencode.json` and skips repo `AGENTS.md`, avoiding plugin side-effects during evals.
 - When `--isolate-config` is used without `--config`, the runner writes a minimal config (no plugins; `asu-discover` denied) to keep eval behavior deterministic.
-- The runner injects a minimal `AGENTS.md` guard into temp workspaces to forbid Beads usage during evals, and also prepends a prompt guard. If you disable project config (including via `--isolate-config`), rely on the prompt guard for Beads/bd restrictions.
-- By default, the runner prepends a short **prompt guard** that forbids Beads/bd and the task tool, and enforces explicit skill usage when a user names a skill or asks for exact gh/GitHub CLI commands. Disable with `--no-guard` for fully raw prompts.
+- The runner injects a minimal `AGENTS.md` guard into temp workspaces for eval isolation, and also prepends a prompt guard.
+- By default, the runner prepends a short **prompt guard** that enforces explicit skill usage when a user names a skill or asks for exact gh/GitHub CLI commands. Disable with `--no-guard` for fully raw prompts.
 - Use `--shell-run` or `--no-shell-run` to control the launch mode.
 - The runner sets `OPENCODE_EVAL=1` and a default `MCPORTER_TIMEOUT=20` to keep skill scripts fast and deterministic. Override via environment if needed.
 - The minimal eval config allows `external_directory` to avoid permission prompts when skills execute scripts.

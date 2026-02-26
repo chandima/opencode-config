@@ -212,13 +212,10 @@ const DEFAULT_IGNORE = new Set([
 
 const AGENTS_GUARD = `# Eval Harness Guard
 
-- Do not use Beads or the bd CLI.
-- Do not use the beads-task-agent.
-- Do not create/update Beads issues unless the user explicitly asks.
+- Do not use tools or plugins that are not part of the eval scope.
 `;
 
 const PROMPT_GUARD = `Eval harness rules:
-- Do not use Beads or the bd CLI.
 - Do not use the task tool unless the user explicitly asks.
 - If the user explicitly names a skill (e.g., "use the skill-creator skill"), you MUST call the skill tool for that skill before answering.
 - If the user asks for exact gh/GitHub CLI commands, you MUST call the skill tool for github-ops before answering.
