@@ -1,0 +1,8 @@
+{
+  // Treat SKILL.md as plain Markdown so Copilot's skill frontmatter
+  // validator doesn't flag OpenCode/Codex-specific attributes
+  // (allowed-tools, context) as unsupported.
+  "files.associations": {
+    "**/SKILL.md": "markdown"
+  }
+}
