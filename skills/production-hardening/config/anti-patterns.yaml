@@ -1,0 +1,329 @@
+# Production Hardening — Anti-Pattern Catalog
+#
+# Each entry: id, category, name, severity, description, detection patterns,
+# recommended fix. Used by the scan phase to classify findings.
+
+timeout:
+  - id: T1
+    name: No timeout on HTTP call
+    severity: CRITICAL
+    description: |
+      HTTP client call (axios, fetch, got, node-fetch) without an explicit
+      timeout.  The default is usually infinite or very long, which can hang a
+      Lambda invocation until it hits the function timeout and returns a 5xx to
+      the caller.
+    detect:
+      - "axios.get|axios.post|axios.put|axios.delete|axios.patch|axios.request"
+      - "fetch("
+      - "got("
+      - "http.request("
+      - "https.request("
+    check: Verify a `timeout` option is set in the call or client config.
+    fix: Set explicit timeout (e.g., 8 000 ms for external APIs, 3 000 ms for internal).
+
+  - id: T2
+    name: Timeout exceeds Lambda duration
+    severity: HIGH
+    description: |
+      The timeout on an HTTP call is greater than or equal to the Lambda
+      function timeout.  The function will be killed mid-request and return an
+      opaque 5xx instead of a typed error.
+    detect:
+      - Compare `timeout` values in HTTP config against Lambda `timeout` in IaC.
+    fix: Set call timeout < Lambda timeout - 2 s buffer.
+
+  - id: T3
+    name: Timeout set to 0 (infinite)
+    severity: CRITICAL
+    description: |
+      Some libraries interpret `timeout: 0` as "no timeout".
+    detect:
+      - "timeout: 0"
+      - "timeout = 0"
+    fix: Set a positive timeout value.
+
+retry:
+  - id: R1
+    name: No retry on transient-eligible call
+    severity: CRITICAL
+    description: |
+      A call to a flaky external dependency (third-party API, legacy SOAP
+      service, ML model endpoint) has no retry logic.  A single transient
+      blip causes a user-visible failure.
+    detect:
+      - Single-shot axios/fetch/got calls without a retry wrapper, p-retry, or
+        cockatiel retry policy.
+    fix: Wrap in cockatiel retry with exponential backoff + jitter.
+
+  - id: R2
+    name: Retry without jitter
+    severity: HIGH
+    description: |
+      Fixed-interval or pure exponential retry without jitter.  Multiple
+      concurrent callers will retry at the same instant, creating a
+      thundering-herd effect.
+    detect:
+      - "setInterval" or "setTimeout" with fixed delay in a retry loop.
+      - Retry config without `jitter` or with `jitter: false`.
+    fix: Use `ExponentialBackoff` from cockatiel (includes jitter by default).
+
+  - id: R3
+    name: Retry without max attempts
+    severity: HIGH
+    description: |
+      Retry loop without an upper bound.  Can burn the entire Lambda
+      duration budget on a single call.
+    detect:
+      - while/for retry loops without a counter limit.
+      - Retry config with `maxAttempts: Infinity` or missing maxAttempts.
+    fix: Set maxAttempts (typically 2-3 for external APIs).
+
+  - id: R4
+    name: Retrying non-idempotent mutation
+    severity: HIGH
+    description: |
+      Retry on a POST/PUT/PATCH that isn't idempotent can cause duplicate
+      side effects (double charges, duplicate records).
+    detect:
+      - Retry wrapping a POST/PUT without idempotency key in the request.
+    fix: Add idempotency key header or use @aws-lambda-powertools/idempotency.
+
+circuit-breaker:
+  - id: CB1
+    name: No circuit breaker on flaky external
+    severity: HIGH
+    description: |
+      Repeated calls to a known-flaky dependency without a breaker.  When
+      the dependency is down, every request wastes timeout duration before
+      failing.
+    detect:
+      - External API calls without cockatiel circuitBreaker, opossum, or a
+        custom breaker wrapper.
+    fix: Add cockatiel circuitBreaker with ConsecutiveBreaker or SamplingBreaker.
+
+  - id: CB2
+    name: In-process breaker state in Lambda
+    severity: HIGH
+    description: |
+      Circuit breaker state stored in a module-level variable in a Lambda
+      function.  Each cold start resets the state; concurrent instances
+      don't share state, making the breaker ineffective.
+    detect:
+      - Module-level `let breakerState =` or `new CircuitBreaker()` without
+        external state persistence.
+    fix: |
+      Use external state: SSM Parameter Store (via Powertools parameters with
+      maxAge caching), or DynamoDB.  A health-probe Lambda can write dependency
+      status to SSM on a schedule; app Lambdas read it on invocation via
+      cockatiel's `initialState`.
+
+  - id: CB3
+    name: No half-open mechanism
+    severity: MEDIUM
+    description: |
+      Breaker goes open but never transitions to half-open to test recovery.
+      Requires manual intervention to restore traffic.
+    detect:
+      - Custom breaker without `halfOpenAfter` or equivalent transition.
+    fix: Use cockatiel circuitBreaker (has half-open built in).
+
+error-handling:
+  - id: E1
+    name: Silent error swallowing
+    severity: CRITICAL
+    description: |
+      Catch block that logs but returns a default value, null, or empty
+      response.  Upstream callers believe the operation succeeded.
+    detect:
+      - "catch (e) { return null"
+      - "catch (e) { return []"
+      - "catch (e) { return {}"
+      - "catch (e) { /* ignore"
+      - ".catch(() => {})"
+      - ".catch(() => undefined)"
+    fix: Rethrow as a typed error or return a Result type that forces callers to handle the failure.
+
+  - id: E2
+    name: Infrastructure failure mapped to client error
+    severity: CRITICAL
+    description: |
+      A network timeout, DNS failure, or TLS error on an auth endpoint
+      (e.g., JWKS) is caught and re-thrown as a 401 Unauthorized.
+      The client retries with new credentials (useless), and monitoring
+      sees auth failures instead of infra failures.
+    detect:
+      - JWKS fetch / token verification in a catch block that throws 401/403.
+      - Auth middleware catch-all returning 401.
+    fix: |
+      Classify the error: if it's a network/timeout error (ECONNREFUSED,
+      ETIMEDOUT, ENOTFOUND, socket hang up), throw 503 Service Unavailable.
+      Only throw 401 for actual auth failures (invalid signature, expired token).
+
+  - id: E3
+    name: Fake success on timeout
+    severity: CRITICAL
+    description: |
+      When a dependency times out, the code returns a synthetic "pending"
+      or "success" response instead of surfacing the failure.
+    detect:
+      - Timeout catch returning `{ status: "pending" }` or `{ success: true }`.
+    fix: Surface the timeout as a typed error; let the caller decide on fallback.
+
+  - id: E4
+    name: Catch-all without rethrow
+    severity: HIGH
+    description: |
+      Generic `catch (error)` wrapping an entire function body with only
+      logging — no rethrow, no typed error return.
+    detect:
+      - try { [entire function body] } catch (e) { logger.error(e) }
+    fix: Rethrow the error or return a Result/Either type.
+
+dlq:
+  - id: DLQ1
+    name: SQS queue without DLQ
+    severity: HIGH
+    description: |
+      An SQS queue has no dead-letter queue configured.  Poison messages
+      will be retried indefinitely (up to retention period), burning Lambda
+      concurrency.
+    detect:
+      - SQS queue definition in IaC without `RedrivePolicy` or `deadLetterQueue`.
+    fix: Add DLQ with maxReceiveCount 3.
+
+  - id: DLQ2
+    name: DLQ without alarm
+    severity: MEDIUM
+    description: |
+      DLQ exists but there's no CloudWatch alarm on
+      `ApproximateNumberOfMessagesVisible > 0`.  Messages silently
+      accumulate.
+    detect:
+      - DLQ in IaC without a corresponding CloudWatch alarm.
+    fix: |
+      Add alarm: ApproximateNumberOfMessagesVisible > 0, period 60s,
+      evaluation 1, notify ops channel.
+
+  - id: DLQ3
+    name: DLQ without redrive procedure
+    severity: MEDIUM
+    description: |
+      No documented or automated way to inspect/redrive DLQ messages.
+    detect:
+      - No GHA workflow or runbook referencing `start-message-move-task`.
+    fix: |
+      Create a GHA workflow_dispatch for DLQ redrive with environment
+      protection, dry-run default, and OIDC assume-role.
+
+events:
+  - id: EV1
+    name: EventBridge without Archive
+    severity: MEDIUM
+    description: |
+      Events are published to EventBridge but no Archive is configured.
+      Cannot replay events after a consumer bug.
+    detect:
+      - EventBridge bus in IaC without an Archive resource.
+    fix: Enable Archive with 14+ day retention.
+
+  - id: EV2
+    name: Silent publish failure
+    severity: CRITICAL
+    description: |
+      EventBridge PutEvents call in a try/catch that swallows the error.
+      Events are silently lost.
+    detect:
+      - PutEvents in a catch block that doesn't rethrow or enqueue to retry.
+    fix: |
+      On failure, push to an SQS retry queue.  Use Powertools batch for the
+      retry consumer with processPartialResponse.
+
+  - id: EV3
+    name: No partial batch failure reporting
+    severity: HIGH
+    description: |
+      SQS Lambda consumer doesn't report individual item failures.  One
+      bad message causes the entire batch to retry.
+    detect:
+      - SQS handler without `ReportBatchItemFailures` in function config.
+      - No use of Powertools batch `processPartialResponse`.
+    fix: |
+      Use @aws-lambda-powertools/batch with processPartialResponse and
+      set functionResponseTypes to ['ReportBatchItemFailures'] in IaC.
+
+concurrency:
+  - id: C1
+    name: Lambda without reserved concurrency
+    severity: MEDIUM
+    description: |
+      Lambda function has no reserved concurrency.  A traffic spike on one
+      function can exhaust the account concurrency pool, starving other
+      functions.
+    detect:
+      - Lambda function in IaC without `reservedConcurrency` or `ReservedConcurrentExecutions`.
+    fix: Set reserved concurrency based on expected peak + 20% headroom.
+
+  - id: C2
+    name: SQS trigger without maxConcurrency
+    severity: MEDIUM
+    description: |
+      SQS event source mapping has no `maxConcurrency`.  Under load, Lambda
+      auto-scales to account limits, potentially overwhelming downstream.
+    detect:
+      - SQS event source in IaC without `maxConcurrency` or `MaximumConcurrency`.
+    fix: Set maxConcurrency to match the downstream dependency's capacity.
+
+observability:
+  - id: O1
+    name: No structured logging
+    severity: MEDIUM
+    description: |
+      Using console.log/console.error instead of a structured JSON logger.
+      Logs are hard to query and alert on.
+    detect:
+      - "console.log(" or "console.error(" in Lambda handler code.
+    fix: Use @aws-lambda-powertools/logger or pino with JSON output.
+
+  - id: O2
+    name: No resilience metrics
+    severity: MEDIUM
+    description: |
+      Retry count, breaker state changes, and timeout events are not
+      emitted as metrics or traces.
+    detect:
+      - cockatiel policies without onRetry/onStateChange event handlers.
+      - No custom metrics for retry/breaker/timeout.
+    fix: Wire cockatiel lifecycle events to your APM (Datadog, CloudWatch, OTEL).
+
+  - id: O3
+    name: No dependency span tags
+    severity: LOW
+    description: |
+      External calls don't add span tags for the dependency name, endpoint,
+      and result status.
+    detect:
+      - Trace spans without `dependency.name` or `dependency.type` tags.
+    fix: Add span tags on every outbound call for dependency-level dashboards.
+
+idempotency:
+  - id: I1
+    name: No idempotency on consumer
+    severity: HIGH
+    description: |
+      SQS/EventBridge consumer processes messages without idempotency.
+      Retries (from DLQ redrive, replay, or SQS retry) cause duplicate
+      processing.
+    detect:
+      - Consumer handler without @aws-lambda-powertools/idempotency or a
+        conditional write / dedup check.
+    fix: Use @aws-lambda-powertools/idempotency with DynamoDB persistence.
+
+  - id: I2
+    name: Idempotency table without TTL
+    severity: MEDIUM
+    description: |
+      DynamoDB idempotency table has no TTL configured.  Records accumulate
+      indefinitely, increasing storage cost and scan time.
+    detect:
+      - DynamoDB table used for idempotency without TimeToLiveSpecification.
+    fix: Set TTL on the expiration attribute (typically 24-48 hours).

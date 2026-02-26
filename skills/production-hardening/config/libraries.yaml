@@ -1,0 +1,120 @@
+# Production Hardening — Validated Library Recommendations
+#
+# Only recommend libraries from this list.  Each has been verified for:
+# - Active maintenance (GitHub activity within 12 months)
+# - Meaningful adoption (npm weekly downloads)
+# - Low dependency footprint
+# - Correct TypeScript types
+#
+# Last verified: 2026-02-25
+
+node-typescript:
+  resilience:
+    - name: cockatiel
+      version: "^3.2.1"
+      npm: "https://www.npmjs.com/package/cockatiel"
+      github: "https://github.com/connor4312/cockatiel"
+      weekly-downloads: 1_092_061
+      dependencies: 0
+      license: MIT
+      provides:
+        - retry (ExponentialBackoff, ConstantBackoff, DelegateBackoff)
+        - circuitBreaker (ConsecutiveBreaker, SamplingBreaker)
+        - timeout
+        - bulkhead
+        - fallback
+        - wrap (composable policy chains)
+        - toJSON / initialState (state serialization for serverless)
+        - Lifecycle events (onRetry, onStateChange, onTimeout, etc.)
+      notes: |
+        Preferred over opossum for new projects.  Zero dependencies,
+        composable policy design, built-in state serialization for Lambda.
+
+    - name: opossum
+      version: "^8.1.4"
+      npm: "https://www.npmjs.com/package/opossum"
+      github: "https://github.com/nodeshift/opossum"
+      weekly-downloads: 395_000
+      dependencies: 0
+      license: Apache-2.0
+      provides:
+        - Circuit breaker (primary)
+        - Fallback
+        - Timeout (via breaker config)
+      notes: |
+        Mature circuit breaker.  Use only if the codebase already depends on it.
+        Does not compose policies like cockatiel; no retry built in.
+
+  aws-powertools:
+    - name: "@aws-lambda-powertools/batch"
+      version: "^2.31.0"
+      npm: "https://www.npmjs.com/package/@aws-lambda-powertools/batch"
+      provides:
+        - BatchProcessor (SQS, Kinesis, DynamoDB Streams)
+        - processPartialResponse
+        - Automatic ReportBatchItemFailures
+      notes: Use for any SQS Lambda consumer.
+
+    - name: "@aws-lambda-powertools/parameters"
+      version: "^2.31.0"
+      npm: "https://www.npmjs.com/package/@aws-lambda-powertools/parameters"
+      provides:
+        - getParameter (SSM)
+        - getSecret (Secrets Manager)
+        - maxAge caching (avoids repeated API calls)
+      notes: Use for shared circuit breaker state via SSM.
+
+    - name: "@aws-lambda-powertools/logger"
+      version: "^2.31.0"
+      npm: "https://www.npmjs.com/package/@aws-lambda-powertools/logger"
+      provides:
+        - Structured JSON logging
+        - Lambda context auto-capture
+        - Correlation IDs
+        - Log sampling
+      notes: Replaces console.log in all Lambda handlers.
+
+    - name: "@aws-lambda-powertools/idempotency"
+      version: "^2.31.0"
+      npm: "https://www.npmjs.com/package/@aws-lambda-powertools/idempotency"
+      provides:
+        - DynamoDB-backed idempotency
+        - CBOR + SHA256 key generation
+        - TTL-based expiration
+      notes: Use on all SQS/EventBridge consumers to prevent duplicate processing.
+
+  # Libraries that have been evaluated and REJECTED
+  rejected:
+    - name: polly-ts
+      reason: |
+        1 weekly download, 5 GitHub stars, created Jan 2026, v0.1.0,
+        8 dependencies.  Not production-grade.
+
+    - name: resilience4ts
+      reason: |
+        @resilience4ts/core is not published on npm (0 downloads),
+        8 GitHub stars, 0 forks.  Vaporware.
+
+    - name: resilience-typescript
+      reason: |
+        9 weekly downloads, 11 GitHub stars, last published Jan 2021
+        (5 years stale), hard-coupled to Azure App Insights + Axios.
+
+python:
+  resilience:
+    - name: tenacity
+      version: "^9.0.0"
+      pypi: "https://pypi.org/project/tenacity/"
+      provides:
+        - Retry with configurable backoff (exponential, fixed, random)
+        - Stop conditions (max attempts, max delay)
+        - Wait strategies with jitter
+      notes: Standard Python retry library.  Use for CatBoost / ML Lambda functions.
+
+    - name: pybreaker
+      version: "^1.2.0"
+      pypi: "https://pypi.org/project/pybreaker/"
+      provides:
+        - Circuit breaker with open/half-open/closed states
+        - Configurable failure thresholds and recovery timeouts
+      notes: Lightweight Python circuit breaker.  Use with tenacity for a full resilience stack.
