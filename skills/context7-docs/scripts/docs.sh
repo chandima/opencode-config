@@ -31,15 +31,16 @@ USAGE:
     $(basename "$0") <action> [options]
 
 ACTIONS:
-    search <library>           Find library ID for a given name
-    docs <library> [topic]     Get documentation (auto-resolves library ID)
-    help                       Show this help message
+    search <library>                    Find library ID for a given name
+    docs <library> [topic] [--tokens N] Get documentation (auto-resolves library ID)
+    help                                Show this help message
 
 EXAMPLES:
     $(basename "$0") search react
     $(basename "$0") docs react hooks
     $(basename "$0") docs next.js "app router"
     $(basename "$0") docs tailwindcss
+    $(basename "$0") docs react hooks --tokens 5000
 
 ENVIRONMENT:
     CONTEXT7_SERVER    MCP server name (default: context7)
@@ -49,6 +50,7 @@ ENVIRONMENT:
 NOTES:
     - The 'docs' action automatically resolves library name to Context7 ID
     - Use topic filtering to reduce context size
+    - Use --tokens to control response size (default: server decides)
     - If library not found, try alternative names (e.g., "nextjs" vs "next.js")
     - Falls back to Context7 URL if server not configured locally
 EOF
@@ -64,10 +66,8 @@ check_dependencies() {
             PYTHON_BIN="python3"
         elif command -v python &> /dev/null; then
             PYTHON_BIN="python"
-        else
-            echo -e "${RED}Error: python not found. Please install Python 3+${NC}" >&2
-            exit 1
         fi
+        # python is optional — only needed for JSON parsing when jq is absent
     fi
     if ! command -v curl &> /dev/null; then
         echo -e "${RED}Error: curl not found. Please install curl${NC}" >&2
@@ -75,12 +75,43 @@ check_dependencies() {
     fi
 }
 
+# URL-encode a string (pure bash, no python dependency).
 urlencode() {
-    "$PYTHON_BIN" - "$1" <<'PY'
-import sys
-import urllib.parse
-print(urllib.parse.quote_plus(sys.argv[1]))
+    local string="${1:-}"
+    local length=${#string}
+    local encoded=""
+    local c
+    for (( i = 0; i < length; i++ )); do
+        c="${string:i:1}"
+        case "$c" in
+            [a-zA-Z0-9.~_-]) encoded+="$c" ;;
+            ' ') encoded+='+' ;;
+            *) encoded+=$(printf '%%%02X' "'$c") ;;
+        esac
+    done
+    echo "$encoded"
+}
+
+run_mcporter() {
+    local timeout="${MCPORTER_TIMEOUT}"
+    if [[ -n "$PYTHON_BIN" ]]; then
+        "$PYTHON_BIN" - "$timeout" "$@" <<'PY'
+import subprocess, sys
+timeout_s = float(sys.argv[1])
+cmd = sys.argv[2:]
+try:
+    proc = subprocess.run(cmd, text=True, capture_output=True, timeout=timeout_s)
+    sys.stdout.write(proc.stdout)
+    sys.stderr.write(proc.stderr)
+    sys.exit(proc.returncode)
+except subprocess.TimeoutExpired:
+    sys.stderr.write(f"Error: mcporter timed out after {timeout_s}s\n")
+    sys.exit(124)
 PY
+    else
+        # Fallback: run without timeout wrapper when python is unavailable
+        "${@}"
+    fi
 }
 
 extract_library_id() {
@@ -117,25 +148,12 @@ PY
 get_docs_direct() {
     local library_id="${1:-}"
     local topic="${2:-overview}"
+    local tokens="${3:-}"
     local url="${CONTEXT7_API_BASE}/context?libraryId=$(urlencode "$library_id")&query=$(urlencode "$topic")&type=txt"
+    if [[ -n "$tokens" ]]; then
+        url="${url}&tokens=${tokens}"
+    fi
     curl -fsS "$url"
-}
-
-run_mcporter() {
-    local timeout="${MCPORTER_TIMEOUT}"
-    "$PYTHON_BIN" - "$timeout" "$@" <<'PY'
-import subprocess, sys
-timeout_s = float(sys.argv[1])
-cmd = sys.argv[2:]
-try:
-    proc = subprocess.run(cmd, text=True, capture_output=True, timeout=timeout_s)
-    sys.stdout.write(proc.stdout)
-    sys.stderr.write(proc.stderr)
-    sys.exit(proc.returncode)
-except subprocess.TimeoutExpired:
-    sys.stderr.write(f"Error: mcporter timed out after {timeout_s}s\n")
-    sys.exit(124)
-PY
 }
 
 # Get the Context7 server endpoint (configured server or fallback URL)
@@ -193,10 +211,20 @@ search_library() {
 get_docs() {
     local library="${1:-}"
     local topic="${2:-}"
+    local tokens=""
+
+    # Parse --tokens from remaining args
+    shift 2 2>/dev/null || shift $# 2>/dev/null
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --tokens) tokens="${2:-}"; shift 2 ;;
+            *) shift ;;
+        esac
+    done
     
     if [[ -z "$library" ]]; then
         echo -e "${RED}Error: Library name required${NC}" >&2
-        echo "Usage: $(basename "$0") docs <library> [topic]" >&2
+        echo "Usage: $(basename "$0") docs <library> [topic] [--tokens N]" >&2
         exit 1
     fi
     
@@ -250,25 +278,34 @@ get_docs() {
         docs_args="${docs_args} topic=${topic}"
         echo -e "${CYAN}Filtering by topic: ${topic}${NC}"
     fi
+    if [[ -n "$tokens" ]]; then
+        docs_args="${docs_args} tokens=${tokens}"
+        echo -e "${CYAN}Token limit: ${tokens}${NC}"
+    fi
     
+    # Try get-library-docs first (legacy name), fall back to query-docs (upstream rename)
     local docs_result
     if ! docs_result=$(run_mcporter "${NPX_CMD[@]}" call "${server}.get-library-docs" $docs_args 2>&1); then
-        docs_result=""
-        if [[ "$CONTEXT7_REST_FALLBACK" == "1" ]]; then
-            echo -e "${YELLOW}MCP docs call failed, trying direct Context7 API fallback...${NC}" >&2
-            if docs_result=$(get_docs_direct "$library_id" "${topic:-overview}" 2>&1); then
-                :
-            fi
-        fi
-
-        if [[ -z "${docs_result:-}" ]]; then
-        if [[ "$OPENCODE_EVAL" == "1" ]]; then
-            echo -e "${YELLOW}Eval mode: Context7 unavailable; returning placeholder docs.${NC}" >&2
-            docs_result="(Eval mode) Context7 docs not available. Please run in a configured environment to fetch authoritative docs."
+        if docs_result=$(run_mcporter "${NPX_CMD[@]}" call "${server}.query-docs" $docs_args 2>&1); then
+            : # query-docs succeeded
         else
-            echo -e "${RED}Error: Failed to fetch documentation${NC}" >&2
-            exit 1
-        fi
+            docs_result=""
+            if [[ "$CONTEXT7_REST_FALLBACK" == "1" ]]; then
+                echo -e "${YELLOW}MCP docs call failed, trying direct Context7 API fallback...${NC}" >&2
+                if docs_result=$(get_docs_direct "$library_id" "${topic:-overview}" "$tokens" 2>&1); then
+                    :
+                fi
+            fi
+
+            if [[ -z "${docs_result:-}" ]]; then
+                if [[ "$OPENCODE_EVAL" == "1" ]]; then
+                    echo -e "${YELLOW}Eval mode: Context7 unavailable; returning placeholder docs.${NC}" >&2
+                    docs_result="(Eval mode) Context7 docs not available. Please run in a configured environment to fetch authoritative docs."
+                else
+                    echo -e "${RED}Error: Failed to fetch documentation${NC}" >&2
+                    exit 1
+                fi
+            fi
         fi
     fi
     

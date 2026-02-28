@@ -4,6 +4,19 @@ This repository contains custom skills and configuration for OpenCode, Codex CLI
 
 **This is NOT application code** - it contains AI agent skills, commands, and templates.
 
+## ⚠️ Symlink Installation Model — Skills MUST Be Self-Contained
+
+This repo is a **skill installer**. Skills are **symlinked individually** from this repo into each CLI's skills directory (e.g., `~/.copilot/skills/context7-docs/ → <repo>/skills/context7-docs/`). At runtime, each skill directory stands alone — it has **no access to sibling skills, the repo root, or `scripts/`**.
+
+**Iron Rule:** A skill directory must never reference files outside its own directory tree. Any `../` path that escapes the skill directory will break when the skill is symlinked to its target location.
+
+- ✅ `$SCRIPT_DIR/helper.sh` (file inside the skill)
+- ✅ `$SCRIPT_DIR/../config/defaults.yaml` (file inside the skill, up to skill root)
+- ❌ `$SCRIPT_DIR/../../scripts/shared.sh` (escapes the skill directory — breaks on symlink)
+- ❌ `$SCRIPT_DIR/../other-skill/lib.sh` (cross-skill reference — breaks on symlink)
+
+If two skills share logic, **duplicate it** in each skill. The cost of a small amount of duplication is far less than the cost of broken skills at runtime.
+
 ## CLI Support
 
 This repository supports **OpenCode**, **Codex CLI**, and **GitHub Copilot**:
@@ -83,7 +96,7 @@ opencode-config/
 │   └── skill-creator/     # AI-assisted skill creation
 ├── evals/                 # Evaluation framework
 │   └── skill-loading/     # Skill-loading eval suite
-├── scripts/               # Top-level utility scripts
+├── scripts/               # Top-level utility scripts (setup/eval only, NOT available to skills at runtime)
 │   ├── codex-config.py    # Codex config TOML merging
 │   ├── list-fails.sh      # List failed eval case IDs
 │   ├── plan-path.sh       # Derive PLAN.md path from branch
@@ -175,6 +188,7 @@ set -euo pipefail
 - Always use `set -euo pipefail` for safety
 - Use functions for complex logic
 - Add `|| true` to grep commands that may have no matches
+- **Never reference files outside the skill directory** — skills are symlinked individually and have no access to the repo root, `scripts/`, or sibling skills at runtime (see Symlink Installation Model above)
 
 ### Testing
 
@@ -240,7 +254,7 @@ esac
 
 ## Utility Scripts
 
-Top-level `scripts/` contains shared utilities:
+Top-level `scripts/` contains shared utilities (used by `setup.sh` and evals, **not** by skills at runtime):
 
 | Script | Purpose |
 |--------|---------|

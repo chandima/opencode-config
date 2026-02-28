@@ -16,7 +16,7 @@ opencode-config/                      # This git repo (your config)
 ├── evals/                            # Evaluation framework (harness-agnostic)
 │   └── skill-loading/                # Skill-loading eval suite
 ├── scripts/
-│   └── codex-config.py               # Codex config merging
+│   └── codex-config.py               # Codex config merging (setup.sh only, not used by skills)
 ├── .codex/                           # Codex config + rules (tracked)
 │   ├── config.toml                   # Codex config (TOML format)
 │   └── rules/                        # Codex rules
@@ -174,6 +174,8 @@ Skills in this repository may require the following dependencies:
 
 ## Adding Skills
 
+> **⚠️ Skills must be self-contained.** Each skill directory is symlinked individually into target CLI directories (e.g., `~/.copilot/skills/my-skill/`). At runtime, the skill has **no access** to the repo root, `scripts/`, or sibling skills. Never use `../` paths that escape the skill directory — they will break after installation.
+
 Create skills in the `skills/` directory:
 
 ```
@@ -233,5 +235,7 @@ OpenCode commands:
 
 - API keys and secrets should be set via environment variables, not in this repo
 - The symlink approach means changes are instantly available (no copy needed)
+- **Skills are symlinked individually** — each skill must be fully self-contained (no references outside its directory)
+- Top-level `scripts/` are for setup and eval tooling only — skills cannot access them at runtime
 - Runtime files (`node_modules/`, lock files) are gitignored and managed per-machine
 - Codex uses `config.toml` (TOML format), not `opencode.json` - manage Codex config separately
