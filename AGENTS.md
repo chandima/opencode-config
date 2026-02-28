@@ -71,14 +71,34 @@ Copilot discovers skills automatically. You can also configure additional search
 
 ```
 opencode-config/
-├── skills/           # Custom OpenCode skills
-│   ├── github-ops/   # GitHub operations via gh CLI
-│   └── skill-creator/ # AI-assisted skill creation
-├── evals/            # Evaluation framework
-│   └── skill-loading/ # Skill-loading eval suite
-├── .opencode/        # OpenCode commands and config
-│   └── commands/     # Custom slash commands
-└── opencode.json     # Provider configuration (LiteLLM)
+├── skills/                # Custom skills (works with OpenCode, Codex, Copilot)
+│   ├── agent-browser/     # Browser automation via agent-browser CLI
+│   ├── asu-discover/      # ASU GitHub org semantic search (disabled)
+│   ├── context7-docs/     # Library documentation via Context7 MCP
+│   ├── github-ops/        # GitHub operations via gh CLI
+│   ├── mcporter/          # Direct MCP access via MCPorter
+│   ├── planning-doc/      # Planning document management
+│   ├── production-hardening/ # Resilience anti-pattern scanning
+│   ├── security-auditor/  # Pre-deployment security audit
+│   └── skill-creator/     # AI-assisted skill creation
+├── evals/                 # Evaluation framework
+│   └── skill-loading/     # Skill-loading eval suite
+├── scripts/               # Top-level utility scripts
+│   ├── codex-config.py    # Codex config TOML merging
+│   ├── list-fails.sh      # List failed eval case IDs
+│   ├── plan-path.sh       # Derive PLAN.md path from branch
+│   ├── retest-fails.sh    # Retest failed eval cases
+│   └── test-battery.sh    # Run all skill smoke tests
+├── docs/                  # Documentation and plans
+│   └── plans/             # Branch-derived planning documents
+├── .opencode/             # OpenCode commands and config
+│   └── commands/          # Custom slash commands
+├── .codex/                # Codex CLI config and rules
+│   ├── config.toml        # Codex configuration (TOML)
+│   ├── rules/             # Codex safety rules
+│   └── skills/            # Codex skill eval commands
+├── setup.sh               # Setup script (OpenCode, Codex, Copilot)
+└── opencode.json          # Provider configuration (LiteLLM)
 ```
 
 ## Skill Conventions
@@ -174,12 +194,17 @@ Skills with a `tests/` directory must have smoke tests run after modifications:
 | Command | Purpose |
 |---------|---------|
 | `/new-skill <name> [--quick]` | Create a new skill (AI-assisted, or `--quick` for scaffold only) |
+| `/skill-evals-run [options]` | Run the skill-loading eval suite |
+| `/skill-evals-optimize [options]` | Triage and fix failed eval cases (2-iteration cap) |
 
 ## Reference Files
 
 For detailed examples, see:
 - `@skills/github-ops/SKILL.md` - Multi-script skill with 12 domains
 - `@skills/skill-creator/SKILL.md` - AI-assisted skill creation workflow
+- `@skills/production-hardening/SKILL.md` - Multi-phase analysis and implementation skill
+- `@skills/security-auditor/SKILL.md` - Tool-integrated audit with gating logic
+- `@skills/planning-doc/SKILL.md` - Document management with branch-derived paths
 
 ## GitHub Operations
 
@@ -212,6 +237,18 @@ case "$ACTION" in
     help|*) show_help ;;
 esac
 ```
+
+## Utility Scripts
+
+Top-level `scripts/` contains shared utilities:
+
+| Script | Purpose |
+|--------|---------|
+| `codex-config.py` | Merges repo `.codex/config.toml` into `~/.codex/config.toml` (used by `setup.sh codex`) |
+| `plan-path.sh` | Derives `PLAN.md` path from current git branch using planning-doc rules |
+| `list-fails.sh` | Lists failed case IDs from the latest eval results |
+| `retest-fails.sh` | Re-runs only failed eval cases with the eval runner |
+| `test-battery.sh` | Discovers and runs all skill smoke tests (`tests/smoke.sh`, `tests/evals.sh`) |
 
 ## Planning Documents (Execution Mode)
 
