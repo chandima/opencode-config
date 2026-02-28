@@ -218,7 +218,6 @@ For detailed examples, see:
 - `@skills/skill-creator/SKILL.md` - AI-assisted skill creation workflow
 - `@skills/production-hardening/SKILL.md` - Multi-phase analysis and implementation skill
 - `@skills/security-auditor/SKILL.md` - Tool-integrated audit with gating logic
-- `@skills/planning-doc/SKILL.md` - Document management with branch-derived paths
 
 ## GitHub Operations
 
@@ -263,13 +262,6 @@ Top-level `scripts/` contains shared utilities (used by `setup.sh` and evals, **
 | `list-fails.sh` | Lists failed case IDs from the latest eval results |
 | `retest-fails.sh` | Re-runs only failed eval cases with the eval runner |
 | `test-battery.sh` | Discovers and runs all skill smoke tests (`tests/smoke.sh`, `tests/evals.sh`) |
-
-## Planning Documents (Execution Mode)
-
-- If a planning document exists at the location derived by the `skills/planning-doc/` rules for the current git branch, keep it updated even when the user did not request planning.
-- Derive the plan path using the same rules as the planning-doc skill: get the branch with `git rev-parse --abbrev-ref HEAD`, map `^(feat|fix|chore)/(.+)$` to `docs/plans/<prefix>/<feature>/PLAN.md`, otherwise use `docs/plans/feat/<branch>/PLAN.md`.
-- Only update if the file already exists; do not create a new plan unless the user explicitly asks for planning.
-- When updating, follow the planning-doc steering: read `PLAN.md` before changes, append a new **STATUS UPDATES** entry after meaningful work, add **DECISIONS**/**DISCOVERIES / GOTCHAS** entries when relevant, and record validation in **TEST RESULTS** when run.
 
 ## Methodology Protocols
 

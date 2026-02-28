@@ -21,7 +21,7 @@ fail() {
 
 echo "=== Planning Doc Eval Tests ==="
 
-if grep -q "## Error Protocol" "$SKILL_MD" && grep -q "three-strike" "$SKILL_MD"; then
+if grep -q "## Error Protocol" "$SKILL_MD" && grep -qi "three-strike" "$SKILL_MD"; then
     pass "skill includes three-strike error protocol guidance"
 else
     fail "skill missing three-strike error protocol guidance"
@@ -33,22 +33,22 @@ else
     fail "skill missing resumed-session recovery guidance"
 fi
 
-if grep -q "## Anti-patterns to Avoid" "$SKILL_MD"; then
-    pass "skill includes anti-pattern section"
+if grep -q "## Goal" "$TEMPLATE_MD"; then
+    pass "template includes Goal section"
 else
-    fail "skill missing anti-pattern section"
+    fail "template missing Goal section"
 fi
 
-if grep -q "## SESSION RECOVERY" "$TEMPLATE_MD"; then
-    pass "template includes SESSION RECOVERY section"
+if grep -q "## Status Updates" "$TEMPLATE_MD"; then
+    pass "template includes Status Updates section"
 else
-    fail "template missing SESSION RECOVERY section"
+    fail "template missing Status Updates section"
 fi
 
-if grep -q "## ERRORS ENCOUNTERED" "$TEMPLATE_MD"; then
-    pass "template includes ERRORS ENCOUNTERED section"
+if grep -q "## Decisions" "$TEMPLATE_MD"; then
+    pass "template includes Decisions section"
 else
-    fail "template missing ERRORS ENCOUNTERED section"
+    fail "template missing Decisions section"
 fi
 
 echo "Results: $passed passed, $failed failed"
