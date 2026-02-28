@@ -7,7 +7,7 @@ context: fork
 
 # MCPorter - Generic MCP Access
 
-MCPorter provides direct access to any Model Context Protocol (MCP) server configured on your system.
+Use `mcporter` to work with MCP servers directly. MCPorter auto-discovers MCP configurations from OpenCode, Cursor, Claude, and other supported tools.
 
 ## Quick Reference
 
@@ -34,44 +34,54 @@ MCPorter provides direct access to any Model Context Protocol (MCP) server confi
 ./scripts/mcporter.sh list context7
 ./scripts/mcporter.sh list firecrawl
 
-# Call a tool with arguments
+# Call a tool with arguments (key=value format)
 ./scripts/mcporter.sh call firecrawl.scrape url=https://example.com
 ./scripts/mcporter.sh call chrome-devtools.screenshot url=https://example.com
 ```
 
-## Available Actions
+### Direct mcporter CLI (advanced)
 
-### discover
-List all MCP servers configured on the system.
+When the wrapper script is insufficient, use `mcporter` directly:
 
-**Parameters:** None
-
-**Example:**
 ```bash
-./scripts/mcporter.sh discover
+# Function syntax
+mcporter call "linear.create_issue(title: \"Bug\")"
+
+# Full URL for ad-hoc servers
+mcporter call https://api.example.com/mcp.fetch url=https://example.com
+
+# Stdio transport
+mcporter call --stdio "bun run ./server.ts" scrape url=https://example.com
+
+# JSON payload
+mcporter call <server.tool> --args '{"limit":5}'
+
+# Machine-readable output
+mcporter call <server.tool> --output json key=value
 ```
 
-### list
-List all tools available on a specific MCP server.
+### Auth & Config
 
-**Parameters:**
-- `server` (required): Name of the MCP server
-
-**Example:**
 ```bash
-./scripts/mcporter.sh list firecrawl
+# OAuth authentication
+mcporter auth <server | url> [--reset]
+
+# Config management
+mcporter config list|get|add|remove|import|login|logout
 ```
 
-### call
-Call a specific tool on an MCP server.
+### Codegen
 
-**Parameters:**
-- `server.tool` (required): Server name and tool name separated by a dot
-- `args...` (optional): Key=value arguments for the tool
-
-**Example:**
 ```bash
-./scripts/mcporter.sh call firecrawl.scrape url=https://example.com format=markdown
+# Generate CLI from MCP server
+mcporter generate-cli --server <name>
+mcporter generate-cli --command <url>
+
+# Inspect generated CLI
+mcporter inspect-cli <path> [--json]
+
+# Generate TypeScript types
+mcporter emit-ts <server> --mode client|types
 ```
 
 ## Prerequisites
@@ -87,3 +97,5 @@ Call a specific tool on an MCP server.
 - MCPorter auto-discovers MCP configurations from multiple sources
 - Use `discover` first to see what servers are available
 - Tool arguments use key=value format
+- Prefer `--output json` for machine-readable results
+- Config default: `./config/mcporter.json` (override with `--config`)
