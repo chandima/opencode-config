@@ -26,7 +26,6 @@ Omit chit-chat.
 [features]
 apply_patch_freeform = true
 child_agents_md = true
-collab = true
 collaboration_modes = true
 multi_agent = true
 shell_snapshot = true
