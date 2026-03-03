@@ -1,5 +1,5 @@
 #:schema false
-model = "gpt-5.2-codex"
+model = "gpt-5.3-codex"
 model_reasoning_effort = "xhigh"
 model_reasoning_summary = "auto"
 personality = "pragmatic"
@@ -10,6 +10,8 @@ web_search = "live"
 
 tool_output_token_limit = 25000
 model_auto_compact_token_limit = 220000
+background_terminal_max_timeout = 900000
+history.persistence = "save-all"
 compact_prompt = """
 Summarize for continuation. Keep:
 - Current goal and success criteria
@@ -26,8 +28,16 @@ apply_patch_freeform = true
 child_agents_md = true
 collab = true
 collaboration_modes = true
+multi_agent = true
 shell_snapshot = true
 unified_exec = true
+
+[agents]
+max_threads = 6
+max_depth = 1
+
+[agents.monitor]
+description = "Long-running task monitor for polling and status checks."
 
 [permission.skill]
 "*" = "allow"
