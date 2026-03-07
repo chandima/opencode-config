@@ -23,7 +23,7 @@ Summarize for continuation. Keep:
 Omit chit-chat.
 """
 
-notify = ["bash", "/Users/chandima/.codex/ntfy_notify.sh"]
+notify = ["bash", "-lc", "exec \"$HOME/.codex/ntfy_notify.sh\" \"$1\"", "_"]
 
 [tui]
 notifications = true

@@ -79,10 +79,11 @@ The script will:
 - **OpenCode**: Symlink `opencode.json` and `skills/` to `~/.config/opencode/`
 - **Codex**: Symlink individual skills to `~/.codex/skills/` (preserves `.system/` directory)
 - **Codex**: Merge repo `.codex/config.toml` into `~/.codex/config.toml` (repo precedence) and install `.codex/rules/*` into `~/.codex/rules/` (backing up conflicts)
+- **Codex**: Install `.codex/ntfy_notify.sh` to `~/.codex/ntfy_notify.sh` (with backup/restore behavior for existing files)
 - **Copilot**: Symlink individual skill directories to `~/.copilot/skills/` (uses [Agent Skills standard](https://agentskills.io/) natively)
 - **Respects disabled skills**: Skills with `"deny"` permission in `opencode.json` are skipped for all targets
 - **Remove mode**: Use `[target] --remove` to delete only symlinks created by the script
-- **Skills-only mode**: Use `--skills-only` to skip configs/rules and link/remove only skills
+- **Skills-only mode**: Use `--skills-only` to skip Codex config merge, rules, and `ntfy_notify.sh` install (link/remove skills only)
 
 <details>
 <summary>Manual alternative (without script)</summary>

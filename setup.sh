@@ -71,6 +71,68 @@ codex_backup_dir() {
     echo "$(codex_config_root)/.opencode-config-backups"
 }
 
+install_codex_notify_script() {
+    local source_script="$SCRIPT_DIR/.codex/ntfy_notify.sh"
+    local target_script
+    target_script="$(codex_config_root)/ntfy_notify.sh"
+    local backup
+    backup="$(codex_backup_dir)/ntfy_notify.sh"
+
+    if [[ ! -f "$source_script" ]]; then
+        echo "  Skipping Codex notify script (repo script not found)"
+        return 0
+    fi
+
+    mkdir -p "$(codex_config_root)"
+    mkdir -p "$(codex_backup_dir)"
+
+    if [[ -L "$target_script" ]]; then
+        local link_target
+        link_target="$(readlink "$target_script")"
+        if [[ "$link_target" == "$source_script" ]]; then
+            echo "  Linked: ntfy_notify.sh (already)"
+            return 0
+        fi
+    fi
+
+    if [[ -e "$target_script" || -L "$target_script" ]]; then
+        rm -rf "$backup"
+        mv "$target_script" "$backup"
+        echo "  Backed up: ntfy_notify.sh"
+    fi
+
+    ln -sfn "$source_script" "$target_script"
+    echo "  Linked: ntfy_notify.sh"
+}
+
+remove_codex_notify_script() {
+    local source_script="$SCRIPT_DIR/.codex/ntfy_notify.sh"
+    local target_script
+    target_script="$(codex_config_root)/ntfy_notify.sh"
+    local backup
+    backup="$(codex_backup_dir)/ntfy_notify.sh"
+
+    if [[ -L "$target_script" ]]; then
+        local link_target
+        link_target="$(readlink "$target_script")"
+        if [[ "$link_target" == "$source_script" ]]; then
+            rm "$target_script"
+            echo "  Removed: ntfy_notify.sh"
+        else
+            echo "  Skipped (not our symlink): ntfy_notify.sh"
+            return 0
+        fi
+    elif [[ -e "$target_script" ]]; then
+        echo "  Skipped (not a symlink): ntfy_notify.sh"
+        return 0
+    fi
+
+    if [[ ! -e "$target_script" && ! -L "$target_script" && -e "$backup" ]]; then
+        mv "$backup" "$target_script"
+        echo "  Restored: ntfy_notify.sh"
+    fi
+}
+
 merge_codex_config() {
     local repo_config="$SCRIPT_DIR/.codex/config.toml"
     local target_config
@@ -188,6 +250,7 @@ setup_codex_config() {
     echo "  Config target: $config_root"
 
     mkdir -p "$config_root"
+    install_codex_notify_script
     install_codex_rules
     merge_codex_config
 }
@@ -205,6 +268,7 @@ remove_codex_config() {
     fi
 
     remove_codex_rules
+    remove_codex_notify_script
 
     if [[ -f "$state_file" || -f "$target_config" ]]; then
         require_python3
