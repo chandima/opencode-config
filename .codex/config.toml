@@ -23,6 +23,11 @@ Summarize for continuation. Keep:
 Omit chit-chat.
 """
 
+notify = ["bash", "/Users/chandima/.codex/ntfy_notify.sh"]
+
+[tui]
+notifications = true
+
 [features]
 apply_patch_freeform = true
 child_agents_md = true
