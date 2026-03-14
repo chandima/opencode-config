@@ -1,8 +1,14 @@
 # OpenCode Configuration Repository
 
-This repository contains custom skills and configuration for OpenCode, Codex CLI, and GitHub Copilot. It is symlinked to extend all three CLIs' capabilities.
+This repository contains custom skills, plugin/config files, slash commands, evals, and setup utilities for OpenCode, Codex CLI, and GitHub Copilot. It is symlinked to extend all three CLIs' capabilities.
 
-**This is NOT application code** - it contains AI agent skills, commands, and templates.
+**This is NOT application code** - it is a CLI configuration and skill distribution repo for AI agent tooling.
+
+## At a Glance
+
+- `skills/` contains reusable skills shared across OpenCode, Codex, and Copilot
+- `opencode.json`, `.codex/`, and `.opencode/commands/` contain CLI-specific configuration and command surfaces
+- `scripts/` and `evals/` support setup, testing, and maintenance of the configuration repo itself
 
 ## ⚠️ Symlink Installation Model — Skills MUST Be Self-Contained
 
@@ -29,6 +35,8 @@ This repository supports **OpenCode**, **Codex CLI**, and **GitHub Copilot**:
 | Setup script | `./setup.sh` or `./setup.sh opencode` | `./setup.sh codex` | `./setup.sh copilot` |
 | System skills | None | `.system/` subdirectory | Built-in tools |
 | Skill format | `SKILL.md` (YAML frontmatter) | `SKILL.md` (YAML frontmatter) | `SKILL.md` ([Agent Skills standard](https://agentskills.io/)) |
+
+**Command surface note:** `.opencode/commands/` is OpenCode-specific. Codex and GitHub Copilot use their own native command/instruction mechanisms and do not consume OpenCode slash commands from this repo.
 
 ### OpenCode Setup (Automated)
 
@@ -98,6 +106,9 @@ opencode-config/
 │   └── skill-loading/     # Skill-loading eval suite
 ├── scripts/               # Top-level utility scripts (setup/eval only, NOT available to skills at runtime)
 │   ├── codex-config.py    # Codex config TOML merging
+│   ├── context-mode-config.py  # context-mode OpenCode overlay manager
+│   ├── install-context-mode.sh # context-mode install/upgrade helper
+│   ├── test-context-mode-setup.sh # context-mode smoke tests
 │   ├── list-fails.sh      # List failed eval case IDs
 │   ├── plan-path.sh       # Derive PLAN.md path from branch
 │   ├── retest-fails.sh    # Retest failed eval cases
@@ -258,6 +269,9 @@ Top-level `scripts/` contains shared utilities (used by `setup.sh` and evals, **
 | Script | Purpose |
 |--------|---------|
 | `codex-config.py` | Merges repo `.codex/config.toml` into `~/.codex/config.toml` (used by `setup.sh codex`) |
+| `context-mode-config.py` | Manages OpenCode config overlay — adds context-mode plugin + MCP entries on top of base `opencode.json` |
+| `install-context-mode.sh` | Installs/upgrades `context-mode` npm package globally (used by `setup.sh --with-context-mode`) |
+| `test-context-mode-setup.sh` | Smoke tests for context-mode OpenCode overlay and Codex config merge |
 | `plan-path.sh` | Derives `PLAN.md` path from current git branch using planning-doc rules |
 | `list-fails.sh` | Lists failed case IDs from the latest eval results |
 | `retest-fails.sh` | Re-runs only failed eval cases with the eval runner |

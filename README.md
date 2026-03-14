@@ -16,7 +16,10 @@ opencode-config/                      # This git repo (your config)
 ├── evals/                            # Evaluation framework (harness-agnostic)
 │   └── skill-loading/                # Skill-loading eval suite
 ├── scripts/
-│   └── codex-config.py               # Codex config merging (setup.sh only, not used by skills)
+│   ├── codex-config.py               # Codex config merging (setup.sh only, not used by skills)
+│   ├── context-mode-config.py        # context-mode OpenCode overlay manager
+│   ├── install-context-mode.sh       # context-mode install/upgrade helper
+│   └── test-context-mode-setup.sh    # context-mode smoke tests
 ├── .codex/                           # Codex config + rules (tracked)
 │   ├── config.toml                   # Codex config (TOML format)
 │   └── rules/                        # Codex rules
@@ -63,6 +66,10 @@ cd opencode-config
 ./setup.sh copilot      # Install Copilot only (symlink skills)
 ./setup.sh all          # Install for OpenCode, Codex, and Copilot
 ./setup.sh both         # Install for OpenCode and Codex
+./setup.sh opencode --with-context-mode  # Opt-in OpenCode context-mode overlay
+./setup.sh codex --with-context-mode     # Opt-in Codex context-mode MCP server
+./setup.sh copilot --with-context-mode   # Opt-in Copilot context-mode plugin
+./setup.sh all --with-context-mode       # All three with context-mode
 ./setup.sh opencode --skills-only # OpenCode skills only (skip opencode.json)
 ./setup.sh codex --skills-only    # Codex skills only (skip config merge + rules)
 ./setup.sh opencode --remove  # Remove OpenCode symlinks
@@ -77,10 +84,13 @@ cd opencode-config
 The script will:
 
 - **OpenCode**: Symlink `opencode.json` and `skills/` to `~/.config/opencode/`
+- **OpenCode + context-mode**: With `--with-context-mode`, write a managed `opencode.json` that preserves repo settings and adds the `context-mode` plugin + MCP server
 - **Codex**: Symlink individual skills to `~/.codex/skills/` (preserves `.system/` directory)
 - **Codex**: Merge repo `.codex/config.toml` into `~/.codex/config.toml` (repo precedence) and install `.codex/rules/*` into `~/.codex/rules/` (backing up conflicts)
+- **Codex + context-mode**: With `--with-context-mode`, also merge `[mcp_servers.context-mode]` into `~/.codex/config.toml`
 - **Codex**: Install `.codex/ntfy_notify.sh` to `~/.codex/ntfy_notify.sh` (with backup/restore behavior for existing files)
 - **Copilot**: Symlink individual skill directories to `~/.copilot/skills/` (uses [Agent Skills standard](https://agentskills.io/) natively)
+- **Copilot + context-mode**: With `--with-context-mode`, install context-mode as a Copilot CLI plugin via `copilot plugin install`
 - **Respects disabled skills**: Skills with `"deny"` permission in `opencode.json` are skipped for all targets
 - **Remove mode**: Use `[target] --remove` to delete only symlinks created by the script
 - **Skills-only mode**: Use `--skills-only` to skip Codex config merge, rules, and `ntfy_notify.sh` install (link/remove skills only)
@@ -159,6 +169,12 @@ This config uses the following plugins:
 | ------------------------- | --------------------------------------------- |
 | `@tarquinen/opencode-dcp` | Dynamic context pruning - reduces token bloat |
 
+Optional integration:
+
+- `context-mode` can be enabled through `./setup.sh ... --with-context-mode`
+- OpenCode keeps `@tarquinen/opencode-dcp` in the base config; the context-mode overlay adds `context-mode` rather than replacing DCP
+- See `docs/context-mode.md` for install, verify, update, and remove flows
+
 > **Note:** Some plugins like `opencode-notify` and `opencode-worktree` require [OCX](https://github.com/kdcokenny/ocx) package manager (not available via npm).
 
 ## Dependencies
@@ -170,6 +186,7 @@ Skills in this repository may require the following dependencies:
 | Node.js 22+ | mcporter, context7-docs | Usually pre-installed; use Volta, nvm, or fnm to manage versions         |
 | MCPorter    | mcporter, context7-docs | `brew tap steipete/tap && brew install mcporter` (or use `npx mcporter`) |
 | gh CLI      | github-ops              | `brew install gh`                                                        |
+| context-mode | optional OpenCode/Codex/Copilot integration | `npm install -g context-mode` or `./scripts/install-context-mode.sh install` |
 
 > **Note:** MCPorter can be invoked via `npx mcporter` without installation. The skills use this approach by default.
 

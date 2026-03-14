@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 show_help() {
     cat << 'EOF'
-Usage: ./setup.sh [TARGET] [--remove]
+Usage: ./setup.sh [TARGET] [--remove] [--with-context-mode]
 
 Install OpenCode/Codex/Copilot configuration by symlinking skills and generating prompt files.
 
@@ -18,6 +18,7 @@ TARGETS:
     both        Install for OpenCode and Codex (legacy alias for backward compat)
     --remove, -r  Remove symlinks/files instead of installing
     --skills-only  Install/remove skills only (skip configs and rules)
+    --with-context-mode  Install/configure context-mode where supported
     --help, -h  Show this help message
 EOF
 }
@@ -55,6 +56,14 @@ require_python3() {
     fi
 }
 
+opencode_config_root() {
+    echo "$HOME/.config/opencode"
+}
+
+opencode_context_mode_state_file() {
+    echo "$(opencode_config_root)/.context-mode-state.json"
+}
+
 codex_config_root() {
     echo "$HOME/.codex"
 }
@@ -69,6 +78,149 @@ codex_state_file() {
 
 codex_backup_dir() {
     echo "$(codex_config_root)/.opencode-config-backups"
+}
+
+codex_context_mode_state_file() {
+    echo "$(codex_config_root)/.context-mode-state.json"
+}
+
+
+target_uses_global_context_mode() {
+    case "$TARGET" in
+        opencode|codex|copilot|both|all)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+ensure_context_mode_runtime() {
+    if [[ "$ACTION" != "install" || "$WITH_CONTEXT_MODE" -eq 0 || "$SKILLS_ONLY" -eq 1 ]]; then
+        return 0
+    fi
+
+    if ! target_uses_global_context_mode; then
+        return 0
+    fi
+
+    echo "Preparing context-mode..."
+    bash "$SCRIPT_DIR/scripts/install-context-mode.sh" install
+}
+
+install_opencode_context_mode_config() {
+    require_python3
+    python3 "$SCRIPT_DIR/scripts/context-mode-config.py" install-opencode \
+        --base "$SCRIPT_DIR/opencode.json" \
+        --target "$(opencode_config_root)/opencode.json" \
+        --state "$(opencode_context_mode_state_file)"
+    echo "  Installed: opencode.json (context-mode managed)"
+}
+
+remove_opencode_context_mode_config() {
+    local target="$(opencode_config_root)/opencode.json"
+    local state="$(opencode_context_mode_state_file)"
+
+    if [[ ! -f "$state" ]]; then
+        return 0
+    fi
+
+    require_python3
+    python3 "$SCRIPT_DIR/scripts/context-mode-config.py" remove-opencode \
+        --target "$target" \
+        --state "$state"
+}
+
+merge_codex_context_mode_config() {
+    local target_config
+    target_config="$(codex_config_file)"
+    local state_file
+    state_file="$(codex_context_mode_state_file)"
+    local temp_config
+    temp_config="$(mktemp)"
+
+    cat > "$temp_config" << 'EOF'
+[mcp_servers.context-mode]
+command = "context-mode"
+EOF
+
+    require_python3
+    python3 "$SCRIPT_DIR/scripts/codex-config.py" install \
+        --repo "$temp_config" \
+        --target "$target_config" \
+        --state "$state_file"
+
+    rm -f "$temp_config"
+    echo "  Merged: ~/.codex/config.toml (context-mode)"
+}
+
+remove_codex_context_mode_config() {
+    local state_file
+    state_file="$(codex_context_mode_state_file)"
+    local target_config
+    target_config="$(codex_config_file)"
+
+    if [[ ! -f "$state_file" && ! -f "$target_config" ]]; then
+        return 0
+    fi
+
+    require_python3
+    python3 "$SCRIPT_DIR/scripts/codex-config.py" remove \
+        --target "$target_config" \
+        --state "$state_file"
+}
+
+cleanup_empty_codex_config() {
+    local target_config
+    target_config="$(codex_config_file)"
+
+    if [[ ! -f "$target_config" ]]; then
+        return 0
+    fi
+
+    local normalized
+    normalized="$(python3 - <<'PY' "$target_config"
+from pathlib import Path
+import sys
+text = Path(sys.argv[1]).read_text(encoding='utf-8').strip()
+print(text)
+PY
+)"
+
+    if [[ -z "$normalized" || "$normalized" == "#:schema false" ]]; then
+        rm -f "$target_config"
+        echo "  Removed: config.toml"
+    fi
+}
+
+
+install_copilot_context_mode_plugin() {
+    if ! command -v copilot >/dev/null 2>&1; then
+        echo "  Skipped: copilot CLI not found (install context-mode plugin manually)"
+        return 0
+    fi
+
+    if copilot plugin list 2>/dev/null | grep -q "context-mode"; then
+        echo "  Found: context-mode plugin already installed"
+        return 0
+    fi
+
+    echo "  Installing context-mode plugin via copilot CLI..."
+    copilot plugin install mksglu/context-mode
+}
+
+remove_copilot_context_mode_plugin() {
+    if ! command -v copilot >/dev/null 2>&1; then
+        return 0
+    fi
+
+    if ! copilot plugin list 2>/dev/null | grep -q "context-mode"; then
+        return 0
+    fi
+
+    echo "  Uninstalling context-mode plugin..."
+    copilot plugin uninstall context-mode
 }
 
 install_codex_notify_script() {
@@ -253,6 +405,9 @@ setup_codex_config() {
     install_codex_notify_script
     install_codex_rules
     merge_codex_config
+    if [[ "$WITH_CONTEXT_MODE" -eq 1 ]]; then
+        merge_codex_context_mode_config
+    fi
 }
 
 remove_codex_config() {
@@ -276,10 +431,14 @@ remove_codex_config() {
             --target "$target_config" \
             --state "$state_file"
     fi
+
+    remove_codex_context_mode_config
+    cleanup_empty_codex_config
 }
 
 setup_opencode() {
-    local config_dir="$HOME/.config/opencode"
+    local config_dir
+    config_dir="$(opencode_config_root)"
     echo "Setting up OpenCode..."
     echo "  Target: $config_dir"
     
@@ -304,8 +463,12 @@ setup_opencode() {
     echo "  Linked: skills/"
 
     if [[ "$SKILLS_ONLY" -eq 0 ]]; then
-        ln -sf "$SCRIPT_DIR/opencode.json" "$config_dir/opencode.json"
-        echo "  Linked: opencode.json"
+        if [[ "$WITH_CONTEXT_MODE" -eq 1 ]]; then
+            install_opencode_context_mode_config
+        else
+            ln -sf "$SCRIPT_DIR/opencode.json" "$config_dir/opencode.json"
+            echo "  Linked: opencode.json"
+        fi
     fi
     echo "  Done!"
 }
@@ -450,6 +613,10 @@ setup_copilot() {
     done
 
     echo "  Done!"
+
+    if [[ "$WITH_CONTEXT_MODE" -eq 1 && "$SKILLS_ONLY" -eq 0 ]]; then
+        install_copilot_context_mode_plugin
+    fi
 }
 
 remove_copilot() {
@@ -480,11 +647,14 @@ remove_copilot() {
     done
 
     echo "  Done!"
+
+    remove_copilot_context_mode_plugin
 }
 
 # Remove symlinks for OpenCode
 remove_opencode() {
-    local config_dir="$HOME/.config/opencode"
+    local config_dir
+    config_dir="$(opencode_config_root)"
     echo "Removing OpenCode symlinks..."
     echo "  Target: $config_dir"
 
@@ -492,8 +662,22 @@ remove_opencode() {
     if [[ "$SKILLS_ONLY" -eq 1 ]]; then
         items=(skills)
     fi
+    local removed_context_mode=0
+    if [[ "$SKILLS_ONLY" -eq 0 && -f "$(opencode_context_mode_state_file)" ]]; then
+        remove_opencode_context_mode_config
+        removed_context_mode=1
+    fi
+
     for item in "${items[@]}"; do
         local target="$config_dir/$item"
+        if [[ "$item" == "opencode.json" && "$removed_context_mode" -eq 1 ]]; then
+            if [[ -e "$target" || -L "$target" ]]; then
+                echo "  Preserved: $item"
+            else
+                echo "  Removed: $item"
+            fi
+            continue
+        fi
         if [[ -L "$target" ]]; then
             rm "$target"
             echo "  Removed: $item"
@@ -545,6 +729,7 @@ TARGET="opencode"
 TARGET_SET=0
 REMOVE_SEEN=0
 SKILLS_ONLY=0
+WITH_CONTEXT_MODE=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -558,6 +743,9 @@ while [[ $# -gt 0 ]]; do
             ;;
         --skills-only)
             SKILLS_ONLY=1
+            ;;
+        --with-context-mode)
+            WITH_CONTEXT_MODE=1
             ;;
         opencode|codex|copilot|both|all)
             if [[ "$TARGET_SET" -eq 1 ]]; then
@@ -584,6 +772,8 @@ while [[ $# -gt 0 ]]; do
     esac
     shift
 done
+
+ensure_context_mode_runtime
 
 if [[ "$ACTION" == "install" ]]; then
     case "$TARGET" in
