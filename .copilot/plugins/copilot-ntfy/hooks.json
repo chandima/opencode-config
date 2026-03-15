@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hooks": {
+    "agentStop": [
+      {
+        "type": "command",
+        "bash": "$HOME/.copilot/installed-plugins/_direct/copilot-ntfy/scripts/ntfy_notify.sh",
+        "timeoutSec": 15
+      }
+    ]
+  }
+}

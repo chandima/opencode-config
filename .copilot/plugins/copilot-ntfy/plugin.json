@@ -1,0 +1,7 @@
+{
+  "name": "copilot-ntfy",
+  "description": "Send ntfy push notifications when Copilot CLI agent turns complete. Includes agent response and session title.",
+  "version": "0.1.0",
+  "license": "MIT",
+  "hooks": "hooks.json"
+}
