@@ -13,7 +13,7 @@ TARGETS:
     (none)      Install for OpenCode only (default)
     opencode    Install for OpenCode only
     codex       Install for Codex only (skills and config under ~/.codex)
-    copilot     Install for GitHub Copilot only (prompt files under ~/.copilot/prompts)
+    copilot     Install for GitHub Copilot only (skills, ntfy hooks under ~/.copilot)
     all         Install for OpenCode, Codex, and Copilot
     both        Install for OpenCode and Codex (legacy alias for backward compat)
     --remove, -r  Remove symlinks/files instead of installing
@@ -750,6 +750,11 @@ setup_copilot() {
     if [[ "$SKILLS_ONLY" -eq 0 ]]; then
         install_copilot_notify_script
         install_copilot_hooks
+        echo ""
+        echo "  ℹ️  Copilot CLI loads hooks from .github/hooks/ in your working directory."
+        echo "     To enable ntfy notifications in a project, run:"
+        echo "       mkdir -p <project>/.github/hooks"
+        echo "       ln -s ~/.copilot/hooks/copilot-ntfy.json <project>/.github/hooks/copilot-ntfy.json"
     fi
 
     if [[ "$WITH_CONTEXT_MODE" -eq 1 && "$SKILLS_ONLY" -eq 0 ]]; then
