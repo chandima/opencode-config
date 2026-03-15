@@ -16,6 +16,9 @@ DEBOUNCE_SEC="${NTFY_DEBOUNCE_SEC:-5}"
 LOCKFILE="${TMPDIR:-/tmp}/copilot-ntfy.lock"
 MAX_BODY_LEN="${NTFY_MAX_BODY_LEN:-512}"
 SESSION_STATE_DIR="${COPILOT_SESSION_STATE_DIR:-$HOME/.copilot/session-state}"
+POLL_ATTEMPTS="${NTFY_POLL_ATTEMPTS:-20}"
+POLL_INTERVAL="${NTFY_POLL_INTERVAL:-0.1}"
+FRESHNESS_MS="${NTFY_FRESHNESS_MS:-5000}"
 
 if ! command -v jq &>/dev/null; then
     exit 0
@@ -43,6 +46,15 @@ cwd_name="${cwd##*/}"
 stop_reason="$(jq -r '.stopReason // empty' <<<"$payload")"
 session_id="$(jq -r '.sessionId // empty' <<<"$payload")"
 transcript_path="$(jq -r '.transcriptPath // empty' <<<"$payload")"
+
+# Extract payload timestamp (epoch ms) for freshness gating
+hook_ts_ms="$(jq -r '
+    .timestamp as $ts
+    | if ($ts | type) == "number" then ($ts | floor)
+      elif ($ts | type) == "string" then
+        (try (($ts | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601) * 1000 | floor) catch 0)
+      else 0 end
+' <<<"$payload")"
 
 # --- Resolve session directory ---
 session_dir=""
@@ -85,12 +97,35 @@ elif [[ -n "$session_dir" && -f "$session_dir/events.jsonl" ]]; then
 fi
 
 if [[ -n "$events_file" ]]; then
-    # Read the last assistant.message with no pending tool requests
-    body="$(tail -200 "$events_file" | jq -r '
-        select(.type == "assistant.message")
-        | select((.data.toolRequests // []) | length == 0)
-        | .data.content // ""
-    ' 2>/dev/null | awk 'length > 0 { line = $0 } END { print line }')"
+    # Poll for a fresh assistant.message — events.jsonl may not be flushed yet
+    min_ts_ms=0
+    if (( hook_ts_ms > 0 )); then
+        min_ts_ms=$(( hook_ts_ms - FRESHNESS_MS ))
+        (( min_ts_ms < 0 )) && min_ts_ms=0
+    fi
+
+    attempt=0
+    while (( attempt < POLL_ATTEMPTS )); do
+        body="$(tail -200 "$events_file" | jq -r --argjson min_ts "$min_ts_ms" '
+            select(.type == "assistant.message")
+            | select((.data.toolRequests // []) | length == 0)
+            | .data.content // "" as $content
+            | (.timestamp // "") as $ts
+            | (try (($ts | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601) * 1000 | floor) catch 0) as $ts_ms
+            | select($content | length > 0)
+            | select($min_ts == 0 or $ts_ms >= $min_ts)
+            | $content
+        ' 2>/dev/null | awk 'length > 0 { line = $0 } END { print line }')"
+
+        if [[ -n "$body" ]]; then
+            break
+        fi
+
+        attempt=$(( attempt + 1 ))
+        if (( attempt < POLL_ATTEMPTS )); then
+            sleep "$POLL_INTERVAL"
+        fi
+    done
 fi
 
 # Fallback if transcript reading failed
