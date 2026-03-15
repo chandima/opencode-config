@@ -1,18 +1,32 @@
 ---
 name: skill-creator
-description: "Create/scaffold OpenCode skills (SKILL.md outline, file layout/folder structure, quick scaffold). Use when asked to create or scaffold a skill, to package steps into a reusable OpenCode skill, or when the user says \"use the skill-creator skill\" / \"skill-creator\"."
+description: "Create/scaffold OpenCode skills (SKILL.md outline, file layout/folder structure, quick scaffold). Use when asked to create or scaffold a skill, to package steps into a reusable OpenCode skill, run evals to test a skill, benchmark skill performance, optimize a skill's description for better triggering accuracy, or when the user says \"use the skill-creator skill\" / \"skill-creator\"."
 allowed-tools: Read Write Edit Glob Grep Bash Task WebFetch
 context: fork
 ---
 
 # Skill Creator
 
-Create well-structured OpenCode skills through guided design or quick scaffolding.
+Create, evaluate, improve, and optimize skills across OpenCode, Codex, and Copilot.
 
 **Announce at start (exact phrase required):** "I'm using the skill-creator skill."
 You may follow with a second sentence like "I'm using the skill-creator skill to help design your new skill."
 
-## Workflow
+## Workflow Overview
+
+Choose the workflow that matches the user's request:
+
+| Request | Workflow |
+|---------|----------|
+| "Create a skill" / "scaffold a skill" | **Create** → Search → Interview → Generate → Validate |
+| "Improve this skill" / "it's not working well" | **Improve** → Write Evals → Run → Grade → Iterate |
+| "Run evals" / "test this skill" / "benchmark" | **Eval** → Run Evals → Grade → Aggregate |
+| "Optimize description" / "it doesn't trigger" | **Optimize** → Generate Queries → Test → Iterate |
+| `--quick` flag | **Quick Scaffold** → Skip interview, output template |
+
+---
+
+## Create Workflow
 
 ### Phase 1: Search Before Create
 
@@ -36,18 +50,33 @@ Before creating any skill, search for similar existing skills:
 
 ### Phase 2: Adaptive Interview
 
-Adjust depth based on skill complexity:
+Gather requirements before creating. Ask one question at a time and wait for
+the answer before proceeding to the next.
 
-**Always ask:**
-1. What's the primary purpose? (1 sentence)
-2. What tools will it need? (Bash, Read, WebFetch, Task, etc.)
-3. Which runtime profile should this target first? (`opencode`, `codex`, `claude-api`, or `portable`)
+**Question sequence:**
+
+1. "What's the primary purpose of this skill?" — accept freeform answer
+2. "What tools will it need?" — suggest: Bash, Read/Glob/Grep, WebFetch, Task, MCP tools
+3. "Which runtime should this target?" — suggest: OpenCode, Codex, Copilot, All three
+4. "Will it have executable scripts?" — suggest: Yes or No
+5. "Should it include eval test cases?" — suggest: Yes (recommended) or No
 
 **Ask if unclear:**
-4. Will it have executable scripts or just instructions?
-5. Does it need configuration files (YAML/JSON)?
-6. Does it need template assets?
-7. Should it include optional cross-runtime metadata (`compatibility`, `metadata`) or remain minimal?
+
+6. Does it need configuration files (YAML/JSON)?
+7. Does it need template assets?
+8. Should it include optional cross-runtime metadata (`compatibility`, `metadata`)?
+
+**Context-aware shortcuts:**
+- If the user's original request already answers a question, skip it
+- If running in an autonomous/batch mode where questions would block,
+  use sensible defaults and document assumptions made
+
+**Defaults for autonomous mode:**
+- Runtime: portable (safest default)
+- Scripts: yes (if the user mentioned automation)
+- Eval test cases: yes
+- Tools: Read Glob Grep Bash (minimal safe set)
 
 **Determine structure from answers:**
 
@@ -100,7 +129,7 @@ Before finishing, verify:
 - [ ] Scripts have `#!/usr/bin/env bash` and `set -euo pipefail`
 - [ ] Smoke test exists if scripts exist
 - [ ] No duplicate of existing skill
-- [ ] Runtime profile is documented (`opencode`, `codex`, `claude-api`, or `portable`)
+- [ ] Runtime profile is documented (`opencode`, `codex`, `copilot`, or `portable`)
 - [ ] Optional fields (`allowed-tools`, `compatibility`, `metadata`) align with target runtime support
 
 ### Phase 5: Validation Loop (Recommended)
@@ -111,23 +140,143 @@ Use a validator-first loop before final handoff:
 2. Fix all reported issues
 3. Re-run validation until clean
 4. Run smoke tests (if scripts exist)
-5. Run runtime-profile check with `scripts/validate-runtime.sh`
-
-If `skills-ref` is available, use:
-
-```bash
-skills-ref validate skills/<name>
-skills-ref read-properties skills/<name>
-skills-ref to-prompt skills/<name>
-```
-
-Then run runtime-specific checks:
+5. Run runtime-profile check:
 
 ```bash
 bash skills/skill-creator/scripts/validate-runtime.sh skills/<name> --runtime opencode
 ```
 
-If `skills-ref` is unavailable, run local structural checks and smoke tests.
+---
+
+## Eval Workflow
+
+Use this workflow when asked to test, evaluate, or benchmark a skill.
+
+### Writing Evals
+
+Create `evals/evals.json` in the skill directory (see `references/schemas.md` for schema):
+
+```json
+{
+  "skill_name": "my-skill",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "User prompt that exercises the skill",
+      "expected_output": "What a correct result looks like",
+      "expectations": [
+        "Output contains the expected data",
+        "No errors were reported",
+        "File output.json was created"
+      ]
+    }
+  ]
+}
+```
+
+**Writing good expectations:**
+- Make them **verifiable** — string matches, file existence, regex patterns
+- Avoid subjective criteria ("output looks good")
+- Include both positive checks ("file was created") and negative checks ("no errors")
+- Aim for 3-7 expectations per eval case
+
+### Running Evals
+
+Run a single eval case against a skill:
+
+```bash
+bash skills/skill-creator/scripts/run-eval.sh \
+  --skill skills/<name> \
+  --prompt "the eval prompt" \
+  --output-dir /tmp/eval-run-1
+```
+
+For benchmarking, run both with-skill and without-skill variants. Launch all
+runs at once so they finish around the same time.
+
+### Grading
+
+Grade eval output against expectations:
+
+```bash
+bash skills/skill-creator/scripts/grade-eval.sh \
+  --run-dir /tmp/eval-run-1 \
+  --expectations '["Output contains X", "File Y was created"]'
+```
+
+Produces `grading.json` with pass/fail for each expectation and overall pass rate.
+
+### Aggregating Benchmarks
+
+After multiple runs, aggregate into statistics:
+
+```bash
+bash skills/skill-creator/scripts/aggregate-benchmark.sh \
+  --results-dir /tmp/benchmark-results \
+  --skill-name my-skill
+```
+
+Produces `benchmark.json` and `benchmark.md` with mean, stddev, min, max for
+pass_rate and time per configuration (with_skill vs without_skill).
+
+---
+
+## Improve Workflow
+
+Use this when asked to improve an existing skill or when eval results show problems.
+
+### Iterative Improvement Loop
+
+1. **Baseline** — Run evals against current skill version, grade, record pass rate as v0
+2. **Analyze** — Identify which expectations fail and why
+3. **Improve** — Make targeted changes to SKILL.md or scripts based on failure analysis
+4. **Re-eval** — Run same evals against improved version
+5. **Compare** — If pass rate improved, keep changes (new best). If not, revert.
+6. **Repeat** — Up to 5 iterations or until pass rate plateaus
+
+Track progress in `history.json` (see `references/schemas.md`).
+
+**Key principle:** Change one thing at a time. If you change multiple things and
+pass rate drops, you won't know which change caused the regression.
+
+---
+
+## Description Optimization Workflow
+
+Use this when a skill isn't triggering correctly — it activates for wrong
+prompts or doesn't activate for right ones.
+
+### Step 1: Generate Trigger Queries
+
+Create 20+ test queries split evenly:
+- **should-trigger**: Prompts that should activate this skill
+- **should-not-trigger**: Prompts that should NOT activate this skill (but might be confused for it)
+
+Present the queries to the user for review before proceeding.
+
+### Step 2: Optimization Loop
+
+For each candidate description:
+1. Score against query set (does description match should-trigger, reject should-not-trigger?)
+2. Use 60/40 train/test split to avoid overfitting
+3. Propose improved description based on failures
+4. Re-score on both train and test sets
+5. Select best by **test score** (not train score)
+6. Iterate up to 5 times
+
+```bash
+bash skills/skill-creator/scripts/optimize-description.sh \
+  --skill skills/<name> \
+  --queries queries.json \
+  --iterations 5
+```
+
+### Step 3: Apply Result
+
+Update the skill's SKILL.md frontmatter with the optimized description.
+Show the user the before/after and the improvement in trigger accuracy.
+
+---
 
 ## Quick Mode
 
@@ -145,15 +294,17 @@ mkdir -p skills/<name>
 # Write to skills/<name>/SKILL.md
 ```
 
+---
+
 ## Frontmatter Reference
 
 | Field | Required | Description |
 |-------|----------|-------------|
 | `name` | Yes | Matches directory, lowercase-kebab-case |
 | `description` | Yes | Include "Use when..." trigger conditions |
-| `allowed-tools` | OpenCode/Codex: Yes; Portable/Claude API: Optional | Whitelist, scope bash commands (e.g., `Bash(gh:*)`); treat as experimental outside compatible runtimes |
+| `allowed-tools` | OpenCode/Codex: Yes; Portable: Optional | Whitelist, scope bash commands (e.g., `Bash(gh:*)`) |
 | `context` | Recommended | Use `fork` for isolated execution |
-| `compatibility` | Optional | Runtime support notes (only include when target runtime supports it) |
+| `compatibility` | Optional | Runtime support notes |
 | `metadata` | Optional | Additional namespaced metadata for tooling |
 
 ### allowed-tools Patterns
@@ -174,8 +325,6 @@ All bash scripts must include:
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
-
-# Script implementation
 ```
 
 Action pattern for multi-command scripts:
@@ -223,28 +372,31 @@ Keep skills efficient:
 - **Subdirectories**: Heavy content, loaded on-demand
 - **References**: Prefer one-level links directly from `SKILL.md`; avoid deep nested reference chains
 
+## Writing Style
+
+Skill instructions are read by agents across different harnesses. Follow these principles:
+
+- Use **clear, direct language** — avoid jargon without explanation
+- Use **intent-based instructions** ("ask the user", "suggest options") not tool-specific references ("call ask_user", "use the question tool")
+- Provide **examples** for complex workflows
+- Include **defaults** for every decision point so autonomous execution doesn't hang
+
 ## Runtime Profiles
 
 Choose one default and optimize for it:
 
 - **`opencode`**: Include repo-standard `allowed-tools` and `context: fork`
 - **`codex`**: Keep structure compatible with Codex skill loading; avoid OpenCode-only assumptions in instructions
-- **`claude-api`**: Favor portable frontmatter; avoid relying on runtime package installs/network at execution time
+- **`copilot`**: Compatible with Agent Skills standard; use standard frontmatter fields
 - **`portable`**: Minimal required fields (`name`, `description`) plus optional fields only when confirmed supported
 
 When uncertain, default to `portable` and add runtime-specific notes in a dedicated compatibility section.
 
-## Experimental Field Policy
+## Reference Files
 
-`allowed-tools` can vary across implementations. Use this policy:
-
-1. Include it by default for OpenCode/Codex repo skills
-2. Mark it as runtime-dependent in generated docs
-3. For portability-first skills, ask before including it
-4. Never assume optional fields are enforced consistently across runtimes
-
-## Reference Examples
+- `references/schemas.md` — JSON schemas for evals, grading, benchmarks, history
+- `assets/SKILL-TEMPLATE.md` — Quick-mode template
 
 For well-structured skills in this repo, see:
 - `@skills/github-ops/SKILL.md` - Multi-script skill with domains
-- `@skills/asu-discover/SKILL.md` - Script with YAML config
+- `@skills/production-hardening/SKILL.md` - Multi-phase analysis and implementation
