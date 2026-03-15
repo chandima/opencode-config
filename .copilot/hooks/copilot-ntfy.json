@@ -1,7 +1,7 @@
 {
   "version": 1,
   "hooks": {
-    "sessionEnd": [
+    "agentStop": [
       {
         "type": "command",
         "bash": "$HOME/.copilot/ntfy_notify.sh",
