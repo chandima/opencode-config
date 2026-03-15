@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "AgentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.copilot/installed-plugins/_direct/copilot-ntfy/scripts/ntfy_notify.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

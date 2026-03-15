@@ -1,0 +1,5 @@
+{
+  "name": "copilot-ntfy",
+  "version": "0.1.0",
+  "description": "Send ntfy push notifications when Copilot CLI agent turns complete."
+}
