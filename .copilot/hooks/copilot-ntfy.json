@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "hooks": {
+    "agentStop": [
+      {
+        "type": "command",
+        "bash": "$HOME/.copilot/ntfy_notify.sh",
+        "timeoutSec": 15
+      }
+    ],
+    "sessionEnd": [
+      {
+        "type": "command",
+        "bash": "$HOME/.copilot/ntfy_notify.sh",
+        "timeoutSec": 15
+      }
+    ]
+  }
+}

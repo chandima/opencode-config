@@ -543,8 +543,141 @@ setup_codex() {
 # We symlink individual skill directories to ~/.copilot/skills/ — same approach
 # as Codex, no conversion needed.
 
+copilot_config_root() {
+    echo "$HOME/.copilot"
+}
+
+copilot_backup_dir() {
+    echo "$(copilot_config_root)/.opencode-config-backups"
+}
+
 copilot_skills_dir() {
-    echo "$HOME/.copilot/skills"
+    echo "$(copilot_config_root)/skills"
+}
+
+install_copilot_notify_script() {
+    local source_script="$SCRIPT_DIR/.copilot/ntfy_notify.sh"
+    local target_script
+    target_script="$(copilot_config_root)/ntfy_notify.sh"
+    local backup
+    backup="$(copilot_backup_dir)/ntfy_notify.sh"
+
+    if [[ ! -f "$source_script" ]]; then
+        echo "  Skipping Copilot notify script (repo script not found)"
+        return 0
+    fi
+
+    mkdir -p "$(copilot_config_root)"
+    mkdir -p "$(copilot_backup_dir)"
+
+    if [[ -L "$target_script" ]]; then
+        local link_target
+        link_target="$(readlink "$target_script")"
+        if [[ "$link_target" == "$source_script" ]]; then
+            echo "  Linked: ntfy_notify.sh (already)"
+            return 0
+        fi
+    fi
+
+    if [[ -e "$target_script" || -L "$target_script" ]]; then
+        rm -rf "$backup"
+        mv "$target_script" "$backup"
+        echo "  Backed up: ntfy_notify.sh"
+    fi
+
+    ln -sfn "$source_script" "$target_script"
+    echo "  Linked: ntfy_notify.sh"
+}
+
+remove_copilot_notify_script() {
+    local source_script="$SCRIPT_DIR/.copilot/ntfy_notify.sh"
+    local target_script
+    target_script="$(copilot_config_root)/ntfy_notify.sh"
+    local backup
+    backup="$(copilot_backup_dir)/ntfy_notify.sh"
+
+    if [[ -L "$target_script" ]]; then
+        local link_target
+        link_target="$(readlink "$target_script")"
+        if [[ "$link_target" == "$source_script" ]]; then
+            rm "$target_script"
+            echo "  Removed: ntfy_notify.sh"
+        else
+            echo "  Skipped (not our symlink): ntfy_notify.sh"
+            return 0
+        fi
+    elif [[ -e "$target_script" ]]; then
+        echo "  Skipped (not a symlink): ntfy_notify.sh"
+        return 0
+    fi
+
+    if [[ ! -e "$target_script" && ! -L "$target_script" && -e "$backup" ]]; then
+        mv "$backup" "$target_script"
+        echo "  Restored: ntfy_notify.sh"
+    fi
+}
+
+install_copilot_hooks() {
+    local source_hooks="$SCRIPT_DIR/.copilot/hooks/copilot-ntfy.json"
+    local target_dir
+    target_dir="$(copilot_config_root)/hooks"
+    local target_file="$target_dir/copilot-ntfy.json"
+    local backup
+    backup="$(copilot_backup_dir)/copilot-ntfy.json"
+
+    if [[ ! -f "$source_hooks" ]]; then
+        echo "  Skipping Copilot hooks config (repo file not found)"
+        return 0
+    fi
+
+    mkdir -p "$target_dir"
+    mkdir -p "$(copilot_backup_dir)"
+
+    if [[ -L "$target_file" ]]; then
+        local link_target
+        link_target="$(readlink "$target_file")"
+        if [[ "$link_target" == "$source_hooks" ]]; then
+            echo "  Linked: hooks/copilot-ntfy.json (already)"
+            return 0
+        fi
+    fi
+
+    if [[ -e "$target_file" || -L "$target_file" ]]; then
+        rm -rf "$backup"
+        mv "$target_file" "$backup"
+        echo "  Backed up: hooks/copilot-ntfy.json"
+    fi
+
+    ln -sfn "$source_hooks" "$target_file"
+    echo "  Linked: hooks/copilot-ntfy.json"
+}
+
+remove_copilot_hooks() {
+    local source_hooks="$SCRIPT_DIR/.copilot/hooks/copilot-ntfy.json"
+    local target_file
+    target_file="$(copilot_config_root)/hooks/copilot-ntfy.json"
+    local backup
+    backup="$(copilot_backup_dir)/copilot-ntfy.json"
+
+    if [[ -L "$target_file" ]]; then
+        local link_target
+        link_target="$(readlink "$target_file")"
+        if [[ "$link_target" == "$source_hooks" ]]; then
+            rm "$target_file"
+            echo "  Removed: hooks/copilot-ntfy.json"
+        else
+            echo "  Skipped (not our symlink): hooks/copilot-ntfy.json"
+            return 0
+        fi
+    elif [[ -e "$target_file" ]]; then
+        echo "  Skipped (not a symlink): hooks/copilot-ntfy.json"
+        return 0
+    fi
+
+    if [[ ! -e "$target_file" && ! -L "$target_file" && -e "$backup" ]]; then
+        mv "$backup" "$target_file"
+        echo "  Restored: hooks/copilot-ntfy.json"
+    fi
 }
 
 setup_copilot() {
@@ -614,6 +747,11 @@ setup_copilot() {
 
     echo "  Done!"
 
+    if [[ "$SKILLS_ONLY" -eq 0 ]]; then
+        install_copilot_notify_script
+        install_copilot_hooks
+    fi
+
     if [[ "$WITH_CONTEXT_MODE" -eq 1 && "$SKILLS_ONLY" -eq 0 ]]; then
         install_copilot_context_mode_plugin
     fi
@@ -648,6 +786,8 @@ remove_copilot() {
 
     echo "  Done!"
 
+    remove_copilot_notify_script
+    remove_copilot_hooks
     remove_copilot_context_mode_plugin
 }
 

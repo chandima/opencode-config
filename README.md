@@ -22,7 +22,14 @@ opencode-config/                      # This git repo (your config)
 │   └── test-context-mode-setup.sh    # context-mode smoke tests
 ├── .codex/                           # Codex config + rules (tracked)
 │   ├── config.toml                   # Codex config (TOML format)
+│   ├── ntfy_notify.sh                # ntfy notification script (Codex)
 │   └── rules/                        # Codex rules
+├── .copilot/                         # Copilot config + hooks (tracked)
+│   ├── ntfy_notify.sh                # ntfy notification script (Copilot)
+│   ├── hooks/
+│   │   └── copilot-ntfy.json         # Hook config (agentStop + sessionEnd)
+│   └── tests/
+│       └── smoke.sh                  # Notification smoke tests
 └── .opencode/                        # OpenCode-specific files
 
 ~/.config/opencode/                   # OpenCode runtime directory
@@ -42,6 +49,9 @@ opencode-config/                      # This git repo (your config)
     └── ...other custom skills...     # (via setup.sh)
 
 ~/.copilot/                           # Copilot runtime directory
+├── ntfy_notify.sh -> <repo>/.copilot/ntfy_notify.sh  # ntfy notification script
+├── hooks/
+│   └── copilot-ntfy.json -> <repo>/.copilot/hooks/copilot-ntfy.json  # Hook config
 └── skills/                           # Skills directory (via setup.sh copilot)
     ├── github-ops/ -> <repo>/skills/github-ops/  # Custom skill (via setup.sh)
     ├── context7-docs/ -> <repo>/skills/context7-docs/
@@ -90,10 +100,11 @@ The script will:
 - **Codex + context-mode**: With `--with-context-mode`, also merge `[mcp_servers.context-mode]` into `~/.codex/config.toml`
 - **Codex**: Install `.codex/ntfy_notify.sh` to `~/.codex/ntfy_notify.sh` (with backup/restore behavior for existing files)
 - **Copilot**: Symlink individual skill directories to `~/.copilot/skills/` (uses [Agent Skills standard](https://agentskills.io/) natively)
+- **Copilot**: Install `ntfy_notify.sh` and `hooks/copilot-ntfy.json` to `~/.copilot/` for task completion notifications
 - **Copilot + context-mode**: With `--with-context-mode`, install context-mode as a Copilot CLI plugin via `copilot plugin install`
 - **Respects disabled skills**: Skills with `"deny"` permission in `opencode.json` are skipped for all targets
 - **Remove mode**: Use `[target] --remove` to delete only symlinks created by the script
-- **Skills-only mode**: Use `--skills-only` to skip Codex config merge, rules, and `ntfy_notify.sh` install (link/remove skills only)
+- **Skills-only mode**: Use `--skills-only` to skip Codex config merge, rules, `ntfy_notify.sh`, and Copilot hooks install (link/remove skills only)
 
 <details>
 <summary>Manual alternative (without script)</summary>
@@ -177,6 +188,34 @@ Optional integration:
 
 > **Note:** Some plugins like `opencode-notify` and `opencode-worktree` require [OCX](https://github.com/kdcokenny/ocx) package manager (not available via npm).
 
+### Task Completion Notifications (ntfy)
+
+Both Codex and Copilot support push notifications when agent tasks complete, powered by [ntfy](https://ntfy.sh/).
+
+| Aspect | Codex | Copilot |
+|--------|-------|---------|
+| Mechanism | `notify` key in `config.toml` | `.github/hooks/*.json` (hook system) |
+| Trigger | `agent-turn-complete` event | `agentStop` + `sessionEnd` hooks |
+| Script | `~/.codex/ntfy_notify.sh` | `~/.copilot/ntfy_notify.sh` |
+| Input method | JSON as argv (`$1`) | JSON piped via stdin |
+| Setup | `./setup.sh codex` | `./setup.sh copilot` |
+
+**Environment variable overrides** (Copilot script; Codex uses hardcoded values):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `NTFY_TOKEN` | *(hardcoded)* | Bearer token for ntfy server |
+| `NTFY_URL` | `https://ntfy.sandbox.iamzone.dev` | ntfy server URL |
+| `NTFY_TOPIC` | `copilot-tasks` (Copilot) / `codex-tasks` (Codex) | Notification topic |
+
+**Per-repository hooks (Copilot):** The hook config at `~/.copilot/hooks/copilot-ntfy.json` is installed globally. For Copilot CLI, hooks are loaded from `.github/hooks/` in the current working directory. To enable notifications in a specific project, either symlink or copy the hook config:
+
+```bash
+# Symlink global hooks into a project
+mkdir -p myproject/.github/hooks
+ln -s ~/.copilot/hooks/copilot-ntfy.json myproject/.github/hooks/copilot-ntfy.json
+```
+
 ## Dependencies
 
 Skills in this repository may require the following dependencies:
@@ -229,6 +268,14 @@ Skills with a `tests/` directory should have smoke tests run after modifications
 ```
 
 All tests should pass before committing changes.
+
+### Testing Copilot Notifications
+
+```bash
+.copilot/tests/smoke.sh
+```
+
+Validates ntfy_notify.sh input parsing, reason handling, env var overrides, and hook config JSON.
 
 ### Skill Loading Evals
 
