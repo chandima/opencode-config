@@ -617,6 +617,59 @@ remove_copilot_notify_script() {
     fi
 }
 
+ensure_copilot_js_hooks() {
+    # The Copilot CLI npm package bundles a platform-specific SEA (Single
+    # Executable Application) binary as an optionalDependency.  The npm-loader
+    # prefers this native binary over the JS entry-point (index.js).  However,
+    # hook support only exists in the JS code path — the SEA binary ships
+    # without it.  Removing the platform binary forces the npm-loader to fall
+    # through to index.js, enabling agentStop / preToolUse / etc. hooks.
+    #
+    # This is safe: index.js is functionally identical; it just needs Node ≥ 24.
+
+    local pkg_root
+    pkg_root="$(npm root -g 2>/dev/null)/@github/copilot" || true
+
+    if [[ ! -d "$pkg_root" ]]; then
+        echo "  ⚠  @github/copilot not installed globally via npm — hooks may not fire."
+        echo "     Install with:  npm install -g @github/copilot@prerelease"
+        return 0
+    fi
+
+    local arch
+    arch="$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)"
+    # Map to npm package naming convention
+    case "$arch" in
+        darwin-arm64)  arch="darwin-arm64" ;;
+        darwin-x86_64) arch="darwin-x64"   ;;
+        linux-x86_64)  arch="linux-x64"    ;;
+        linux-aarch64) arch="linux-arm64"  ;;
+        *)             arch=""              ;;
+    esac
+
+    if [[ -z "$arch" ]]; then
+        echo "  Skipping platform-binary removal (unrecognized arch)"
+        return 0
+    fi
+
+    local platform_pkg="$pkg_root/node_modules/@github/copilot-$arch"
+
+    if [[ -d "$platform_pkg" ]]; then
+        rm -rf "$platform_pkg"
+        echo "  Removed SEA binary: @github/copilot-$arch (hooks now use JS engine)"
+    else
+        echo "  JS hook engine: OK (no SEA binary override present)"
+    fi
+
+    # Verify Node version
+    local node_major
+    node_major="$(node -e 'console.log(process.versions.node.split(".")[0])' 2>/dev/null)" || true
+    if [[ -n "$node_major" ]] && (( node_major < 24 )); then
+        echo "  ⚠  Node.js v${node_major} detected — Copilot JS engine requires v24+."
+        echo "     Upgrade Node or hooks will not load."
+    fi
+}
+
 install_copilot_hooks() {
     local source_hooks="$SCRIPT_DIR/.copilot/hooks/copilot-ntfy.json"
     local target_dir
@@ -750,6 +803,7 @@ setup_copilot() {
     if [[ "$SKILLS_ONLY" -eq 0 ]]; then
         install_copilot_notify_script
         install_copilot_hooks
+        ensure_copilot_js_hooks
         echo ""
         echo "  ℹ️  Copilot CLI loads hooks from .github/hooks/ in your working directory."
         echo "     To enable ntfy notifications in a project, run:"
