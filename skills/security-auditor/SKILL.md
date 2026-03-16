@@ -11,6 +11,7 @@ description: |
   Supports monorepos with scoped audits per app/package.
 allowed-tools: Bash(trivy:*) Bash(semgrep:*) Bash(./scripts/*) Bash(brew:*) Bash(apt-get:*) Read Glob Grep Write(.opencode/docs/*)
 context: fork
+compatibility: "OpenCode, Codex CLI, GitHub Copilot. Requires trivy, semgrep, and gh CLI."
 ---
 
 # Security Auditor Skill

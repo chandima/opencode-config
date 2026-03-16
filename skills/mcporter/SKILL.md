@@ -1,8 +1,15 @@
 ---
 name: mcporter
-description: "Direct MCP access via MCPorter. Use to discover MCP servers, list MCP tools, or call an MCP tool (e.g., chrome-devtools screenshot, firecrawl scrape) when no specific skill exists. Supports any configured MCP server."
+description: |
+  Direct MCP access via MCPorter. Use when you need to discover available MCP
+  servers, list their tools, or call an MCP tool directly (e.g., chrome-devtools
+  screenshot, firecrawl scrape). Use this as a fallback when no dedicated skill
+  exists for the MCP server.
+  DO NOT use when a dedicated skill covers the MCP server (e.g., use github-ops
+  for GitHub, context7-docs for library documentation).
 allowed-tools: Bash(npx:*) Bash(./scripts/*) Read Glob Grep
 context: fork
+compatibility: "OpenCode, Codex CLI, GitHub Copilot. Requires npx and at least one configured MCP server."
 ---
 
 # MCPorter - Generic MCP Access

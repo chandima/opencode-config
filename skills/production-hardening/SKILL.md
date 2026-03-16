@@ -11,6 +11,7 @@ description: |
   DO NOT use for: security vulnerability scanning (use security-auditor instead).
 allowed-tools: Read Write Edit Glob Grep Bash(./scripts/*) Bash(grep:*) Bash(find:*) Bash(wc:*) Bash(cat:*) Bash(jq:*) Bash(npm:*) Bash(pnpm:*) Bash(node:*) Task
 context: fork
+compatibility: "OpenCode, Codex CLI, GitHub Copilot. Requires Bash."
 ---
 
 # Production Hardening

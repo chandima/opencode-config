@@ -1,8 +1,15 @@
 ---
 name: planning-doc
-description: "Create or update PLAN.md planning documents when users ask for a plan or planning. Use when asked to create a plan, planning document, or plan-based workflow."
+description: |
+  Create or update PLAN.md planning documents. Use when users ask to create a
+  plan, planning document, project plan, roadmap, or plan-based workflow.
+  Triggers: 'make a plan', 'create a plan', 'project plan', 'roadmap',
+  'track progress', 'update the plan'.
+  DO NOT use for: todo lists, issue tracking, general documentation, or
+  README files.
 allowed-tools: Bash(git:*) Read Glob Grep
 context: fork
+compatibility: "OpenCode, Codex CLI, GitHub Copilot. Requires git."
 ---
 
 # Planning Doc

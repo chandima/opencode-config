@@ -1,8 +1,16 @@
 ---
 name: skill-creator
-description: "Create/scaffold OpenCode skills (SKILL.md outline, file layout/folder structure, quick scaffold). Use when asked to create or scaffold a skill, to package steps into a reusable OpenCode skill, run evals to test a skill, benchmark skill performance, optimize a skill's description for better triggering accuracy, or when the user says \"use the skill-creator skill\" / \"skill-creator\"."
+description: |
+  Create/scaffold OpenCode skills (SKILL.md outline, file layout/folder structure,
+  quick scaffold). Use when asked to create or scaffold a skill, to package steps
+  into a reusable OpenCode skill, run evals to test a skill, benchmark skill
+  performance, optimize a skill's description for better triggering accuracy, or
+  when the user says "use the skill-creator skill" / "skill-creator".
+  DO NOT use for: general coding tasks, non-skill file creation, editing files
+  unrelated to skill development, or modifying existing application code.
 allowed-tools: Read Write Edit Glob Grep Bash Task WebFetch
 context: fork
+compatibility: "OpenCode, Codex CLI, GitHub Copilot. Requires Bash."
 ---
 
 # Skill Creator
