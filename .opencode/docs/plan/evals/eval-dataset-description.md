@@ -2,8 +2,8 @@ I unpacked your zip and generated an **OpenCode skill-loading eval dataset** tai
 
 Key repo facts I used:
 
-* Skills found: `context7-docs`, `github-ops`, `skill-creator`, `mcporter`, `security-auditor`, `asu-discover`
-* Your `opencode.json` sets `permission.skill["*"]="allow"` **but** `permission.skill["asu-discover"]="deny"` → dataset includes *deny/forbidden* cases for `asu-discover` and otherwise ignores it.
+* Skills found: `context7-docs`, `github-ops`, `skill-creator`, `mcporter`, `security-auditor`
+* Your `opencode.json` sets `permission.skill["*"]="allow"`.
 
 This dataset is designed to be graded from OpenCode traces by checking whether the agent calls the **native `skill` tool** to load the right SKILL.md on demand (that’s how OpenCode skills work). ([OpenCode][1]) Permission/deny behavior is also explicitly testable via config. ([OpenCode][2])
 
@@ -23,7 +23,6 @@ Coverage breakdown:
 * `mcporter`: 8
 * `security-auditor`: 7
 * `negative/no-skill`: 6
-* `permission/deny-skill` (asu-discover): 3
 
 ---
 
@@ -37,7 +36,7 @@ Each JSONL row looks like:
   "category": "github-ops/explicit",
   "prompt": "Using github-ops, draft commands to create a new GitHub Release ...",
   "expected_skills_any_of": ["github-ops"],
-  "forbidden_skills": ["asu-discover"],
+  "forbidden_skills": [],
   "must_call_skill": true,
   "checks": {
     "forbid_tools": ["WebFetch"],
@@ -49,7 +48,7 @@ Each JSONL row looks like:
 Field intent:
 
 * **`expected_skills_any_of`**: at least one of these should be loaded via `skill({name})`
-* **`forbidden_skills`**: must not be loaded (used for `asu-discover`)
+* **`forbidden_skills`**: must not be loaded
 * **`must_call_skill`**: whether any skill load is required
 * **`checks`**: lightweight process assertions (phrases, regex for expected commands, required output file paths, etc.)
 
@@ -65,7 +64,6 @@ OpenCode skills are loaded on-demand through the `skill` tool, so your grader ju
 ## What’s “OpenCode-specific” about this dataset
 
 * It assumes skills are **discoverable and loadable** via OpenCode’s **native `skill` tool** mechanism. ([OpenCode][1])
-* It includes **permission-deny tests** for `asu-discover`, because OpenCode permissions control whether actions/tools/skills are allowed/asked/blocked. ([OpenCode][2])
 * Prompts are written to match your skill intents:
 
   * `github-ops`: GitHub operations via `gh` / `./scripts/*.sh` (and “don’t WebFetch github.com” style constraints)

@@ -51,11 +51,6 @@ These checks look at the concatenated `text` events from the JSON stream. For co
 - `checks.required_commands_regex`: **ALL** regex patterns must match (assistant text + bash command inputs).
 - `checks.suggested_first_commands_regex`: **ANY** regex must match (assistant text + bash command inputs).
 
-### Permission-deny explanation
-
-If `checks.should_explain_permission` is true, we require the output to mention **asu-discover** plus a deny/permission/block phrase.
-(You can tighten this later based on your house style.)
-
 ### External search prompt (skill-creator)
 
 If `checks.should_ask_external_search` is true, we require the output to ask about searching **external skill repositories** before creating a new skill.

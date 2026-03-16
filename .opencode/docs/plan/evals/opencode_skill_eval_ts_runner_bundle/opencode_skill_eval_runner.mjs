@@ -217,12 +217,6 @@ async function gradeCase(c, { agent, usedTools, loadedSkills, outputText, repoRo
     [ok, why] = regexAnyPresent(checks.suggested_first_commands_regex ?? [], outputText);
     if (!ok) return [false, why];
   }
-  if (checks.should_explain_permission) {
-    const t = outputText.toLowerCase();
-    if (!t.includes("asu-discover") || !(t.includes("deny") || t.includes("permission") || t.includes("blocked"))) {
-      return [false, "expected an explanation of denied permissions for asu-discover"];
-    }
-  }
   for (const rel of (checks.required_outputs_files ?? [])) {
     const present = await fileExistsNonEmpty(repoRoot, rel);
     if (!present) return [false, `required output file missing/empty: ${rel}`];

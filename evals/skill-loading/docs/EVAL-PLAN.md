@@ -16,7 +16,7 @@ Purpose: establish a deterministic, CI-friendly evaluation framework for OpenCod
 - Server mode now uses `--port` to reuse the running server (avoids `--attach` context errors). Default remains per-test until server mode proves faster.
 - Added timing instrumentation: per-case prep/run/parse/grade breakdowns (`--timing-detail`) plus optional timestamped event traces (`--trace-events`) and time-to-first-event/tool/skill fields.
 - `--isolate-config` now skips auto-loading repo `opencode.json` unless `--config` is explicitly provided (prevents plugin contamination). It sets `OPENCODE_CONFIG_DIR` to a temp dir. Project config is only disabled if `--disable-project-config` is passed.
-- When `--isolate-config` is used without `--config`, the runner writes a minimal config (plugins disabled, `asu-discover` denied) to keep evals deterministic.
+- When `--isolate-config` is used without `--config`, the runner writes a minimal config (plugins disabled) to keep evals deterministic.
 - The runner now prepends a prompt guard that enforces explicit skill usage when users name a skill or request exact gh/GitHub CLI commands (disable with `--no-guard`).
 - Added parallel execution (`--parallel`) with per-test timeout progress bars and per-run `progress.json`.
 - Parallel runs now isolate OpenCode cache per worker to avoid cache corruption/race conditions.
@@ -53,7 +53,7 @@ Purpose: establish a deterministic, CI-friendly evaluation framework for OpenCod
   - Expectations: `must_call_skill`, `expected_skills_any_of`, `forbidden_skills`.
   - Checks: `forbid_tools`, `must_not_call_any_skill`, `must_not_call_skills`, `required_phrases`, `required_commands_regex`, `suggested_first_commands_regex`, `should_explain_permission`, `required_outputs_files`.
 - Expand coverage across the 6 task families (explicit, implicit, near‑miss, multi‑skill, permission gating, context pressure).
-- Confirm deny/permission cases (e.g., `asu-discover`) and “must explain permission” scenarios.
+- Confirm deny/permission cases and “must explain permission” scenarios.
 - Validate any fields that are currently ignored by the runner (e.g., `optional_skills`) and decide whether to enforce or remove.
 
 ## Phase 3 — Runner validation and configuration

@@ -50,11 +50,6 @@ These checks look at the concatenated `text` events from the JSON stream.
 - `checks.required_commands_regex`: **ALL** regex patterns must match the output.
 - `checks.suggested_first_commands_regex`: **ANY** regex must match (used as a lightweight signature that the workflow ran).
 
-### Permission-deny explanation
-
-If `checks.should_explain_permission` is true, we require the output to mention **asu-discover** plus a deny/permission/block phrase.
-(You can tighten this later based on your house style.)
-
 ### Required output files
 
 If `checks.required_outputs_files` is present, **FAIL** unless each file exists and is non-empty **in the working directory where the run executed**.

@@ -640,13 +640,6 @@ async function gradeCase(c, { agent, usedTools, loadedSkills, outputText, comman
     [ok, why] = regexAnyPresent(checks.suggested_first_commands_regex ?? [], combined);
     if (!ok) return [false, why];
   }
-  if (checks.should_explain_permission) {
-    const t = normalizeText(outputText);
-    const hasDeny = t.includes("deny") || t.includes("denied") || t.includes("permission") || t.includes("blocked") || t.includes("not allowed") || t.includes("cannot") || t.includes("can't") || t.includes("cant") || t.includes("don't have") || t.includes("do not have") || t.includes("not available");
-    if (!t.includes("asu-discover") || !hasDeny) {
-      return [false, "expected an explanation of denied permissions for asu-discover"];
-    }
-  }
   if (checks.should_ask_external_search) {
     const t = normalizeText(outputText);
     const hasExternal = t.includes("external");
@@ -734,8 +727,7 @@ async function writeMinimalConfig(destPath) {
     plugin: [],
     permission: {
       skill: {
-        "*": "allow",
-        "asu-discover": "deny"
+        "*": "allow"
       },
       external_directory: "allow"
     }

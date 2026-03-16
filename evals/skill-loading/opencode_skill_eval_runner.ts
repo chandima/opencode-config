@@ -763,14 +763,6 @@ async function gradeCase(c: EvalCase, params: {
     if (!ok) return [false, why];
   }
 
-  if (checks.should_explain_permission) {
-    const t = normalizeText(params.outputText);
-    const hasDeny = t.includes("deny") || t.includes("denied") || t.includes("permission") || t.includes("blocked") || t.includes("not allowed") || t.includes("cannot") || t.includes("can't") || t.includes("cant") || t.includes("don't have") || t.includes("do not have") || t.includes("not available");
-    if (!t.includes("asu-discover") || !hasDeny) {
-      return [false, "expected an explanation of denied permissions for asu-discover"];
-    }
-  }
-
   if (checks.should_ask_external_search) {
     const t = normalizeText(params.outputText);
     const hasExternal = t.includes("external");
@@ -870,7 +862,6 @@ async function writeMinimalConfig(destPath: string) {
     permission: {
       skill: {
         "*": "allow",
-        "asu-discover": "deny",
       },
       external_directory: "allow"
     }

@@ -94,7 +94,6 @@ Copilot discovers skills automatically. You can also configure additional search
 opencode-config/
 ├── skills/                # Custom skills (works with OpenCode, Codex, Copilot)
 │   ├── agent-browser/     # Browser automation via agent-browser CLI
-│   ├── asu-discover/      # ASU GitHub org semantic search (disabled)
 │   ├── context7-docs/     # Library documentation via Context7 MCP
 │   ├── github-ops/        # GitHub operations via gh CLI
 │   ├── mcporter/          # Direct MCP access via MCPorter
@@ -128,7 +127,7 @@ opencode-config/
 ## Skill Conventions
 
 ### Naming
-- **Directory**: `lowercase-kebab-case` (e.g., `github-ops`, `asu-discover`)
+- **Directory**: `lowercase-kebab-case` (e.g., `github-ops`, `context7-docs`)
 - **Scripts**: `lowercase.sh` in `scripts/` subdirectory
 - **Config**: YAML files in `config/` subdirectory
 
@@ -160,7 +159,6 @@ Skills can be enabled or disabled via permissions in `opencode.json` (OpenCode) 
   "permission": {
     "skill": {
       "*": "allow",
-      "asu-discover": "deny",
       "experimental-*": "ask"
     }
   }
@@ -171,7 +169,6 @@ Skills can be enabled or disabled via permissions in `opencode.json` (OpenCode) 
 ```toml
 [permission.skill]
 "*" = "allow"
-asu-discover = "deny"
 "experimental-*" = "ask"
 ```
 
@@ -182,10 +179,6 @@ asu-discover = "deny"
 | `ask` | User prompted for approval before loading |
 
 **Note:** Disabled skills remain in the `skills/` directory but are not available to the CLI.
-
-#### Currently Disabled Skills
-
-- **asu-discover**: Disabled pending server-side implementation refactor. The original design was inadequate and requires architectural changes to the backend integration.
 
 ### Script Standards
 

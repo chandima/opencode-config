@@ -324,13 +324,6 @@ async function gradeCase(c: EvalCase, params: {
     if (!ok) return [false, why];
   }
 
-  if (checks.should_explain_permission) {
-    const t = params.outputText.toLowerCase();
-    if (!t.includes("asu-discover") || !(t.includes("deny") || t.includes("permission") || t.includes("blocked"))) {
-      return [false, "expected an explanation of denied permissions for asu-discover"];
-    }
-  }
-
   const reqFiles: string[] = checks.required_outputs_files ?? [];
   for (const rel of reqFiles) {
     const present = await fileExistsNonEmpty(params.repoRoot, rel);

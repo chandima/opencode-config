@@ -106,7 +106,7 @@ node evals/skill-loading/opencode_skill_eval_runner.mjs \
 - Default mode copies the repo per test; your working tree is not mutated.
 - The runner excludes `AGENTS.md` and `.opencode/` from test copies to avoid workflow instructions interfering with evals.
 - Use `--isolate-config` to avoid global/project OpenCode config contamination (sets `OPENCODE_CONFIG_DIR` to a temp dir and disables project config). This prevents loading the repo `opencode.json` and skips repo `AGENTS.md`, avoiding plugin side-effects during evals.
-- When `--isolate-config` is used without `--config`, the runner writes a minimal config (no plugins; `asu-discover` denied) to keep eval behavior deterministic.
+- When `--isolate-config` is used without `--config`, the runner writes a minimal config (no plugins) to keep eval behavior deterministic.
 - The runner injects a minimal `AGENTS.md` guard into temp workspaces for eval isolation, and also prepends a prompt guard.
 - By default, the runner prepends a short **prompt guard** that enforces explicit skill usage when a user names a skill or asks for exact gh/GitHub CLI commands. Disable with `--no-guard` for fully raw prompts.
 - Use `--shell-run` or `--no-shell-run` to control the launch mode.
