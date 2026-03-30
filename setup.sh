@@ -203,11 +203,21 @@ install_copilot_context_mode_plugin() {
 
     if copilot plugin list 2>/dev/null | grep -q "context-mode"; then
         echo "  Found: context-mode plugin already installed"
-        return 0
+    else
+        echo "  Installing context-mode plugin via copilot CLI..."
+        copilot plugin install mksglu/context-mode
     fi
 
-    echo "  Installing context-mode plugin via copilot CLI..."
-    copilot plugin install mksglu/context-mode
+    # Rebuild native modules for the current Node version.
+    # The marketplace install may compile better-sqlite3 against a different
+    # NODE_MODULE_VERSION, breaking FTS5 search at runtime.
+    local plugin_dir="$HOME/.copilot/installed-plugins/_direct/mksglu--context-mode"
+    if [[ -d "$plugin_dir/node_modules/better-sqlite3" ]]; then
+        echo "  Rebuilding native modules..."
+        (cd "$plugin_dir" && npm rebuild better-sqlite3 2>/dev/null) \
+            && echo "  Rebuilt: better-sqlite3" \
+            || echo "  Warning: native module rebuild failed (FTS5 may not work)"
+    fi
 }
 
 remove_copilot_context_mode_plugin() {
