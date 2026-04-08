@@ -1,8 +1,8 @@
 # OpenCode Config
 
-Centralized OpenCode, Codex CLI, and GitHub Copilot configuration for syncing across multiple machines.
+Centralized OpenCode, Codex CLI, GitHub Copilot, and Kiro CLI configuration for syncing across multiple machines.
 
-> **Note:** These skill definitions were developed primarily for [OpenCode](https://opencode.ai), but work with Codex CLI and GitHub Copilot as well. They may also work out-of-the-box with other coding agent harnesses that support similar skill formats.
+> **Note:** These skill definitions were developed primarily for [OpenCode](https://opencode.ai), but work with Codex CLI, GitHub Copilot, and Kiro CLI as well. They may also work out-of-the-box with other coding agent harnesses that support similar skill formats.
 
 ## Structure
 
@@ -10,7 +10,7 @@ Centralized OpenCode, Codex CLI, and GitHub Copilot configuration for syncing ac
 opencode-config/                      # This git repo (your config)
 ├── .gitignore
 ├── README.md
-├── setup.sh                          # Setup script for OpenCode, Codex, and Copilot
+├── setup.sh                          # Setup script for OpenCode, Codex, Copilot, and Kiro
 ├── opencode.json                     # OpenCode config file (tracked)
 ├── skills/                           # Custom skills (tracked, works with all CLIs)
 ├── evals/                            # Evaluation framework (harness-agnostic)
@@ -56,6 +56,12 @@ opencode-config/                      # This git repo (your config)
     ├── github-ops/ -> <repo>/skills/github-ops/  # Custom skill (via setup.sh)
     ├── context7-docs/ -> <repo>/skills/context7-docs/
     └── ...other custom skills...     # One symlink per enabled skill
+
+~/.kiro/                              # Kiro runtime directory
+└── skills/                           # Skills directory (via setup.sh kiro)
+    ├── github-ops/ -> <repo>/skills/github-ops/  # Custom skill (via setup.sh)
+    ├── context7-docs/ -> <repo>/skills/context7-docs/
+    └── ...other custom skills...     # One symlink per enabled skill
 ```
 
 ## Setup on a New Machine
@@ -74,17 +80,19 @@ cd opencode-config
 ./setup.sh opencode     # Install OpenCode only
 ./setup.sh codex        # Install Codex only
 ./setup.sh copilot      # Install Copilot only (symlink skills)
-./setup.sh all          # Install for OpenCode, Codex, and Copilot
+./setup.sh kiro         # Install Kiro CLI only (symlink skills)
+./setup.sh all          # Install for OpenCode, Codex, Copilot, and Kiro
 ./setup.sh both         # Install for OpenCode and Codex
 ./setup.sh opencode --with-context-mode  # Opt-in OpenCode context-mode overlay
 ./setup.sh codex --with-context-mode     # Opt-in Codex context-mode MCP server
 ./setup.sh copilot --with-context-mode   # Opt-in Copilot context-mode plugin
-./setup.sh all --with-context-mode       # All three with context-mode
+./setup.sh all --with-context-mode       # All four with context-mode
 ./setup.sh opencode --skills-only # OpenCode skills only (skip opencode.json)
 ./setup.sh codex --skills-only    # Codex skills only (skip config merge + rules)
 ./setup.sh opencode --remove  # Remove OpenCode symlinks
 ./setup.sh codex --remove     # Remove Codex symlinks
 ./setup.sh copilot --remove   # Remove Copilot symlinks
+./setup.sh kiro --remove      # Remove Kiro symlinks
 ./setup.sh all --remove       # Remove all
 ./setup.sh both --remove      # Remove both OpenCode + Codex symlinks
 ./setup.sh codex --skills-only --remove # Remove Codex skills only
@@ -102,6 +110,7 @@ The script will:
 - **Copilot**: Symlink individual skill directories to `~/.copilot/skills/` (uses [Agent Skills standard](https://agentskills.io/) natively)
 - **Copilot**: Install `ntfy_notify.sh` and `hooks/copilot-ntfy.json` to `~/.copilot/` for task completion notifications
 - **Copilot + context-mode**: With `--with-context-mode`, install context-mode as a Copilot CLI plugin via `copilot plugin install`
+- **Kiro**: Symlink individual skill directories to `~/.kiro/skills/` (uses [Agent Skills standard](https://agentskills.io/) natively, default agent auto-discovers skills)
 - **Respects disabled skills**: Skills with `"deny"` permission in `opencode.json` are skipped for all targets
 - **Remove mode**: Use `[target] --remove` to delete only symlinks created by the script
 - **Skills-only mode**: Use `--skills-only` to skip Codex config merge, rules, `ntfy_notify.sh`, and Copilot hooks install (link/remove skills only)
@@ -133,6 +142,14 @@ for skill in skills/*; do
 done
 ```
 
+**Kiro:**
+
+```bash
+for skill in skills/*; do
+  ln -sfn "$(pwd)/$skill" ~/.kiro/skills/$(basename "$skill")
+done
+```
+
 </details>
 
 ### 3. Verify
@@ -141,6 +158,7 @@ done
 ls -la ~/.config/opencode/    # OpenCode: opencode.json and skills/ symlinked
 ls -la ~/.codex/skills/       # Codex: custom skills alongside .system/
 ls ~/.copilot/skills/         # Copilot: custom skills symlinked
+ls ~/.kiro/skills/            # Kiro: custom skills symlinked
 ```
 
 ## Updating Config

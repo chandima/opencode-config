@@ -1,12 +1,12 @@
 # OpenCode Configuration Repository
 
-This repository contains custom skills, plugin/config files, slash commands, evals, and setup utilities for OpenCode, Codex CLI, and GitHub Copilot. It is symlinked to extend all three CLIs' capabilities.
+This repository contains custom skills, plugin/config files, slash commands, evals, and setup utilities for OpenCode, Codex CLI, GitHub Copilot, and Kiro CLI. It is symlinked to extend all four CLIs' capabilities.
 
 **This is NOT application code** - it is a CLI configuration and skill distribution repo for AI agent tooling.
 
 ## At a Glance
 
-- `skills/` contains reusable skills shared across OpenCode, Codex, and Copilot
+- `skills/` contains reusable skills shared across OpenCode, Codex, Copilot, and Kiro
 - `opencode.json`, `.codex/`, and `.opencode/commands/` contain CLI-specific configuration and command surfaces
 - `scripts/` and `evals/` support setup, testing, and maintenance of the configuration repo itself
 
@@ -25,18 +25,18 @@ If two skills share logic, **duplicate it** in each skill. The cost of a small a
 
 ## CLI Support
 
-This repository supports **OpenCode**, **Codex CLI**, and **GitHub Copilot**:
+This repository supports **OpenCode**, **Codex CLI**, **GitHub Copilot**, and **Kiro CLI**:
 
-| Aspect | OpenCode | Codex | Copilot |
-|--------|----------|-------|---------|
-| Config directory | `~/.config/opencode/` | `~/.codex/` | `~/.copilot/` |
-| Config file | `opencode.json` (JSON) | `config.toml` (TOML) | VS Code settings |
-| Skills directory | `~/.config/opencode/skills/` | `~/.codex/skills/` | `~/.copilot/skills/` |
-| Setup script | `./setup.sh` or `./setup.sh opencode` | `./setup.sh codex` | `./setup.sh copilot` |
-| System skills | None | `.system/` subdirectory | Built-in tools |
-| Skill format | `SKILL.md` (YAML frontmatter) | `SKILL.md` (YAML frontmatter) | `SKILL.md` ([Agent Skills standard](https://agentskills.io/)) |
+| Aspect | OpenCode | Codex | Copilot | Kiro |
+|--------|----------|-------|---------|------|
+| Config directory | `~/.config/opencode/` | `~/.codex/` | `~/.copilot/` | `~/.kiro/` |
+| Config file | `opencode.json` (JSON) | `config.toml` (TOML) | VS Code settings | Agent JSON files |
+| Skills directory | `~/.config/opencode/skills/` | `~/.codex/skills/` | `~/.copilot/skills/` | `~/.kiro/skills/` |
+| Setup script | `./setup.sh` or `./setup.sh opencode` | `./setup.sh codex` | `./setup.sh copilot` | `./setup.sh kiro` |
+| System skills | None | `.system/` subdirectory | Built-in tools | None |
+| Skill format | `SKILL.md` (YAML frontmatter) | `SKILL.md` (YAML frontmatter) | `SKILL.md` ([Agent Skills standard](https://agentskills.io/)) | `SKILL.md` ([Agent Skills standard](https://agentskills.io/)) |
 
-**Command surface note:** `.opencode/commands/` is OpenCode-specific. Codex and GitHub Copilot use their own native command/instruction mechanisms and do not consume OpenCode slash commands from this repo.
+**Command surface note:** `.opencode/commands/` is OpenCode-specific. Codex, GitHub Copilot, and Kiro CLI use their own native command/instruction mechanisms and do not consume OpenCode slash commands from this repo.
 
 ### OpenCode Setup (Automated)
 
@@ -82,17 +82,37 @@ Copilot discovers skills automatically. You can also configure additional search
 }
 ```
 
+### Kiro Setup
+
+Run the setup script with the `kiro` target:
+
+```bash
+./setup.sh kiro
+```
+
+This symlinks individual skill directories to `~/.kiro/skills/`. Kiro natively supports the same `SKILL.md` format via the [Agent Skills standard](https://agentskills.io/) — no conversion needed.
+
+Kiro's default agent auto-discovers skills from `~/.kiro/skills/`. For custom agents, add skill resources to the agent's configuration:
+
+```json
+{
+  "resources": [
+    "skill://~/.kiro/skills/*/SKILL.md"
+  ]
+}
+```
+
 ### All Targets
 
 ```bash
-./setup.sh all    # Install for OpenCode, Codex, and Copilot
+./setup.sh all    # Install for OpenCode, Codex, Copilot, and Kiro
 ```
 
 ## Repository Structure
 
 ```
 opencode-config/
-├── skills/                # Custom skills (works with OpenCode, Codex, Copilot)
+├── skills/                # Custom skills (works with OpenCode, Codex, Copilot, Kiro)
 │   ├── agent-browser/     # Browser automation via agent-browser CLI
 │   ├── context7-docs/     # Library documentation via Context7 MCP
 │   ├── github-ops/        # GitHub operations via gh CLI
@@ -120,7 +140,7 @@ opencode-config/
 │   ├── config.toml        # Codex configuration (TOML)
 │   ├── rules/             # Codex safety rules
 │   └── skills/            # Codex skill eval commands
-├── setup.sh               # Setup script (OpenCode, Codex, Copilot)
+├── setup.sh               # Setup script (OpenCode, Codex, Copilot, Kiro)
 └── opencode.json          # Provider configuration (LiteLLM)
 ```
 

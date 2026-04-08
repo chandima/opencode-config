@@ -7,14 +7,15 @@ show_help() {
     cat << 'EOF'
 Usage: ./setup.sh [TARGET] [--remove] [--with-context-mode]
 
-Install OpenCode/Codex/Copilot configuration by symlinking skills and generating prompt files.
+Install OpenCode/Codex/Copilot/Kiro configuration by symlinking skills and generating prompt files.
 
 TARGETS:
     (none)      Install for OpenCode only (default)
     opencode    Install for OpenCode only
     codex       Install for Codex only (skills and config under ~/.codex)
     copilot     Install for GitHub Copilot only (skills, ntfy hooks under ~/.copilot)
-    all         Install for OpenCode, Codex, and Copilot
+    kiro        Install for Kiro CLI only (skills under ~/.kiro)
+    all         Install for OpenCode, Codex, Copilot, and Kiro
     both        Install for OpenCode and Codex (legacy alias for backward compat)
     --remove, -r  Remove symlinks/files instead of installing
     --skills-only  Install/remove skills only (skip configs and rules)
@@ -87,7 +88,7 @@ codex_context_mode_state_file() {
 
 target_uses_global_context_mode() {
     case "$TARGET" in
-        opencode|codex|copilot|both|all)
+        opencode|codex|copilot|kiro|both|all)
             return 0
             ;;
         *)
@@ -565,6 +566,122 @@ copilot_skills_dir() {
     echo "$(copilot_config_root)/skills"
 }
 
+# ── Kiro CLI ────────────────────────────────────────────────────────────────
+# Kiro natively supports the SKILL.md format (Agent Skills standard).
+# We symlink individual skill directories to ~/.kiro/skills/ — same approach
+# as Copilot. The default agent auto-discovers skills; no config merge needed.
+
+kiro_config_root() {
+    echo "$HOME/.kiro"
+}
+
+kiro_skills_dir() {
+    echo "$(kiro_config_root)/skills"
+}
+
+setup_kiro() {
+    local skills_dir
+    skills_dir="$(kiro_skills_dir)"
+    echo "Setting up Kiro CLI..."
+    echo "  Skills target: $skills_dir/"
+
+    mkdir -p "$skills_dir"
+
+    # Get disabled skills
+    local disabled_skills
+    disabled_skills=$(get_disabled_skills)
+
+    local desired_skills=()
+
+    # Symlink each skill individually
+    local skill_dir
+    for skill_dir in "$SCRIPT_DIR/skills"/*; do
+        [[ -d "$skill_dir" ]] || continue
+
+        local skill_name
+        skill_name=$(basename "$skill_dir")
+        local target="$skills_dir/$skill_name"
+
+        # Skip disabled skills
+        if [[ -n "$disabled_skills" ]] && echo "$skill_name" | grep -qE "^($disabled_skills)$"; then
+            echo "  Skipping disabled: $skill_name"
+            continue
+        fi
+
+        # Skip skills without SKILL.md
+        if [[ ! -f "$skill_dir/SKILL.md" ]]; then
+            echo "  Skipping (no SKILL.md): $skill_name"
+            continue
+        fi
+
+        desired_skills+=("$skill_name")
+
+        if [[ -L "$target" ]]; then
+            rm "$target"
+        elif [[ -e "$target" ]]; then
+            echo "  Warning: Replacing existing directory: $target"
+            rm -rf "$target"
+        fi
+
+        ln -sfn "$skill_dir" "$target"
+        echo "  Linked: $skill_name"
+    done
+
+    # Remove stale symlinks pointing to this repo
+    for target in "$skills_dir"/*; do
+        [[ ! -L "$target" ]] && continue
+
+        local skill_name
+        skill_name=$(basename "$target")
+        local link_target
+        link_target=$(readlink "$target")
+
+        if [[ "$link_target" == "$SCRIPT_DIR/skills/"* ]]; then
+            if [[ ! -d "$link_target" ]] || ! skill_in_list "$skill_name" "${desired_skills[@]}"; then
+                rm "$target"
+                echo "  Removed stale: $skill_name"
+            fi
+        fi
+    done
+
+    echo "  Done!"
+
+    echo ""
+    echo "  ℹ️  Kiro's default agent auto-discovers skills from ~/.kiro/skills/."
+    echo "     For custom agents, add to the agent's resources field:"
+    echo '       "skill://~/.kiro/skills/*/SKILL.md"'
+}
+
+remove_kiro() {
+    local skills_dir
+    skills_dir="$(kiro_skills_dir)"
+    echo "Removing Kiro CLI symlinks..."
+    echo "  Target: $skills_dir/"
+
+    if [[ ! -d "$skills_dir" ]]; then
+        echo "  No Kiro skills directory found."
+        echo "  Done!"
+        return 0
+    fi
+
+    local skill_dir
+    for skill_dir in "$SCRIPT_DIR/skills"/*; do
+        [[ -d "$skill_dir" ]] || continue
+        local skill_name
+        skill_name=$(basename "$skill_dir")
+        local target="$skills_dir/$skill_name"
+
+        if [[ -L "$target" ]]; then
+            rm "$target"
+            echo "  Removed: $skill_name"
+        elif [[ -e "$target" ]]; then
+            echo "  Skipped (not a symlink): $skill_name"
+        fi
+    done
+
+    echo "  Done!"
+}
+
 install_copilot_notify_script() {
     local source_script="$SCRIPT_DIR/.copilot/ntfy_notify.sh"
     local target_script
@@ -956,7 +1073,7 @@ while [[ $# -gt 0 ]]; do
         --with-context-mode)
             WITH_CONTEXT_MODE=1
             ;;
-        opencode|codex|copilot|both|all)
+        opencode|codex|copilot|kiro|both|all)
             if [[ "$TARGET_SET" -eq 1 ]]; then
                 echo "Error: Multiple targets specified."
                 echo ""
@@ -995,6 +1112,9 @@ if [[ "$ACTION" == "install" ]]; then
         copilot)
             setup_copilot
             ;;
+        kiro)
+            setup_kiro
+            ;;
         both)
             setup_opencode
             echo ""
@@ -1006,6 +1126,8 @@ if [[ "$ACTION" == "install" ]]; then
             setup_codex
             echo ""
             setup_copilot
+            echo ""
+            setup_kiro
             ;;
         *)
             echo "Error: Invalid target '$TARGET'"
@@ -1025,6 +1147,9 @@ else
         copilot)
             remove_copilot
             ;;
+        kiro)
+            remove_kiro
+            ;;
         both)
             remove_opencode
             echo ""
@@ -1036,6 +1161,8 @@ else
             remove_codex
             echo ""
             remove_copilot
+            echo ""
+            remove_kiro
             ;;
         *)
             echo "Error: Invalid target '$TARGET'"
