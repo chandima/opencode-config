@@ -30,6 +30,10 @@ opencode-config/                      # This git repo (your config)
 │   │   └── copilot-ntfy.json         # Hook config (agentStop + sessionEnd)
 │   └── tests/
 │       └── smoke.sh                  # Notification smoke tests
+├── .kiro/                            # Kiro config + hooks (tracked)
+│   ├── ntfy_notify.sh                # ntfy notification script (Kiro)
+│   └── hooks/
+│       └── kiro-ntfy-hook.json       # Hook config snippet (stop hook)
 └── .opencode/                        # OpenCode-specific files
 
 ~/.config/opencode/                   # OpenCode runtime directory
@@ -58,6 +62,7 @@ opencode-config/                      # This git repo (your config)
     └── ...other custom skills...     # One symlink per enabled skill
 
 ~/.kiro/                              # Kiro runtime directory
+├── ntfy_notify.sh -> <repo>/.kiro/ntfy_notify.sh  # ntfy notification script
 └── skills/                           # Skills directory (via setup.sh kiro)
     ├── github-ops/ -> <repo>/skills/github-ops/  # Custom skill (via setup.sh)
     ├── context7-docs/ -> <repo>/skills/context7-docs/
@@ -111,6 +116,7 @@ The script will:
 - **Copilot**: Install `ntfy_notify.sh` and `hooks/copilot-ntfy.json` to `~/.copilot/` for task completion notifications
 - **Copilot + context-mode**: With `--with-context-mode`, install context-mode as a Copilot CLI plugin via `copilot plugin install`
 - **Kiro**: Symlink individual skill directories to `~/.kiro/skills/` (uses [Agent Skills standard](https://agentskills.io/) natively, default agent auto-discovers skills)
+- **Kiro**: Install `ntfy_notify.sh` to `~/.kiro/ntfy_notify.sh` for task completion notifications (requires manual hook config in agent JSON)
 - **Respects disabled skills**: Skills with `"deny"` permission in `opencode.json` are skipped for all targets
 - **Remove mode**: Use `[target] --remove` to delete only symlinks created by the script
 - **Skills-only mode**: Use `--skills-only` to skip Codex config merge, rules, `ntfy_notify.sh`, and Copilot hooks install (link/remove skills only)
@@ -210,13 +216,13 @@ Optional integration:
 
 Both Codex and Copilot support push notifications when agent tasks complete, powered by [ntfy](https://ntfy.sh/).
 
-| Aspect | Codex | Copilot |
-|--------|-------|---------|
-| Mechanism | `notify` key in `config.toml` | `.github/hooks/*.json` (hook system) |
-| Trigger | `agent-turn-complete` event | `agentStop` + `sessionEnd` hooks |
-| Script | `~/.codex/ntfy_notify.sh` | `~/.copilot/ntfy_notify.sh` |
-| Input method | JSON as argv (`$1`) | JSON piped via stdin |
-| Setup | `./setup.sh codex` | `./setup.sh copilot` |
+| Aspect | Codex | Copilot | Kiro |
+|--------|-------|---------|------|
+| Mechanism | `notify` key in `config.toml` | `.github/hooks/*.json` (hook system) | `hooks.stop` in agent JSON |
+| Trigger | `agent-turn-complete` event | `agentStop` + `sessionEnd` hooks | `stop` hook |
+| Script | `~/.codex/ntfy_notify.sh` | `~/.copilot/ntfy_notify.sh` | `~/.kiro/ntfy_notify.sh` |
+| Input method | JSON as argv (`$1`) | JSON piped via stdin | JSON piped via stdin |
+| Setup | `./setup.sh codex` | `./setup.sh copilot` | `./setup.sh kiro` |
 
 **Environment variable overrides** (Copilot script; Codex uses hardcoded values):
 
@@ -224,7 +230,7 @@ Both Codex and Copilot support push notifications when agent tasks complete, pow
 |----------|---------|-------------|
 | `NTFY_TOKEN` | *(hardcoded)* | Bearer token for ntfy server |
 | `NTFY_URL` | `https://ntfy.sandbox.iamzone.dev` | ntfy server URL |
-| `NTFY_TOPIC` | `copilot-tasks` (Copilot) / `codex-tasks` (Codex) | Notification topic |
+| `NTFY_TOPIC` | `copilot-tasks` (Copilot) / `codex-tasks` (Codex) / `kiro-tasks` (Kiro) | Notification topic |
 
 **Per-repository hooks (Copilot):** The hook config at `~/.copilot/hooks/copilot-ntfy.json` is installed globally. For Copilot CLI, hooks are loaded from `.github/hooks/` in the current working directory. To enable notifications in a specific project, either symlink or copy the hook config:
 

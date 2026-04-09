@@ -575,8 +575,74 @@ kiro_config_root() {
     echo "$HOME/.kiro"
 }
 
+kiro_backup_dir() {
+    echo "$(kiro_config_root)/.opencode-config-backups"
+}
+
 kiro_skills_dir() {
     echo "$(kiro_config_root)/skills"
+}
+
+install_kiro_notify_script() {
+    local source_script="$SCRIPT_DIR/.kiro/ntfy_notify.sh"
+    local target_script
+    target_script="$(kiro_config_root)/ntfy_notify.sh"
+    local backup
+    backup="$(kiro_backup_dir)/ntfy_notify.sh"
+
+    if [[ ! -f "$source_script" ]]; then
+        echo "  Skipping Kiro notify script (repo script not found)"
+        return 0
+    fi
+
+    mkdir -p "$(kiro_config_root)"
+    mkdir -p "$(kiro_backup_dir)"
+
+    if [[ -L "$target_script" ]]; then
+        local link_target
+        link_target="$(readlink "$target_script")"
+        if [[ "$link_target" == "$source_script" ]]; then
+            echo "  Linked: ntfy_notify.sh (already)"
+            return 0
+        fi
+    fi
+
+    if [[ -e "$target_script" || -L "$target_script" ]]; then
+        rm -rf "$backup"
+        mv "$target_script" "$backup"
+        echo "  Backed up: ntfy_notify.sh"
+    fi
+
+    ln -sfn "$source_script" "$target_script"
+    echo "  Linked: ntfy_notify.sh"
+}
+
+remove_kiro_notify_script() {
+    local source_script="$SCRIPT_DIR/.kiro/ntfy_notify.sh"
+    local target_script
+    target_script="$(kiro_config_root)/ntfy_notify.sh"
+    local backup
+    backup="$(kiro_backup_dir)/ntfy_notify.sh"
+
+    if [[ -L "$target_script" ]]; then
+        local link_target
+        link_target="$(readlink "$target_script")"
+        if [[ "$link_target" == "$source_script" ]]; then
+            rm "$target_script"
+            echo "  Removed: ntfy_notify.sh"
+        else
+            echo "  Skipped (not our symlink): ntfy_notify.sh"
+            return 0
+        fi
+    elif [[ -e "$target_script" ]]; then
+        echo "  Skipped (not a symlink): ntfy_notify.sh"
+        return 0
+    fi
+
+    if [[ ! -e "$target_script" && ! -L "$target_script" && -e "$backup" ]]; then
+        mv "$backup" "$target_script"
+        echo "  Restored: ntfy_notify.sh"
+    fi
 }
 
 setup_kiro() {
@@ -646,10 +712,19 @@ setup_kiro() {
 
     echo "  Done!"
 
+    if [[ "$SKILLS_ONLY" -eq 0 ]]; then
+        install_kiro_notify_script
+    fi
+
     echo ""
     echo "  ℹ️  Kiro's default agent auto-discovers skills from ~/.kiro/skills/."
     echo "     For custom agents, add to the agent's resources field:"
     echo '       "skill://~/.kiro/skills/*/SKILL.md"'
+    if [[ "$SKILLS_ONLY" -eq 0 ]]; then
+        echo ""
+        echo "  ℹ️  To enable ntfy notifications, add to your agent's hooks field:"
+        echo '       "stop": [{"command": "~/.kiro/ntfy_notify.sh"}]'
+    fi
 }
 
 remove_kiro() {
@@ -680,6 +755,8 @@ remove_kiro() {
     done
 
     echo "  Done!"
+
+    remove_kiro_notify_script
 }
 
 install_copilot_notify_script() {

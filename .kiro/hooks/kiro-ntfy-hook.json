@@ -1,0 +1,9 @@
+{
+  "hooks": {
+    "stop": [
+      {
+        "command": "~/.kiro/ntfy_notify.sh"
+      }
+    ]
+  }
+}
