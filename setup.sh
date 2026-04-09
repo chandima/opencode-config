@@ -723,7 +723,7 @@ setup_kiro() {
     if [[ "$SKILLS_ONLY" -eq 0 ]]; then
         echo ""
         echo "  ℹ️  To enable ntfy notifications, add to your agent's hooks field:"
-        echo '       "stop": [{"command": "~/.kiro/ntfy_notify.sh"}]'
+        echo '       "stop": [{"command": "$HOME/.kiro/ntfy_notify.sh"}]'
     fi
 }
 
