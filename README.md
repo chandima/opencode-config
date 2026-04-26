@@ -278,6 +278,7 @@ See [OpenCode Skills docs](https://opencode.ai/docs/skills/) for details.
 | **skill-creator**   | AI-assisted skill creation             | Creating new skills                    |
 | **mcporter**        | Direct MCP access via MCPorter         | Advanced MCP operations                |
 | **security-auditor**| Pre-deployment security audit          | Deploy to production, releases         |
+| **port-whisperer**  | Dev port & process management          | Port conflicts, orphaned processes, kill port |
 
 > **Note:** Methodology-based guidance (debugging, TDD) is embedded in `AGENTS.md` for passive context availability. Some skills may be disabled via permissions in `opencode.json`.
 

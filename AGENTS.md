@@ -118,6 +118,7 @@ opencode-config/
 │   ├── github-ops/        # GitHub operations via gh CLI
 │   ├── mcporter/          # Direct MCP access via MCPorter
 │   ├── planning-doc/      # Planning document management
+│   ├── port-whisperer/   # Dev port & process management
 │   ├── production-hardening/ # Resilience anti-pattern scanning
 │   ├── security-auditor/  # Pre-deployment security audit
 │   └── skill-creator/     # AI-assisted skill creation
