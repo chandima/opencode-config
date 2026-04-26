@@ -114,6 +114,7 @@ Kiro's default agent auto-discovers skills from `~/.kiro/skills/`. For custom ag
 opencode-config/
 ├── skills/                # Custom skills (works with OpenCode, Codex, Copilot, Kiro)
 │   ├── agent-browser/     # Browser automation via agent-browser CLI
+│   ├── agent-md-tuner/   # Audit/enhance/restructure agent config files
 │   ├── context7-docs/     # Library documentation via Context7 MCP
 │   ├── github-ops/        # GitHub operations via gh CLI
 │   ├── mcporter/          # Direct MCP access via MCPorter
@@ -243,6 +244,7 @@ For detailed examples, see:
 - `@skills/skill-creator/SKILL.md` - AI-assisted skill creation workflow
 - `@skills/production-hardening/SKILL.md` - Multi-phase analysis and implementation skill
 - `@skills/security-auditor/SKILL.md` - Tool-integrated audit with gating logic
+- `@skills/agent-md-tuner/SKILL.md` - Project-aware agent config auditor with 3 operating modes
 
 ## GitHub Operations
 
