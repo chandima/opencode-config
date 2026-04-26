@@ -7,7 +7,51 @@ import sys
 from pathlib import Path
 from typing import Any
 
-import tomllib
+try:
+    import tomllib
+except ModuleNotFoundError:
+    # Python < 3.11: fall back to a minimal TOML parser (read-only, enough for config merge)
+    import re as _re
+
+    class _MinimalTomllib:
+        """Bare-bones TOML loader covering the subset used by codex config.toml."""
+
+        @staticmethod
+        def loads(s: str) -> dict:
+            result: dict = {}
+            current: dict = result
+            for line in s.splitlines():
+                stripped = line.strip()
+                if not stripped or stripped.startswith("#"):
+                    continue
+                # Table header
+                m = _re.match(r"^\[([^\]]+)\]$", stripped)
+                if m:
+                    keys = [k.strip().strip('"') for k in m.group(1).split(".")]
+                    current = result
+                    for k in keys:
+                        current = current.setdefault(k, {})
+                    continue
+                # Key = value
+                if "=" in stripped:
+                    key, _, val = stripped.partition("=")
+                    key = key.strip().strip('"')
+                    val = val.strip()
+                    if val.startswith('"') and val.endswith('"'):
+                        val = val[1:-1]
+                    elif val == "true":
+                        val = True
+                    elif val == "false":
+                        val = False
+                    elif val.isdigit():
+                        val = int(val)
+                    current[key] = val
+            return result
+
+    class tomllib:  # type: ignore[no-redef]
+        @staticmethod
+        def loads(s: str) -> dict:
+            return _MinimalTomllib.loads(s)
 
 
 def parse_args() -> argparse.Namespace:
