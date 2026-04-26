@@ -1,21 +1,21 @@
 ---
 name: skill-creator
 description: |
-  Create/scaffold OpenCode skills (SKILL.md outline, file layout/folder structure,
+  Create/scaffold agent skills (SKILL.md outline, file layout/folder structure,
   quick scaffold). Use when asked to create or scaffold a skill, to package steps
-  into a reusable OpenCode skill, run evals to test a skill, benchmark skill
-  performance, optimize a skill's description for better triggering accuracy, or
-  when the user says "use the skill-creator skill" / "skill-creator".
+  into a reusable skill, run evals to test a skill, benchmark skill performance,
+  optimize a skill's description for better triggering accuracy, or when the user
+  says "use the skill-creator skill" / "skill-creator".
   DO NOT use for: general coding tasks, non-skill file creation, editing files
   unrelated to skill development, or modifying existing application code.
 allowed-tools: Read Write Edit Glob Grep Bash Task WebFetch
 context: fork
-compatibility: "OpenCode, Codex CLI, GitHub Copilot. Requires Bash."
+compatibility: "OpenCode, Codex CLI, GitHub Copilot, Kiro. Requires Bash."
 ---
 
 # Skill Creator
 
-Create, evaluate, improve, and optimize skills across OpenCode, Codex, and Copilot.
+Create, evaluate, improve, and optimize skills across OpenCode, Codex, Copilot, and Kiro.
 
 **Announce at start (exact phrase required):** "I'm using the skill-creator skill."
 You may follow with a second sentence like "I'm using the skill-creator skill to help design your new skill."
@@ -65,7 +65,10 @@ the answer before proceeding to the next.
 
 1. "What's the primary purpose of this skill?" — accept freeform answer
 2. "What tools will it need?" — suggest: Bash, Read/Glob/Grep, WebFetch, Task, MCP tools
-3. "Which runtime should this target?" — suggest: OpenCode, Codex, Copilot, All three
+3. "Which runtime should this target?" — suggest: OpenCode, Codex, Copilot, Kiro, All four, or Portable
+   - **If OpenCode or Kiro:** "Should it use `context: fork` for isolated execution?" (default: yes)
+   - **If Copilot:** "Note: `allowed-tools` uses different syntax on Copilot. I'll use Copilot-compatible values."
+   - **If All four or Portable:** "I'll use only universally-supported frontmatter fields. Platform-specific fields (`allowed-tools`, `context: fork`) will be omitted."
 4. "Will it have executable scripts?" — suggest: Yes or No
 5. "Should it include eval test cases?" — suggest: Yes (recommended) or No
 
@@ -74,6 +77,7 @@ the answer before proceeding to the next.
 6. Does it need configuration files (YAML/JSON)?
 7. Does it need template assets?
 8. Should it include optional cross-runtime metadata (`compatibility`, `metadata`)?
+9. Does it handle secrets, credentials, or destructive operations (kill, delete, drop)?
 
 **Context-aware shortcuts:**
 - If the user's original request already answers a question, skip it
@@ -114,6 +118,7 @@ the answer before proceeding to the next.
 
 3. **Generate SKILL.md** with:
    - Proper frontmatter (name, description, allowed-tools, context)
+   - Description MUST include "DO NOT use for:" with 2-3 negative triggers to prevent false activation
    - Optional portability fields only when requested/compatible (`compatibility`, `metadata`)
    - Purpose and usage sections
    - Quick reference table (if has actions)
@@ -127,18 +132,27 @@ the answer before proceeding to the next.
 5. **Generate smoke test** (if has scripts):
    - `tests/smoke.sh` that validates basic functionality
 
+6. **Generate Security section** (if skill handles secrets or destructive ops):
+   - Add `> **Security:** ...` blockquote warnings at each point of risk in the SKILL.md
+   - Credential handling: "Use environment variables, never hardcode secrets"
+   - Destructive operations: "Require user confirmation before delete/kill/drop operations"
+   - Data leakage: "Never log, echo, or include API keys/tokens in output"
+
 ### Phase 4: Validation Checklist
 
 Before finishing, verify:
 
 - [ ] Name matches directory name
 - [ ] Description explains WHEN to use (trigger conditions)
+- [ ] Description does NOT summarize the workflow (CSO violation — agents skip loading the skill)
+- [ ] Description includes "DO NOT use for:" negative triggers
 - [ ] `allowed-tools` is minimal and scoped
 - [ ] Scripts have `#!/usr/bin/env bash` and `set -euo pipefail`
 - [ ] Smoke test exists if scripts exist
 - [ ] No duplicate of existing skill
 - [ ] Runtime profile is documented (`opencode`, `codex`, `copilot`, or `portable`)
 - [ ] Optional fields (`allowed-tools`, `compatibility`, `metadata`) align with target runtime support
+- [ ] If skill handles secrets or destructive ops, Security section exists with blockquote warnings
 
 ### Phase 5: Validation Loop (Recommended)
 
@@ -254,11 +268,18 @@ pass rate drops, you won't know which change caused the regression.
 Use this when a skill isn't triggering correctly — it activates for wrong
 prompts or doesn't activate for right ones.
 
+> **CSO Rule:** Description must contain ONLY trigger conditions, NEVER workflow
+> summary. If the description summarizes what the skill does step-by-step, agents
+> read the description, decide they already know the workflow, and skip loading
+> the full SKILL.md. This is the #1 cause of skills being "loaded but ignored."
+
 ### Step 1: Generate Trigger Queries
 
 Create 20+ test queries split evenly:
 - **should-trigger**: Prompts that should activate this skill
 - **should-not-trigger**: Prompts that should NOT activate this skill (but might be confused for it)
+
+**Near-miss negatives are the most valuable test cases** — prompts that are close to the skill's domain but should NOT trigger it. These catch false activation, which is a bigger problem than under-triggering.
 
 Present the queries to the user for review before proceeding.
 
@@ -309,7 +330,7 @@ mkdir -p skills/<name>
 | Field | Required | Description |
 |-------|----------|-------------|
 | `name` | Yes | Matches directory, lowercase-kebab-case |
-| `description` | Yes | Include "Use when..." trigger conditions |
+| `description` | Yes | Include "Use when..." trigger conditions AND "DO NOT use for:" negative triggers. Describe WHEN to use, not HOW it works. |
 | `allowed-tools` | OpenCode/Codex: Yes; Portable: Optional | Whitelist, scope bash commands (e.g., `Bash(gh:*)`) |
 | `context` | Recommended | Use `fork` for isolated execution |
 | `compatibility` | Optional | Runtime support notes |
@@ -325,6 +346,24 @@ mkdir -p skills/<name>
 | `Read Glob Grep` | File reading tools |
 | `Task` | Can spawn subagents |
 | `WebFetch` | Can fetch URLs |
+
+### Cross-Platform Frontmatter Compatibility
+
+Not all fields work on all platforms. Use this table when generating frontmatter:
+
+| Field | OpenCode | Codex | Copilot | Kiro | Portable |
+|-------|----------|-------|---------|------|----------|
+| `name` | ✅ Required | ✅ Required | ✅ Required | ✅ Required | ✅ Required |
+| `description` | ✅ Required | ✅ Required | ✅ Required | ✅ Required | ✅ Required |
+| `allowed-tools` | ✅ Space-separated | ✅ Space-separated | ⚠️ Different syntax | ✅ Space-separated | Omit |
+| `context: fork` | ✅ Supported | ❌ Ignored | ❌ Ignored | ✅ Supported | Omit |
+| `compatibility` | ✅ Optional | ✅ Optional | ✅ Optional | ✅ Optional | ✅ Safe |
+| `metadata` | ✅ Optional | ✅ Optional | ✅ Optional | ✅ Optional | ✅ Safe |
+
+**allowed-tools syntax differs by platform:**
+- **OpenCode / Codex / Kiro**: `Bash(gh:*) Bash(./scripts/*) Read Glob Grep` (scoped, space-separated)
+- **Copilot**: Uses `shell` keyword (broad — no scoping). Only pre-approve if you trust the skill source.
+- **Portable**: Omit `allowed-tools` entirely — let each platform's defaults apply.
 
 ## Script Conventions
 
@@ -386,6 +425,8 @@ Skill instructions are read by agents across different harnesses. Follow these p
 
 - Use **clear, direct language** — avoid jargon without explanation
 - Use **intent-based instructions** ("ask the user", "suggest options") not tool-specific references ("call ask_user", "use the question tool")
+- **Explain why** behind instructions rather than rigid MUST/NEVER directives. Agents follow rules better when they understand the reasoning. Reserve MUST/NEVER for true invariants (security, data loss). For preferences, explain the tradeoff.
+- Keep **MUST/NEVER density low** — skills with too many absolute directives cause agents to ignore them all
 - Provide **examples** for complex workflows
 - Include **defaults** for every decision point so autonomous execution doesn't hang
 
@@ -393,10 +434,11 @@ Skill instructions are read by agents across different harnesses. Follow these p
 
 Choose one default and optimize for it:
 
-- **`opencode`**: Include repo-standard `allowed-tools` and `context: fork`
-- **`codex`**: Keep structure compatible with Codex skill loading; avoid OpenCode-only assumptions in instructions
-- **`copilot`**: Compatible with Agent Skills standard; use standard frontmatter fields
-- **`portable`**: Minimal required fields (`name`, `description`) plus optional fields only when confirmed supported
+- **`opencode`**: Include `allowed-tools` (scoped, space-separated) and `context: fork`. Skills discovered from `~/.config/opencode/skills/`.
+- **`codex`**: Same `allowed-tools` syntax as OpenCode. No `context: fork` support. Skills in `~/.codex/skills/` (individual symlinks, preserves `.system/`).
+- **`copilot`**: Uses Agent Skills standard. `allowed-tools` syntax differs (`shell` keyword, no scoping). No `context: fork`. Skills in `~/.copilot/skills/`.
+- **`kiro`**: Same as OpenCode (`allowed-tools`, `context: fork` both supported). Default agent auto-discovers from `~/.kiro/skills/`.
+- **`portable`**: Use only `name`, `description`, and `compatibility` in frontmatter. Omit `allowed-tools` and `context: fork` — they are not universally supported. This is the safest default for skills targeting multiple platforms.
 
 When uncertain, default to `portable` and add runtime-specific notes in a dedicated compatibility section.
 
