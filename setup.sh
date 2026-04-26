@@ -645,6 +645,106 @@ remove_kiro_notify_script() {
     fi
 }
 
+install_kiro_context_mode() {
+    local config_root
+    config_root="$(kiro_config_root)"
+    local backup_dir
+    backup_dir="$(kiro_backup_dir)"
+    local mcp_dir="$config_root/settings"
+    local hooks_dir="$config_root/hooks"
+
+    mkdir -p "$mcp_dir" "$hooks_dir" "$backup_dir"
+
+    # Install MCP server config
+    local mcp_file="$mcp_dir/mcp.json"
+    local mcp_backup="$backup_dir/mcp.json"
+    if [[ -e "$mcp_file" && ! -e "$mcp_backup" ]]; then
+        cp "$mcp_file" "$mcp_backup"
+        echo "  Backed up: settings/mcp.json"
+    fi
+
+    # Merge context-mode into existing mcp.json or create new
+    if [[ -f "$mcp_file" ]] && command -v node &>/dev/null; then
+        node -e "
+const fs = require('fs');
+const cfg = JSON.parse(fs.readFileSync('$mcp_file', 'utf8'));
+cfg.mcpServers = cfg.mcpServers || {};
+cfg.mcpServers['context-mode'] = { command: 'context-mode' };
+fs.writeFileSync('$mcp_file', JSON.stringify(cfg, null, 2) + '\n');
+"
+    else
+        cat > "$mcp_file" << 'EOF'
+{
+  "mcpServers": {
+    "context-mode": {
+      "command": "context-mode"
+    }
+  }
+}
+EOF
+    fi
+    echo "  Installed: settings/mcp.json (context-mode)"
+
+    # Install hooks config
+    local hooks_file="$hooks_dir/context-mode.json"
+    cat > "$hooks_file" << 'EOF'
+{
+  "name": "context-mode",
+  "description": "Context-mode hooks for context window protection",
+  "hooks": {
+    "preToolUse": [
+      {
+        "matcher": "execute_bash|fs_read|@context-mode/ctx_execute|@context-mode/ctx_execute_file|@context-mode/ctx_batch_execute",
+        "command": "context-mode hook kiro pretooluse"
+      }
+    ],
+    "postToolUse": [
+      {
+        "matcher": "*",
+        "command": "context-mode hook kiro posttooluse"
+      }
+    ]
+  }
+}
+EOF
+    echo "  Installed: hooks/context-mode.json"
+}
+
+remove_kiro_context_mode() {
+    local config_root
+    config_root="$(kiro_config_root)"
+    local backup_dir
+    backup_dir="$(kiro_backup_dir)"
+
+    # Remove hooks config
+    local hooks_file="$config_root/hooks/context-mode.json"
+    if [[ -f "$hooks_file" ]]; then
+        rm "$hooks_file"
+        echo "  Removed: hooks/context-mode.json"
+    fi
+
+    # Remove context-mode from mcp.json
+    local mcp_file="$config_root/settings/mcp.json"
+    local mcp_backup="$backup_dir/mcp.json"
+    if [[ -f "$mcp_file" ]] && command -v node &>/dev/null; then
+        node -e "
+const fs = require('fs');
+const cfg = JSON.parse(fs.readFileSync('$mcp_file', 'utf8'));
+if (cfg.mcpServers) { delete cfg.mcpServers['context-mode']; }
+if (cfg.mcpServers && Object.keys(cfg.mcpServers).length === 0) { delete cfg.mcpServers; }
+const out = JSON.stringify(cfg, null, 2);
+if (out === '{}') { fs.unlinkSync('$mcp_file'); } else { fs.writeFileSync('$mcp_file', out + '\n'); }
+"
+        echo "  Removed: context-mode from settings/mcp.json"
+    fi
+
+    # Restore backup if mcp.json was removed entirely
+    if [[ ! -f "$mcp_file" && -f "$mcp_backup" ]]; then
+        mv "$mcp_backup" "$mcp_file"
+        echo "  Restored: settings/mcp.json"
+    fi
+}
+
 setup_kiro() {
     local skills_dir
     skills_dir="$(kiro_skills_dir)"
@@ -714,6 +814,9 @@ setup_kiro() {
 
     if [[ "$SKILLS_ONLY" -eq 0 ]]; then
         install_kiro_notify_script
+        if [[ "$WITH_CONTEXT_MODE" -eq 1 ]]; then
+            install_kiro_context_mode
+        fi
     fi
 
     echo ""
@@ -757,6 +860,7 @@ remove_kiro() {
     echo "  Done!"
 
     remove_kiro_notify_script
+    remove_kiro_context_mode
 }
 
 install_copilot_notify_script() {

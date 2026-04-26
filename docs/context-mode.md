@@ -7,7 +7,7 @@ This repo can optionally configure [`context-mode`](https://github.com/mksglu/co
 - **OpenCode**: opt-in global setup via `./setup.sh opencode --with-context-mode`
 - **Codex**: opt-in global setup via `./setup.sh codex --with-context-mode`
 - **Copilot**: plugin install via `./setup.sh copilot --with-context-mode` (uses `copilot plugin install`)
-- **Kiro**: manual setup — MCP server via `.kiro/settings/mcp.json`, hooks via `.kiro/hooks/context-mode.json`, routing via `KIRO.md` (see [context-mode Kiro docs](https://github.com/mksglu/context-mode#kiro--hooks-with-steering-file))
+- **Kiro**: opt-in setup via `./setup.sh kiro --with-context-mode` (installs MCP config + hooks)
 
 `context-mode` is treated as an external runtime dependency, not as a skill in `skills/`.
 
@@ -20,7 +20,8 @@ When `--with-context-mode` is enabled:
   - `plugin: ["context-mode"]`
   - `mcp["context-mode"] = { type = "local", command = ["context-mode"] }`
 - Codex: merges `[mcp_servers.context-mode]` into `~/.codex/config.toml`
-- Copilot: installs context-mode as a Copilot CLI plugin via `copilot plugin install mksglu/context-mode`, which registers the MCP server and 6 skills automatically
+- Copilot: installs context-mode as a Copilot CLI plugin via `copilot plugin install mksglu/context-mode`
+- Kiro: writes `~/.kiro/settings/mcp.json` with context-mode MCP server and `~/.kiro/hooks/context-mode.json` with `preToolUse`/`postToolUse` hooks, which registers the MCP server and 6 skills automatically
 
 context-mode handles workspace-level concerns (routing instructions, `AGENTS.md`, `copilot-instructions.md`) automatically on first server startup.
 
@@ -90,7 +91,7 @@ Removal is conservative:
 
 ## Limitations
 
-- **Kiro**: Supported via manual setup (MCP + hooks). No automated `--with-context-mode` in setup.sh yet. `agentSpawn` (SessionStart) is not wired, so session restore after compaction is not available — partial session continuity only. See [context-mode Kiro install](https://github.com/mksglu/context-mode#kiro--hooks-with-steering-file) for manual steps.
+- **Kiro**: `agentSpawn` (SessionStart) is not yet wired, so session restore after compaction is not available — partial session continuity only. `preToolUse`/`postToolUse` hooks work for routing enforcement.
 - Codex has no hook support, so its `context-mode` usage depends on `AGENTS.md` routing instructions (~60% compliance).
 - Copilot plugin install requires the `copilot` CLI. If not available, install manually with `copilot plugin install mksglu/context-mode`.
 - context-mode's plugin manifest does not yet declare hooks; full PreToolUse/PostToolUse enforcement requires manual `.github/hooks/context-mode.json` in the workspace.
