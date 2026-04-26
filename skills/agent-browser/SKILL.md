@@ -8,7 +8,16 @@ compatibility: "OpenCode, Codex CLI, GitHub Copilot. Requires npx and agent-brow
 
 # Browser Automation with agent-browser
 
-The CLI uses Chrome/Chromium via CDP directly. Install via `npm i -g agent-browser`, `brew install agent-browser`, or `cargo install agent-browser`. Run `agent-browser install` to download Chrome.
+The CLI uses Chrome/Chromium via CDP directly. Install via `npm i -g agent-browser`, `brew install agent-browser`, or `cargo install agent-browser`. Run `agent-browser install` to download Chrome. Update with `agent-browser upgrade`.
+
+## AI Chat Mode
+
+Natural language browser control — useful for quick one-off tasks:
+
+```bash
+agent-browser chat "go to example.com and screenshot the homepage"  # Single-shot
+agent-browser chat                                                   # Interactive REPL
+```
 
 ## Core Workflow
 
@@ -47,6 +56,23 @@ agent-browser open https://example.com && agent-browser wait --load networkidle 
 ```
 
 **When to chain:** Use `&&` when you don't need to read the output of an intermediate command before proceeding (e.g., open + wait + screenshot). Run commands separately when you need to parse the output first (e.g., snapshot to discover refs, then interact using those refs).
+
+## Batch Execution
+
+Execute multiple commands in a single invocation — avoids per-command process startup overhead:
+
+```bash
+# Argument mode: each quoted argument is a full command
+agent-browser batch "open https://example.com" "snapshot -i" "screenshot"
+
+# Stop on first error
+agent-browser batch --bail "open https://example.com" "click @e1" "screenshot"
+
+# Stdin mode: pipe commands as JSON
+echo '[["open", "https://example.com"], ["snapshot", "-i"], ["click", "@e1"]]' | agent-browser batch --json
+```
+
+**When to use batch vs chaining:** Batch is faster (single process) and supports `--bail` for error handling. Use `&&` chaining when you need shell features between commands.
 
 ## Handling Authentication
 
@@ -105,6 +131,21 @@ agent-browser --download-path ./downloads open <url>  # Set default download dir
 agent-browser set viewport 1920 1080          # Set viewport size (default: 1280x720)
 agent-browser set viewport 1920 1080 2        # 2x retina (same CSS size, higher res screenshots)
 agent-browser set device "iPhone 14"          # Emulate device (viewport + user agent)
+
+# Browser Settings
+agent-browser set useragent "Mozilla/5.0..."  # Custom user agent string
+agent-browser set timezone "America/New_York" # Override timezone
+agent-browser set locale "fr-FR"              # Override locale
+agent-browser set cookie "name=val" "https://example.com"  # Set cookie
+agent-browser set storage '{"key":"val"}' "https://example.com"  # Set localStorage
+agent-browser set geo 37.7749 -122.4194       # Set geolocation
+agent-browser set offline on                  # Toggle offline mode
+
+# Runtime Streaming
+agent-browser stream enable                   # Start WebSocket streaming
+agent-browser stream enable --port 9223       # Stream on specific port
+agent-browser stream status                   # Show streaming state
+agent-browser stream disable                  # Stop streaming
 
 # Capture
 agent-browser screenshot              # Screenshot to temp dir

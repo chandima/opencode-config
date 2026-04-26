@@ -65,24 +65,45 @@ mcporter call <server.tool> --args '{"limit":5}'
 
 # Machine-readable output
 mcporter call <server.tool> --output json key=value
+
+# Show log tail after call (useful for debugging)
+mcporter call <server.tool> --tail-log key=value
 ```
 
 ### Auth & Config
 
 ```bash
-# OAuth authentication
+# OAuth authentication (opens browser, persists tokens to ~/.mcporter/<server>/)
 mcporter auth <server | url> [--reset]
 
 # Config management
 mcporter config list|get|add|remove|import|login|logout
 ```
 
+Config supports `bearerToken` or `bearerTokenEnv` for simple API key auth:
+
+```jsonc
+{
+  "mcpServers": {
+    "my-server": {
+      "baseUrl": "https://api.example.com/mcp",
+      "bearerTokenEnv": "MY_API_KEY"
+    }
+  }
+}
+```
+
+Config auto-merges from Cursor, Claude Code, Claude Desktop, and Codex by default. Set `"imports": []` to disable or `"imports": ["cursor", "codex"]` for specific sources.
+
 ### Codegen
 
 ```bash
-# Generate CLI from MCP server
-mcporter generate-cli --server <name>
-mcporter generate-cli --command <url>
+# Generate standalone CLI from MCP server (requires Bun for --compile)
+mcporter generate-cli --command https://mcp.context7.com/mcp --compile
+# Produces: ./context7 list-tools, ./context7 resolve-library-id react
+
+# From a configured server
+mcporter generate-cli --server <name> --compile
 
 # Inspect generated CLI
 mcporter inspect-cli <path> [--json]
@@ -90,6 +111,8 @@ mcporter inspect-cli <path> [--json]
 # Generate TypeScript types
 mcporter emit-ts <server> --mode client|types
 ```
+
+Compiled CLIs embed discovered schemas — subsequent calls skip `listTools` round-trips.
 
 ## Prerequisites
 

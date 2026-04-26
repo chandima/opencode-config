@@ -113,9 +113,23 @@ Context7 supports thousands of libraries including:
 ## Environment Variables
 
 - `CONTEXT7_SERVER`: MCP server name (default: `context7`)
+- `CONTEXT7_API_KEY`: API key for higher rate limits (free at [context7.com/dashboard](https://context7.com/dashboard))
 - `CONTEXT7_API_BASE`: Direct Context7 REST base URL (default: `https://context7.com/api/v2`)
 - `CONTEXT7_REST_FALLBACK`: Enable direct REST fallback when MCP calls fail (default: `1`)
 - `MCPORTER_TIMEOUT`: Timeout in seconds for MCPorter calls (default: `20`)
+
+## Transport Chain
+
+The script tries these in order, falling back on failure:
+
+1. **ctx7 CLI** — `npx ctx7 library/docs` (simplest, no MCPorter needed)
+2. **MCPorter → MCP** — configured local server or Context7 public URL
+3. **Direct REST** — `curl` to `context7.com/api/v2`
+
+## Tips
+
+- Use a direct library ID to skip the search step: `./scripts/docs.sh docs /vercel/next.js "app router"`
+- Mention a version in your query for version-specific docs: `./scripts/docs.sh docs react "hooks in React 18"`
 
 ## Notes
 
