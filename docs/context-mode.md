@@ -7,6 +7,7 @@ This repo can optionally configure [`context-mode`](https://github.com/mksglu/co
 - **OpenCode**: opt-in global setup via `./setup.sh opencode --with-context-mode`
 - **Codex**: opt-in global setup via `./setup.sh codex --with-context-mode`
 - **Copilot**: plugin install via `./setup.sh copilot --with-context-mode` (uses `copilot plugin install`)
+- **Kiro**: not yet supported — Kiro uses agent JSON for MCP server config; manual setup required (see Limitations)
 
 `context-mode` is treated as an external runtime dependency, not as a skill in `skills/`.
 
@@ -89,6 +90,7 @@ Removal is conservative:
 
 ## Limitations
 
+- **Kiro**: No automated `--with-context-mode` support yet. Kiro uses agent JSON files for MCP server configuration, which differs from OpenCode/Codex/Copilot. To use context-mode with Kiro manually, add an MCP server entry to your agent's JSON config pointing to the `context-mode` binary.
 - Codex has no hook support, so its `context-mode` usage depends on `AGENTS.md` routing instructions (~60% compliance).
 - Copilot plugin install requires the `copilot` CLI. If not available, install manually with `copilot plugin install mksglu/context-mode`.
 - context-mode's plugin manifest does not yet declare hooks; full PreToolUse/PostToolUse enforcement requires manual `.github/hooks/context-mode.json` in the workspace.
