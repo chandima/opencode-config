@@ -280,6 +280,7 @@ See [OpenCode Skills docs](https://opencode.ai/docs/skills/) for details.
 | **security-auditor**| Pre-deployment security audit          | Deploy to production, releases         |
 | **port-whisperer**  | Dev port & process management          | Port conflicts, orphaned processes, kill port |
 | **agent-md-tuner** | Audit/enhance/restructure agent config files | Tune AGENTS.md, improve CLAUDE.md, set up agent rules |
+| **fallow**          | JS/TS codebase intelligence (dead code, duplication, complexity) | Find dead code, unused exports, find duplicates, check code health |
 
 > **Note:** Methodology-based guidance (debugging, TDD) is embedded in `AGENTS.md` for passive context availability. Some skills may be disabled via permissions in `opencode.json`.
 

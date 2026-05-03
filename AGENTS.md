@@ -116,6 +116,7 @@ opencode-config/
 │   ├── agent-browser/     # Browser automation via agent-browser CLI
 │   ├── agent-md-tuner/   # Audit/enhance/restructure agent config files
 │   ├── context7-docs/     # Library documentation via Context7 MCP
+│   ├── fallow/            # JS/TS codebase intelligence (dead code, duplication, complexity)
 │   ├── github-ops/        # GitHub operations via gh CLI
 │   ├── mcporter/          # Direct MCP access via MCPorter
 │   ├── planning-doc/      # Planning document management

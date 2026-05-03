@@ -1,13 +1,6 @@
 ---
 name: agent-md-tuner
-description: |
-  Audit, enhance, and restructure a project's AI agent configuration files
-  (AGENTS.md, CLAUDE.md, .cursorrules). Use when setting up a new project for
-  AI-assisted development, when agent behavior is poor, or when asked to "tune
-  agent config", "improve AGENTS.md", "set up CLAUDE.md", "configure this
-  project for AI coding", "sharpen agent rules", or "tune agent md".
-  DO NOT use for: editing application code, creating skills (use skill-creator),
-  security audits (use security-auditor), or general documentation.
+description: "Audit, enhance, and restructure a project's AI agent configuration files (AGENTS.md, CLAUDE.md, .cursorrules). Use when setting up a new project for AI-assisted development, when agent behavior is poor, or when asked to tune agent config, improve AGENTS.md, set up CLAUDE.md, configure this project for AI coding, sharpen agent rules, or tune agent md. DO NOT use for: editing application code, creating skills (use skill-creator), security audits (use security-auditor), or general documentation."
 allowed-tools: Read Write Edit Glob Grep
 context: fork
 compatibility: "OpenCode, Codex CLI, GitHub Copilot, Kiro. No external dependencies."
@@ -39,14 +32,14 @@ Read project files to build a profile. Do NOT execute commands — only read fil
 
 **Discovery sequence:**
 
-1. **Language & framework:** Check for `package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`, `setup.py`, `Gemfile`, `pom.xml`, `build.gradle`, `Makefile`
+1. **Language & framework:** Check for `package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`, `setup.py`, `Gemfile`, `pom.xml`, `build.gradle`, `Makefile`. **If TypeScript is detected (`tsconfig.json`), consult `references/typescript-template.md` for stack-specific templates and adaptation rules.**
 2. **Package manager:** From lockfiles — `bun.lock`→bun, `pnpm-lock.yaml`→pnpm, `yarn.lock`→yarn, `package-lock.json`→npm, `uv.lock`→uv, `Pipfile.lock`→pipenv, `Cargo.lock`→cargo, `go.sum`→go
 3. **Test runner:** From config or scripts — `jest.config.*`, `vitest.config.*`, `.borp.yaml`, `pytest.ini`, `pyproject.toml [tool.pytest]`, `Cargo.toml`, `mocha` in package.json scripts, `.github/workflows/*.yml` (grep for test commands)
 4. **Linter/formatter:** `eslint.config.*`, `.eslintrc*`, `biome.json`, `ruff.toml`, `pyproject.toml [tool.ruff]`, `.prettierrc*`, `rustfmt.toml`
 5. **Build system:** `vite.config.*`, `webpack.config.*`, `tsconfig.json`, `Makefile`, `Dockerfile`
 6. **CI/CD:** `.github/workflows/*.yml` — extract actual test/build/lint commands used in CI
 7. **Directory structure:** `Glob` for `src/`, `lib/`, `tests/`, `test/`, `app/`, `pages/`, `components/`
-8. **Monorepo signals:** `workspaces` in package.json, `pnpm-workspace.yaml`, `Cargo.toml [workspace]`, `lerna.json`
+8. **Monorepo signals:** `workspaces` in package.json, `pnpm-workspace.yaml`, `Cargo.toml [workspace]`, `lerna.json`. **If monorepo detected, consult `references/monorepo-scoped.md` for scoped file generation rules and templates.**
 
 **Fallback for non-application repos:** If no language/framework markers are found, check for `setup.sh`, `install.sh`, `Makefile`, or a `scripts/` directory with shell scripts. Classify as "infrastructure/config" project. The Commands table should reflect actual project operations (setup, test, deploy) rather than the standard dev-loop categories (install deps, run tests, lint, build).
 
@@ -74,7 +67,7 @@ Record: which files exist, their line counts, and a quick read of their content.
 
 Score each category. For each item, mark: ✅ present and project-specific, ⚠️ present but generic, ❌ missing, or **N/A** if the item doesn't apply to this project type (e.g., "lint commands" for a repo with no linter is N/A, not a gap).
 
-**Category 1: Behavioral Constraints (Karpathy-derived)**
+**Category 1: Behavioral Constraints (Karpathy-derived) — MANDATORY, consult `references/karpathy-principles.md` for scoring rubric and example wording**
 
 - [ ] **Think Before Coding** — Guidance to surface assumptions explicitly, present multiple interpretations when ambiguous, push back when a simpler approach exists, stop and ask when confused rather than guessing
 - [ ] **Simplicity First** — Anti-overengineering rules: no features beyond what was asked, no abstractions for single-use code, no speculative flexibility/configurability, rewrite if 200 lines could be 50
@@ -94,7 +87,7 @@ Score each category. For each item, mark: ✅ present and project-specific, ⚠�
 
 - [ ] Root file is under 100 lines
 - [ ] Deep content lives in skills or agent-guides (if project complexity warrants)
-- [ ] Directory-level overrides for distinct subsystems (if monorepo)
+- [ ] Directory-level overrides for distinct subsystems (if monorepo — see `references/monorepo-scoped.md` for scoped file templates and audit checks)
 - [ ] No duplicated content across files
 
 **Category 4: Anti-Patterns**
@@ -110,7 +103,7 @@ Score each category. For each item, mark: ✅ present and project-specific, ⚠�
 Present findings to the user organized by severity:
 
 - **CRITICAL** — No agent config at all
-- **HIGH** — Missing behavioral constraints OR missing project-specific context (generic commands)
+- **HIGH** — Missing behavioral constraints (any of the four Karpathy principles — see `references/karpathy-principles.md`) OR missing project-specific context (generic commands)
 - **MEDIUM** — Missing progressive disclosure, minor structural issues
 - **LOW** — Style, organization, minor anti-patterns
 
@@ -119,6 +112,8 @@ State the auto-detected mode (Create/Enhance/Restructure) and ask the user to co
 ### Phase 5: Apply Fixes
 
 **Create mode** (no config found):
+
+**Before generating, read `references/karpathy-principles.md` for exact wording and adaptation guidance.** All four principles MUST appear in the output.
 
 Generate a complete file using this structure:
 
@@ -187,7 +182,7 @@ For each gap found in the audit:
   - "run tests" → `npm test` or `pytest -x --tb=short` or `cargo test`
   - "use the project's linter" → `npx eslint .` or `ruff check .`
   - "follow existing patterns" → name the actual patterns detected
-- **Partial behavioral coverage** → Merge missing Karpathy principles into existing methodology sections. Do NOT create a duplicate section. If the project has a "Debugging Protocol" that partially covers Goal-Driven Execution, add the missing aspects (verifiable goals, test-first transformation) to that section.
+- **Partial behavioral coverage** → Consult `references/karpathy-principles.md` for the full four principles and integration patterns. Merge missing principles into existing methodology sections. Do NOT create a duplicate section. If the project has a "Debugging Protocol" that partially covers Goal-Driven Execution, add the missing aspects (verifiable goals, test-first transformation) to that section. All four principles MUST be present in the final output.
 - **Preserve** all existing project-specific rules and conventions verbatim.
 
 Show the user a diff of proposed changes before writing.
@@ -198,7 +193,7 @@ Show the user a diff of proposed changes before writing.
    - Universal rules (→ stays in root file)
    - Task-specific guidance (→ recommend moving to skills/)
    - Deep reference material (→ recommend moving to docs/agent-guides/)
-2. Propose a lean root file (<100 lines) following: About → Behavioral Constraints → Project Context → Progressive Disclosure pointers
+2. Propose a lean root file (<100 lines) following: About → Behavioral Constraints (all four Karpathy principles from `references/karpathy-principles.md` — mandatory) → Project Context → Progressive Disclosure pointers
 3. Show complete before/after diff
 4. This is the most invasive mode — require explicit user confirmation
 5. If the user declines restructuring, fall back to Enhance mode
@@ -207,15 +202,7 @@ Show the user a diff of proposed changes before writing.
 
 ## Karpathy Principles Reference
 
-Derived from Andrej Karpathy's observations (90k+ stars at github.com/forrestchang/andrej-karpathy-skills):
-
-> "The models make wrong assumptions on your behalf and just run along with them without checking. They don't manage their confusion, don't seek clarifications, don't surface inconsistencies, don't present tradeoffs, don't push back when they should."
-
-> "They really like to overcomplicate code and APIs, bloat abstractions, don't clean up dead code... implement a bloated construction over 1000 lines when 100 would do."
-
-> "They still sometimes change/remove comments and code they don't sufficiently understand as side effects, even if orthogonal to the task."
-
-The four principles (Think Before Coding, Simplicity First, Surgical Changes, Goal-Driven Execution) directly counter these failure modes. They are the highest-leverage, lowest-cost intervention for AI-assisted coding — behavioral constraints beat feature checklists.
+**⚠️ MANDATORY: Read `references/karpathy-principles.md` before every audit, create, enhance, or restructure operation.** The reference contains the full four principles (Think Before Coding, Simplicity First, Surgical Changes, Goal-Driven Execution), example wording for each, an audit scoring rubric, and integration patterns for merging into existing methodology sections. Every agent config produced or modified by this skill MUST include all four principles — no exceptions, no partial coverage.
 
 ---
 
