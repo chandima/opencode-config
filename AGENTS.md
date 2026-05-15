@@ -1,376 +1,82 @@
 # OpenCode Configuration Repository
 
-This repository contains custom skills, plugin/config files, slash commands, evals, and setup utilities for OpenCode, Codex CLI, GitHub Copilot, and Kiro CLI. It is symlinked to extend all four CLIs' capabilities.
+This repository contains shared configuration, skills, evals, and setup utilities for OpenCode, Codex CLI, GitHub Copilot, and Kiro CLI.
 
-**This is NOT application code** - it is a CLI configuration and skill distribution repo for AI agent tooling.
+**This is not application code.** Treat it as a CLI configuration and skill distribution repo. Most tasks involve skill authoring, setup flows, CLI-specific config, or eval and smoke-test maintenance. Setup commands, runtime layout, and install examples live in `README.md`.
 
-## At a Glance
+## Core Repository Rules
 
-- `skills/` contains reusable skills shared across OpenCode, Codex, Copilot, and Kiro
-- `opencode.json`, `.codex/`, and `.opencode/commands/` contain CLI-specific configuration and command surfaces
-- `scripts/` and `evals/` support setup, testing, and maintenance of the configuration repo itself
+- `skills/` contains reusable skills shared across the supported CLIs.
+- `.opencode/commands/` is OpenCode-only. Codex, Copilot, and Kiro use their own native command or instruction surfaces.
+- Top-level `scripts/` are for repo setup, testing, and eval tooling. Skills cannot access them at runtime.
 
-## ⚠️ Symlink Installation Model — Skills MUST Be Self-Contained
+## Symlink Installation Model
 
-This repo is a **skill installer**. Skills are **symlinked individually** from this repo into each CLI's skills directory (e.g., `~/.copilot/skills/context7-docs/ → <repo>/skills/context7-docs/`). At runtime, each skill directory stands alone — it has **no access to sibling skills, the repo root, or `scripts/`**.
+Skills are symlinked individually into each CLI's skills directory, for example `~/.copilot/skills/context7-docs/ -> <repo>/skills/context7-docs/`. At runtime, each skill directory stands alone.
 
-**Iron Rule:** A skill directory must never reference files outside its own directory tree. Any `../` path that escapes the skill directory will break when the skill is symlinked to its target location.
+**Iron rule:** never reference files outside the skill directory.
 
-- ✅ `$SCRIPT_DIR/helper.sh` (file inside the skill)
-- ✅ `$SCRIPT_DIR/../config/defaults.yaml` (file inside the skill, up to skill root)
-- ❌ `$SCRIPT_DIR/../../scripts/shared.sh` (escapes the skill directory — breaks on symlink)
-- ❌ `$SCRIPT_DIR/../other-skill/lib.sh` (cross-skill reference — breaks on symlink)
+- Allowed: `$SCRIPT_DIR/helper.sh`
+- Allowed: `$SCRIPT_DIR/../config/defaults.yaml`
+- Not allowed: `$SCRIPT_DIR/../../scripts/shared.sh`
+- Not allowed: `$SCRIPT_DIR/../other-skill/lib.sh`
 
-If two skills share logic, **duplicate it** in each skill. The cost of a small amount of duplication is far less than the cost of broken skills at runtime.
+If two skills need the same helper, duplicate it inside each skill rather than creating cross-skill dependencies.
 
-## CLI Support
+## Supported CLIs
 
-This repository supports **OpenCode**, **Codex CLI**, **GitHub Copilot**, and **Kiro CLI**:
+This repo supports **OpenCode**, **Codex CLI**, **GitHub Copilot**, and **Kiro CLI**.
 
-| Aspect | OpenCode | Codex | Copilot | Kiro |
-|--------|----------|-------|---------|------|
-| Config directory | `~/.config/opencode/` | `~/.codex/` | `~/.copilot/` | `~/.kiro/` |
-| Config file | `opencode.json` (JSON) | `config.toml` (TOML) | VS Code settings | Agent JSON files |
-| Skills directory | `~/.config/opencode/skills/` | `~/.codex/skills/` | `~/.copilot/skills/` | `~/.kiro/skills/` |
-| Setup script | `./setup.sh` or `./setup.sh opencode` | `./setup.sh codex` | `./setup.sh copilot` | `./setup.sh kiro` |
-| System skills | None | `.system/` subdirectory | Built-in tools | None |
-| Skill format | `SKILL.md` (YAML frontmatter) | `SKILL.md` (YAML frontmatter) | `SKILL.md` ([Agent Skills standard](https://agentskills.io/)) | `SKILL.md` ([Agent Skills standard](https://agentskills.io/)) |
+Keep changes aligned with the target CLI's native conventions:
 
-**Command surface note:** `.opencode/commands/` is OpenCode-specific. Codex, GitHub Copilot, and Kiro CLI use their own native command/instruction mechanisms and do not consume OpenCode slash commands from this repo.
+- OpenCode uses `opencode.json` and `.opencode/commands/`
+- Codex uses `.codex/config.toml` and `.codex/rules/`
+- Copilot and Kiro consume `SKILL.md` directly via the Agent Skills format
 
-### OpenCode Setup (Automated)
+Use `README.md` for setup commands, runtime paths, and installation details.
 
-Run the setup script to automatically configure OpenCode:
+## Skill Authoring Conventions
 
-```bash
-./setup.sh
-```
-
-This creates symlinks for `opencode.json` and `skills/` in `~/.config/opencode/`.
-
-### Codex Setup
-
-Run the setup script with the `codex` target:
-
-```bash
-./setup.sh codex
-```
-
-This symlinks individual skills to `~/.codex/skills/` and merges Codex config.
-
-**Important:** Do NOT symlink the entire `skills/` directory to `~/.codex/skills/`, as this will hide Codex's system skills in `.system/`.
-
-**Configuration:** Codex uses `config.toml` (TOML format), not `opencode.json`. Manage your Codex configuration separately.
-
-### Copilot Setup
-
-Run the setup script with the `copilot` target:
-
-```bash
-./setup.sh copilot
-```
-
-This symlinks individual skill directories to `~/.copilot/skills/`. Copilot natively supports the same `SKILL.md` format via the [Agent Skills standard](https://agentskills.io/) — no conversion needed.
-
-Copilot discovers skills automatically. You can also configure additional search locations in VS Code `settings.json`:
-
-```json
-{
-  "chat.agentSkillsLocations": [
-    { "path": "~/.copilot/skills" }
-  ]
-}
-```
-
-### Kiro Setup
-
-Run the setup script with the `kiro` target:
-
-```bash
-./setup.sh kiro
-```
-
-This symlinks individual skill directories to `~/.kiro/skills/`. Kiro natively supports the same `SKILL.md` format via the [Agent Skills standard](https://agentskills.io/) — no conversion needed.
-
-Kiro's default agent auto-discovers skills from `~/.kiro/skills/`. For custom agents, add skill resources to the agent's configuration:
-
-```json
-{
-  "resources": [
-    "skill://~/.kiro/skills/*/SKILL.md"
-  ]
-}
-```
-
-### All Targets
-
-```bash
-./setup.sh all    # Install for OpenCode, Codex, Copilot, and Kiro
-```
-
-## Repository Structure
-
-```
-opencode-config/
-├── skills/                # Custom skills (works with OpenCode, Codex, Copilot, Kiro)
-│   ├── agent-browser/     # Browser automation via agent-browser CLI
-│   ├── agent-md-tuner/   # Audit/enhance/restructure agent config files
-│   ├── context7-docs/     # Library documentation via Context7 MCP
-│   ├── fallow/            # JS/TS codebase intelligence (dead code, duplication, complexity)
-│   ├── github-ops/        # GitHub operations via gh CLI
-│   ├── mcporter/          # Direct MCP access via MCPorter
-│   ├── planning-doc/      # Planning document management
-│   ├── port-whisperer/   # Dev port & process management
-│   ├── production-hardening/ # Resilience anti-pattern scanning
-│   ├── security-auditor/  # Pre-deployment security audit
-│   └── skill-creator/     # AI-assisted skill creation
-├── evals/                 # Evaluation framework
-│   └── skill-loading/     # Skill-loading eval suite
-├── scripts/               # Top-level utility scripts (setup/eval only, NOT available to skills at runtime)
-│   ├── codex-config.py    # Codex config TOML merging
-│   ├── context-mode-config.py  # context-mode OpenCode overlay manager
-│   ├── install-context-mode.sh # context-mode install/upgrade helper
-│   ├── test-context-mode-setup.sh # context-mode smoke tests
-│   ├── list-fails.sh      # List failed eval case IDs
-│   ├── plan-path.sh       # Derive PLAN.md path from branch
-│   ├── retest-fails.sh    # Retest failed eval cases
-│   └── test-battery.sh    # Run all skill smoke tests
-├── docs/                  # Documentation and plans
-│   └── plans/             # Branch-derived planning documents
-├── .opencode/             # OpenCode commands and config
-│   └── commands/          # Custom slash commands
-├── .codex/                # Codex CLI config and rules
-│   ├── config.toml        # Codex configuration (TOML)
-│   ├── rules/             # Codex safety rules
-│   └── skills/            # Codex skill eval commands
-├── setup.sh               # Setup script (OpenCode, Codex, Copilot, Kiro)
-└── opencode.json          # Provider configuration (LiteLLM)
-```
-
-## Skill Conventions
-
-### Naming
-- **Directory**: `lowercase-kebab-case` (e.g., `github-ops`, `context7-docs`)
-- **Scripts**: `lowercase.sh` in `scripts/` subdirectory
-- **Config**: YAML files in `config/` subdirectory
-
-### Required Frontmatter (SKILL.md)
-
-```yaml
----
-name: skill-name
-description: "Concise description. When to use this skill."
-allowed-tools: Bash(gh:*) Bash(./scripts/*) Read Glob Grep
-context: fork
----
-```
-
-| Field | Purpose |
-|-------|---------|
-| `name` | Matches directory name, lowercase-kebab-case |
-| `description` | Explains purpose AND when to use (triggers skill loading) |
-| `allowed-tools` | Whitelist of tools the skill can use |
-| `context` | Use `fork` to run in isolated context |
-
-### Skill Management
-
-Skills can be enabled or disabled via permissions in `opencode.json` (OpenCode) or `config.toml` (Codex):
-
-**OpenCode (`opencode.json`):**
-```json
-{
-  "permission": {
-    "skill": {
-      "*": "allow",
-      "experimental-*": "ask"
-    }
-  }
-}
-```
-
-**Codex (`~/.codex/config.toml`):**
-```toml
-[permission.skill]
-"*" = "allow"
-"experimental-*" = "ask"
-```
-
-| Permission | Behavior |
-|------------|----------|
-| `allow` | Skill loads immediately |
-| `deny` | Skill hidden from agent, access rejected |
-| `ask` | User prompted for approval before loading |
-
-**Note:** Disabled skills remain in the `skills/` directory but are not available to the CLI.
+- Use lowercase-kebab-case for skill directory names.
+- Each skill lives under `skills/<skill-name>/` and must include `SKILL.md`.
+- Keep skill scripts and config inside the skill directory tree, typically under local `scripts/` or `config/` subdirectories.
+- In `SKILL.md`, keep `name` aligned with the directory name and make `description` describe both purpose and trigger conditions.
+- Follow the existing patterns in `skills/github-ops/SKILL.md` and `skills/agent-md-tuner/SKILL.md` when choosing `allowed-tools`, structure, and context.
 
 ### Script Standards
 
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
+- Start Bash scripts with `#!/usr/bin/env bash` and `set -euo pipefail`.
+- Use functions for non-trivial logic.
+- Add `|| true` to `grep` commands that may legitimately return no matches.
+- Prefer explicit, local paths rooted in the skill directory.
 
-# Script implementation
-```
+## Testing and Validation
 
-- Always use `set -euo pipefail` for safety
-- Use functions for complex logic
-- Add `|| true` to grep commands that may have no matches
-- **Never reference files outside the skill directory** — skills are symlinked individually and have no access to the repo root, `scripts/`, or sibling skills at runtime (see Symlink Installation Model above)
-
-### Testing
-
-Skills with a `tests/` directory must have smoke tests run after modifications:
-
-```bash
-# Run smoke tests for a skill
-./skills/<skill-name>/tests/smoke.sh
-```
-
-- Run smoke tests after any changes to skill scripts or configuration
-- All tests must pass before committing
-- Smoke tests should complete in <30 seconds
-
-## Available Commands
-
-| Command | Purpose |
-|---------|---------|
-| `/new-skill <name> [--quick]` | Create a new skill (AI-assisted, or `--quick` for scaffold only) |
-| `/skill-evals-run [options]` | Run the skill-loading eval suite |
-| `/skill-evals-optimize [options]` | Triage and fix failed eval cases (2-iteration cap) |
-
-## Reference Files
-
-For detailed examples, see:
-- `@skills/github-ops/SKILL.md` - Multi-script skill with 12 domains
-- `@skills/skill-creator/SKILL.md` - AI-assisted skill creation workflow
-- `@skills/production-hardening/SKILL.md` - Multi-phase analysis and implementation skill
-- `@skills/security-auditor/SKILL.md` - Tool-integrated audit with gating logic
-- `@skills/agent-md-tuner/SKILL.md` - Project-aware agent config auditor with 3 operating modes
+- After changing a skill's scripts or configuration, run its smoke test when `skills/<skill-name>/tests/smoke.sh` exists.
+- All relevant smoke tests should pass before committing.
+- Because skills are installed by symlink, verify changed paths still work from the installed skill directory, not just from the repo root.
+- Repo-level setup, eval, and battery commands are documented in `README.md`.
 
 ## GitHub Operations
 
-All GitHub operations should use the `gh` CLI, not WebFetch:
-- Use `gh api` for REST API calls
-- Use `gh search` for code/repo/issue search
-- Use `gh pr`, `gh issue`, `gh repo` for common operations
+Use the `gh` CLI for GitHub operations.
 
-## Key Patterns
+- Use `gh api` for REST API calls.
+- Use `gh search` for code, repo, issue, or PR search.
+- Use `gh pr`, `gh issue`, and `gh repo` for common workflows.
 
-### Domain Configuration (YAML)
+## Working Method
 
-```yaml
-domains:
-  domain-name:
-    types:
-      type-name:
-        description: "What this type does"
-        patterns: [search, patterns]
-        # Additional type-specific fields
-```
+### Debugging
 
-### Script with Actions
+Do not propose or ship speculative fixes. Reproduce the issue, gather evidence, trace the failure to a root cause, and verify the hypothesis before changing code.
 
-```bash
-ACTION="${1:-help}"
-case "$ACTION" in
-    action1) do_action1 "$@" ;;
-    action2) do_action2 "$@" ;;
-    help|*) show_help ;;
-esac
-```
+### Test Discipline
 
-## Utility Scripts
-
-Top-level `scripts/` contains shared utilities (used by `setup.sh` and evals, **not** by skills at runtime):
-
-| Script | Purpose |
-|--------|---------|
-| `codex-config.py` | Merges repo `.codex/config.toml` into `~/.codex/config.toml` (used by `setup.sh codex`) |
-| `context-mode-config.py` | Manages OpenCode config overlay — adds context-mode plugin + MCP entries on top of base `opencode.json` |
-| `install-context-mode.sh` | Installs/upgrades `context-mode` npm package globally (used by `setup.sh --with-context-mode`) |
-| `test-context-mode-setup.sh` | Smoke tests for context-mode OpenCode overlay and Codex config merge |
-| `plan-path.sh` | Derives `PLAN.md` path from current git branch using planning-doc rules |
-| `list-fails.sh` | Lists failed case IDs from the latest eval results |
-| `retest-fails.sh` | Re-runs only failed eval cases with the eval runner |
-| `test-battery.sh` | Discovers and runs all skill smoke tests (`tests/smoke.sh`, `tests/evals.sh`) |
-
-## Methodology Protocols
-
-### Debugging Protocol (BEFORE proposing any fix)
-
-**Iron Law:** No fix without confirmed root cause. Fixes based on guesses create new bugs.
-
-**4-Phase Process:**
-
-1. **Investigate** — Gather evidence before theorizing
-   - Reproduce the bug with minimal steps
-   - Collect: error messages, stack traces, logs, state at failure
-   - Identify: when did it last work? What changed?
-
-2. **Analyze** — Find the root cause
-   - Trace execution path to failure point
-   - Check: data flow, state mutations, race conditions, edge cases
-   - If 3+ hypotheses fail → question architecture, not just code
-
-3. **Verify** — Confirm root cause before fixing
-   - Can you predict the bug's behavior from your theory?
-   - Can you make it worse/better by changing the suspected code?
-   - Write a failing test that captures the bug
-
-4. **Fix** — Minimal change that addresses root cause
-   - Fix the cause, not the symptom
-   - Run the failing test → must pass
-   - Run full test suite → no regressions
-
-**Red Flags (stop and reassess):**
-- "Let me try this..." without understanding why
-- Fixing symptoms instead of causes
-- Same area breaks repeatedly
-
-### TDD Protocol (for medium+ complexity tasks)
-
-**Iron Law:** No production code without a failing test first.
-
-**Red-Green-Refactor Cycle:**
-
-1. **RED** — Write ONE failing test
-   - Test describes desired behavior, not implementation
-   - Run it → must fail (proves test works)
-   - Failure must be "feature missing," not syntax/import error
-
-2. **GREEN** — Write minimal code to pass
-   - Just enough to make the test pass
-   - No extra features, no "while I'm here" improvements
-   - Resist urge to write "real" implementation
-
-3. **REFACTOR** — Clean up while green
-   - Remove duplication
-   - Improve names
-   - Extract helpers
-   - Tests must stay green throughout
-
-4. **REPEAT** — Next behavior, next test
-
-**Rationalizations to Reject:**
-- "I'll write tests after" → No. Test first or delete the code.
-- "This is too simple to test" → Then the test is simple too. Write it.
-- "I know this works" → Prove it. Write the test.
-- "Tests slow me down" → Debugging untested code is slower.
-
-**When to Apply:**
-- New functions/methods with logic
-- Bug fixes (write failing test that reproduces bug first)
-- Refactors (ensure test coverage before changing)
-- API changes
-
-**Skip TDD for:** Typos, comments, config changes, pure formatting.
-
----
+For non-trivial logic changes and bug fixes, prefer test-first work: capture the failing behavior, implement the smallest fix that makes it pass, then refactor while tests stay green. You can skip this for typos, comments, formatting-only edits, and pure config text changes.
 
 ## Commit and Push
 
 - Stage changes before committing.
-- If the commit message is obvious, compose it and commit without asking.
-- If the commit message is ambiguous, propose a message and wait for approval before committing.
-- Push only after explicit user approval (or when the user explicitly asks to push in the current request).
-- Do not auto-push as part of session completion unless requested.
+- If the commit message is obvious, commit without asking. If it is ambiguous, ask first.
+- Push only after explicit user approval.

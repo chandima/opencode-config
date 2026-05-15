@@ -269,6 +269,8 @@ Each `SKILL.md` must have YAML frontmatter with `name` and `description`.
 
 See [OpenCode Skills docs](https://opencode.ai/docs/skills/) for details.
 
+For OpenCode, `/new-skill <name> [--quick]` scaffolds a new skill or a quick skeleton.
+
 ### Available Skills
 
 | Skill               | Purpose                                | Trigger Phrases                        |
