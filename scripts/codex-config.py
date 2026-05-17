@@ -11,41 +11,135 @@ try:
     import tomllib
 except ModuleNotFoundError:
     # Python < 3.11: fall back to a minimal TOML parser (read-only, enough for config merge)
+    import ast as _ast
     import re as _re
 
     class _MinimalTomllib:
         """Bare-bones TOML loader covering the subset used by codex config.toml."""
 
         @staticmethod
+        def _split_dotted_keys(value: str) -> list[str]:
+            parts: list[str] = []
+            current: list[str] = []
+            in_quotes = False
+            escaped = False
+
+            for char in value:
+                if escaped:
+                    current.append(char)
+                    escaped = False
+                    continue
+                if char == "\\" and in_quotes:
+                    current.append(char)
+                    escaped = True
+                    continue
+                if char == '"':
+                    current.append(char)
+                    in_quotes = not in_quotes
+                    continue
+                if char == "." and not in_quotes:
+                    part = "".join(current).strip().strip('"')
+                    if part:
+                        parts.append(part)
+                    current = []
+                    continue
+                current.append(char)
+
+            part = "".join(current).strip().strip('"')
+            if part:
+                parts.append(part)
+            return parts
+
+        @staticmethod
+        def _set_path(root: dict, keys: list[str], value) -> None:
+            current = root
+            for key in keys[:-1]:
+                current = current.setdefault(key, {})
+            current[keys[-1]] = value
+
+        @staticmethod
+        def _parse_scalar(value: str):
+            stripped = value.strip()
+            if stripped == "true":
+                return True
+            if stripped == "false":
+                return False
+            if _re.fullmatch(r"-?\d+", stripped):
+                return int(stripped)
+            if _re.fullmatch(r"-?\d+\.\d+", stripped):
+                return float(stripped)
+            if stripped.startswith('"') and stripped.endswith('"'):
+                return _ast.literal_eval(stripped)
+            return stripped
+
+        @staticmethod
+        def _parse_array(value: str):
+            normalized = value.replace("true", "True").replace("false", "False")
+            return _ast.literal_eval(normalized)
+
+        @staticmethod
         def loads(s: str) -> dict:
             result: dict = {}
             current: dict = result
-            for line in s.splitlines():
+            lines = s.splitlines()
+            i = 0
+            while i < len(lines):
+                line = lines[i]
                 stripped = line.strip()
                 if not stripped or stripped.startswith("#"):
+                    i += 1
                     continue
                 # Table header
                 m = _re.match(r"^\[([^\]]+)\]$", stripped)
                 if m:
-                    keys = [k.strip().strip('"') for k in m.group(1).split(".")]
+                    keys = _MinimalTomllib._split_dotted_keys(m.group(1))
                     current = result
                     for k in keys:
                         current = current.setdefault(k, {})
+                    i += 1
                     continue
                 # Key = value
                 if "=" in stripped:
                     key, _, val = stripped.partition("=")
-                    key = key.strip().strip('"')
+                    key_path = _MinimalTomllib._split_dotted_keys(key.strip())
                     val = val.strip()
-                    if val.startswith('"') and val.endswith('"'):
-                        val = val[1:-1]
-                    elif val == "true":
-                        val = True
-                    elif val == "false":
-                        val = False
-                    elif val.isdigit():
-                        val = int(val)
-                    current[key] = val
+
+                    if val.startswith('"""'):
+                        multiline = val[3:]
+                        collected = []
+                        if multiline.endswith('"""'):
+                            parsed_val = multiline[:-3]
+                        else:
+                            if multiline:
+                                collected.append(multiline)
+                            i += 1
+                            while i < len(lines):
+                                chunk = lines[i]
+                                if '"""' in chunk:
+                                    before, _, _ = chunk.partition('"""')
+                                    collected.append(before)
+                                    break
+                                collected.append(chunk)
+                                i += 1
+                            parsed_val = "\n".join(collected)
+                    elif val.startswith("[") and not val.endswith("]"):
+                        array_parts = [val]
+                        depth = val.count("[") - val.count("]")
+                        i += 1
+                        while i < len(lines) and depth > 0:
+                            chunk = lines[i].strip()
+                            array_parts.append(chunk)
+                            depth += chunk.count("[") - chunk.count("]")
+                            i += 1
+                        i -= 1
+                        parsed_val = _MinimalTomllib._parse_array(" ".join(array_parts))
+                    elif val.startswith("[") and val.endswith("]"):
+                        parsed_val = _MinimalTomllib._parse_array(val)
+                    else:
+                        parsed_val = _MinimalTomllib._parse_scalar(val)
+
+                    _MinimalTomllib._set_path(current, key_path, parsed_val)
+                i += 1
             return result
 
     class tomllib:  # type: ignore[no-redef]

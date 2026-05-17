@@ -3,7 +3,8 @@
   "plugin": ["@tarquinen/opencode-dcp"],
   "permission": {
     "skill": {
-      "*": "allow"
+      "*": "allow",
+      "playwright-mcp": "deny"
     }
   },
   "provider": {

@@ -17,9 +17,10 @@ opencode-config/                      # This git repo (your config)
 │   └── skill-loading/                # Skill-loading eval suite
 ├── scripts/
 │   ├── codex-config.py               # Codex config merging (setup.sh only, not used by skills)
-│   ├── context-mode-config.py        # context-mode OpenCode overlay manager
+│   ├── context-mode-config.py        # Managed OpenCode overlay generator for optional MCP integrations
 │   ├── install-context-mode.sh       # context-mode install/upgrade helper
-│   └── test-context-mode-setup.sh    # context-mode smoke tests
+│   ├── test-context-mode-setup.sh    # context-mode smoke tests
+│   └── test-playwright-mcp-setup.sh  # Playwright MCP smoke tests
 ├── .codex/                           # Codex config + rules (tracked)
 │   ├── config.toml                   # Codex config (TOML format)
 │   ├── ntfy_notify.sh                # ntfy notification script (Codex)
@@ -92,6 +93,12 @@ cd opencode-config
 ./setup.sh codex --with-context-mode     # Opt-in Codex context-mode MCP server
 ./setup.sh copilot --with-context-mode   # Opt-in Copilot context-mode plugin
 ./setup.sh all --with-context-mode       # All four with context-mode
+./setup.sh opencode --with-playwright-mcp  # Opt-in OpenCode Playwright MCP servers
+./setup.sh codex --with-playwright-mcp     # Opt-in Codex Playwright MCP servers
+./setup.sh copilot --with-playwright-mcp   # Opt-in Copilot Playwright MCP servers
+./setup.sh kiro --with-playwright-mcp      # Opt-in Kiro Playwright MCP servers
+./setup.sh all --with-playwright-mcp       # All four with Playwright MCP
+./setup.sh all --with-context-mode --with-playwright-mcp  # Combine both optional integrations
 ./setup.sh opencode --skills-only # OpenCode skills only (skip opencode.json)
 ./setup.sh codex --skills-only    # Codex skills only (skip config merge + rules)
 ./setup.sh opencode --remove  # Remove OpenCode symlinks
@@ -108,15 +115,19 @@ The script will:
 
 - **OpenCode**: Symlink `opencode.json` and `skills/` to `~/.config/opencode/`
 - **OpenCode + context-mode**: With `--with-context-mode`, write a managed `opencode.json` that preserves repo settings and adds the `context-mode` plugin + MCP server
+- **OpenCode + Playwright MCP**: With `--with-playwright-mcp`, write a managed `opencode.json` that enables the `playwright-mcp` skill and adds `playwright-firefox`, `playwright-webkit`, and `playwright-msedge`
 - **Codex**: Symlink individual skills to `~/.codex/skills/` (preserves `.system/` directory)
 - **Codex**: Merge repo `.codex/config.toml` into `~/.codex/config.toml` (repo precedence) and install `.codex/rules/*` into `~/.codex/rules/` (backing up conflicts)
 - **Codex + context-mode**: With `--with-context-mode`, also merge `[mcp_servers.context-mode]` into `~/.codex/config.toml`
+- **Codex + Playwright MCP**: With `--with-playwright-mcp`, also merge browser-specific Playwright MCP servers into `~/.codex/config.toml`
 - **Codex**: Install `.codex/ntfy_notify.sh` to `~/.codex/ntfy_notify.sh` (with backup/restore behavior for existing files)
 - **Copilot**: Symlink individual skill directories to `~/.copilot/skills/` (uses [Agent Skills standard](https://agentskills.io/) natively)
 - **Copilot**: Install `ntfy_notify.sh` and `hooks/copilot-ntfy.json` to `~/.copilot/` for task completion notifications
 - **Copilot + context-mode**: With `--with-context-mode`, install context-mode as a Copilot CLI plugin via `copilot plugin install`
+- **Copilot + Playwright MCP**: With `--with-playwright-mcp`, write browser-specific Playwright MCP server entries to `~/.copilot/mcp-config.json`
 - **Kiro**: Symlink individual skill directories to `~/.kiro/skills/` (uses [Agent Skills standard](https://agentskills.io/) natively, default agent auto-discovers skills)
 - **Kiro**: Install `ntfy_notify.sh` to `~/.kiro/ntfy_notify.sh` for task completion notifications (requires manual hook config in agent JSON)
+- **Kiro + Playwright MCP**: With `--with-playwright-mcp`, write browser-specific Playwright MCP server entries to `~/.kiro/settings/mcp.json`
 - **Respects disabled skills**: Skills with `"deny"` permission in `opencode.json` are skipped for all targets
 - **Remove mode**: Use `[target] --remove` to delete only symlinks created by the script
 - **Skills-only mode**: Use `--skills-only` to skip Codex config merge, rules, `ntfy_notify.sh`, and Copilot hooks install (link/remove skills only)
@@ -209,6 +220,9 @@ Optional integration:
 - `context-mode` can be enabled through `./setup.sh ... --with-context-mode`
 - OpenCode keeps `@tarquinen/opencode-dcp` in the base config; the context-mode overlay adds `context-mode` rather than replacing DCP
 - See `docs/context-mode.md` for install, verify, update, and remove flows
+- `playwright-mcp` can be enabled through `./setup.sh ... --with-playwright-mcp`
+- The repo configures only non-Chromium Playwright MCP servers (`playwright-firefox`, `playwright-webkit`, `playwright-msedge`) so `agent-browser` remains the default for Chromium flows
+- See `docs/playwright-mcp.md` for install, verify, update, and remove flows
 
 > **Note:** Some plugins like `opencode-notify` and `opencode-worktree` require [OCX](https://github.com/kdcokenny/ocx) package manager (not available via npm).
 
@@ -250,6 +264,7 @@ Skills in this repository may require the following dependencies:
 | MCPorter    | mcporter, context7-docs | `brew tap steipete/tap && brew install mcporter` (or use `npx mcporter`) |
 | gh CLI      | github-ops              | `brew install gh`                                                        |
 | context-mode | optional OpenCode/Codex/Copilot integration | `npm install -g context-mode` or `./scripts/install-context-mode.sh install` |
+| Playwright MCP | optional OpenCode/Codex/Copilot/Kiro integration | No preinstall required; repo wiring uses `npx -y @playwright/mcp@latest` |
 
 > **Note:** MCPorter can be invoked via `npx mcporter` without installation. The skills use this approach by default.
 
@@ -283,6 +298,7 @@ For OpenCode, `/new-skill <name> [--quick]` scaffolds a new skill or a quick ske
 | **port-whisperer**  | Dev port & process management          | Port conflicts, orphaned processes, kill port |
 | **agent-md-tuner** | Audit/enhance/restructure agent config files | Tune AGENTS.md, improve CLAUDE.md, set up agent rules |
 | **fallow**          | JS/TS codebase intelligence (dead code, duplication, complexity) | Find dead code, unused exports, find duplicates, check code health |
+| **playwright-mcp**  | Browser-engine-specific automation via Playwright MCP | Firefox, WebKit/Safari, Edge, cross-browser verification |
 
 > **Note:** Methodology-based guidance (debugging, TDD) is embedded in `AGENTS.md` for passive context availability. Some skills may be disabled via permissions in `opencode.json`.
 
@@ -305,6 +321,14 @@ All tests should pass before committing changes.
 ```
 
 Validates ntfy_notify.sh input parsing, reason handling, env var overrides, and hook config JSON.
+
+### Testing Playwright MCP Setup
+
+```bash
+./scripts/test-playwright-mcp-setup.sh
+```
+
+Validates opt-in Playwright MCP wiring for OpenCode, Codex, GitHub Copilot, and Kiro.
 
 ### Skill Loading Evals
 

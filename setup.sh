@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 show_help() {
     cat << 'EOF'
-Usage: ./setup.sh [TARGET] [--remove] [--with-context-mode]
+Usage: ./setup.sh [TARGET] [--remove] [--with-context-mode] [--with-playwright-mcp]
 
 Install OpenCode/Codex/Copilot/Kiro configuration by symlinking skills and generating prompt files.
 
@@ -20,20 +20,34 @@ TARGETS:
     --remove, -r  Remove symlinks/files instead of installing
     --skills-only  Install/remove skills only (skip configs and rules)
     --with-context-mode  Install/configure context-mode where supported
+    --with-playwright-mcp  Install/configure Playwright MCP where supported
     --help, -h  Show this help message
 EOF
 }
 
 # Read disabled skills from opencode.json
 get_disabled_skills() {
+    local runtime="${1:-generic}"
+    local enable_playwright=0
+    if [[ "$WITH_PLAYWRIGHT_MCP" -eq 1 && "$SKILLS_ONLY" -eq 0 ]]; then
+        case "$runtime" in
+            codex|copilot|kiro)
+                enable_playwright=1
+                ;;
+        esac
+    fi
+
     node -e "
 const config = require(process.argv[1]);
-const perms = config.permission?.skill || {};
+const perms = { ...(config.permission?.skill || {}) };
+if (process.argv[2] === '1') {
+  delete perms['playwright-mcp'];
+}
 const disabled = Object.keys(perms)
   .filter(k => k !== '*' && perms[k] === 'deny')
   .map(k => k.replace(/\*/g, '.*'));
 console.log(disabled.join('|'));
-" "$SCRIPT_DIR/opencode.json"
+" "$SCRIPT_DIR/opencode.json" "$enable_playwright"
 }
 
 skill_in_list() {
@@ -61,8 +75,8 @@ opencode_config_root() {
     echo "$HOME/.config/opencode"
 }
 
-opencode_context_mode_state_file() {
-    echo "$(opencode_config_root)/.context-mode-state.json"
+opencode_managed_config_state_file() {
+    echo "$(opencode_config_root)/.opencode-config-state.json"
 }
 
 codex_config_root() {
@@ -83,6 +97,10 @@ codex_backup_dir() {
 
 codex_context_mode_state_file() {
     echo "$(codex_config_root)/.context-mode-state.json"
+}
+
+codex_playwright_mcp_state_file() {
+    echo "$(codex_config_root)/.playwright-mcp-state.json"
 }
 
 
@@ -110,18 +128,27 @@ ensure_context_mode_runtime() {
     bash "$SCRIPT_DIR/scripts/install-context-mode.sh" install
 }
 
-install_opencode_context_mode_config() {
+install_managed_opencode_config() {
+    local overlay_args=()
+    if [[ "$WITH_CONTEXT_MODE" -eq 1 ]]; then
+        overlay_args+=(--with-context-mode)
+    fi
+    if [[ "$WITH_PLAYWRIGHT_MCP" -eq 1 ]]; then
+        overlay_args+=(--with-playwright-mcp)
+    fi
+
     require_python3
     python3 "$SCRIPT_DIR/scripts/context-mode-config.py" install-opencode \
         --base "$SCRIPT_DIR/opencode.json" \
         --target "$(opencode_config_root)/opencode.json" \
-        --state "$(opencode_context_mode_state_file)"
-    echo "  Installed: opencode.json (context-mode managed)"
+        --state "$(opencode_managed_config_state_file)" \
+        "${overlay_args[@]}"
+    echo "  Installed: opencode.json (managed)"
 }
 
-remove_opencode_context_mode_config() {
+remove_managed_opencode_config() {
     local target="$(opencode_config_root)/opencode.json"
-    local state="$(opencode_context_mode_state_file)"
+    local state="$(opencode_managed_config_state_file)"
 
     if [[ ! -f "$state" ]]; then
         return 0
@@ -159,6 +186,54 @@ EOF
 remove_codex_context_mode_config() {
     local state_file
     state_file="$(codex_context_mode_state_file)"
+    local target_config
+    target_config="$(codex_config_file)"
+
+    if [[ ! -f "$state_file" && ! -f "$target_config" ]]; then
+        return 0
+    fi
+
+    require_python3
+    python3 "$SCRIPT_DIR/scripts/codex-config.py" remove \
+        --target "$target_config" \
+        --state "$state_file"
+}
+
+merge_codex_playwright_mcp_config() {
+    local target_config
+    target_config="$(codex_config_file)"
+    local state_file
+    state_file="$(codex_playwright_mcp_state_file)"
+    local temp_config
+    temp_config="$(mktemp)"
+
+    cat > "$temp_config" << 'EOF'
+[mcp_servers.playwright-firefox]
+command = "npx"
+args = ["-y", "@playwright/mcp@latest", "--browser=firefox"]
+
+[mcp_servers.playwright-webkit]
+command = "npx"
+args = ["-y", "@playwright/mcp@latest", "--browser=webkit"]
+
+[mcp_servers.playwright-msedge]
+command = "npx"
+args = ["-y", "@playwright/mcp@latest", "--browser=msedge"]
+EOF
+
+    require_python3
+    python3 "$SCRIPT_DIR/scripts/codex-config.py" install \
+        --repo "$temp_config" \
+        --target "$target_config" \
+        --state "$state_file"
+
+    rm -f "$temp_config"
+    echo "  Merged: ~/.codex/config.toml (Playwright MCP)"
+}
+
+remove_codex_playwright_mcp_config() {
+    local state_file
+    state_file="$(codex_playwright_mcp_state_file)"
     local target_config
     target_config="$(codex_config_file)"
 
@@ -419,6 +494,9 @@ setup_codex_config() {
     if [[ "$WITH_CONTEXT_MODE" -eq 1 ]]; then
         merge_codex_context_mode_config
     fi
+    if [[ "$WITH_PLAYWRIGHT_MCP" -eq 1 ]]; then
+        merge_codex_playwright_mcp_config
+    fi
 }
 
 remove_codex_config() {
@@ -436,6 +514,9 @@ remove_codex_config() {
     remove_codex_rules
     remove_codex_notify_script
 
+    remove_codex_context_mode_config
+    remove_codex_playwright_mcp_config
+
     if [[ -f "$state_file" || -f "$target_config" ]]; then
         require_python3
         python3 "$SCRIPT_DIR/scripts/codex-config.py" remove \
@@ -443,7 +524,6 @@ remove_codex_config() {
             --state "$state_file"
     fi
 
-    remove_codex_context_mode_config
     cleanup_empty_codex_config
 }
 
@@ -474,10 +554,11 @@ setup_opencode() {
     echo "  Linked: skills/"
 
     if [[ "$SKILLS_ONLY" -eq 0 ]]; then
-        if [[ "$WITH_CONTEXT_MODE" -eq 1 ]]; then
-            install_opencode_context_mode_config
+        if [[ "$WITH_CONTEXT_MODE" -eq 1 || "$WITH_PLAYWRIGHT_MCP" -eq 1 ]]; then
+            install_managed_opencode_config
         else
             ln -sf "$SCRIPT_DIR/opencode.json" "$config_dir/opencode.json"
+            rm -f "$(opencode_managed_config_state_file)"
             echo "  Linked: opencode.json"
         fi
     fi
@@ -493,7 +574,7 @@ setup_codex() {
     
     # Get disabled skills
     local disabled_skills
-    disabled_skills=$(get_disabled_skills)
+    disabled_skills=$(get_disabled_skills codex)
 
     local desired_skills=()
     
@@ -564,6 +645,10 @@ copilot_backup_dir() {
 
 copilot_skills_dir() {
     echo "$(copilot_config_root)/skills"
+}
+
+copilot_mcp_config_file() {
+    echo "$(copilot_config_root)/mcp-config.json"
 }
 
 # ── Kiro CLI ────────────────────────────────────────────────────────────────
@@ -710,6 +795,64 @@ EOF
     echo "  Installed: hooks/context-mode.json"
 }
 
+install_kiro_playwright_mcp() {
+    local config_root
+    config_root="$(kiro_config_root)"
+    local backup_dir
+    backup_dir="$(kiro_backup_dir)"
+    local mcp_dir="$config_root/settings"
+
+    mkdir -p "$mcp_dir" "$backup_dir"
+
+    local mcp_file="$mcp_dir/mcp.json"
+    local mcp_backup="$backup_dir/mcp.json"
+    if [[ -e "$mcp_file" && ! -e "$mcp_backup" ]]; then
+        cp "$mcp_file" "$mcp_backup"
+        echo "  Backed up: settings/mcp.json"
+    fi
+
+    if [[ -f "$mcp_file" ]] && command -v node &>/dev/null; then
+        node -e "
+const fs = require('fs');
+const cfg = JSON.parse(fs.readFileSync('$mcp_file', 'utf8'));
+cfg.mcpServers = cfg.mcpServers || {};
+cfg.mcpServers['playwright-firefox'] = {
+  command: 'npx',
+  args: ['-y', '@playwright/mcp@latest', '--browser=firefox']
+};
+cfg.mcpServers['playwright-webkit'] = {
+  command: 'npx',
+  args: ['-y', '@playwright/mcp@latest', '--browser=webkit']
+};
+cfg.mcpServers['playwright-msedge'] = {
+  command: 'npx',
+  args: ['-y', '@playwright/mcp@latest', '--browser=msedge']
+};
+fs.writeFileSync('$mcp_file', JSON.stringify(cfg, null, 2) + '\n');
+"
+    else
+        cat > "$mcp_file" << 'EOF'
+{
+  "mcpServers": {
+    "playwright-firefox": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest", "--browser=firefox"]
+    },
+    "playwright-webkit": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest", "--browser=webkit"]
+    },
+    "playwright-msedge": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest", "--browser=msedge"]
+    }
+  }
+}
+EOF
+    fi
+    echo "  Installed: settings/mcp.json (Playwright MCP)"
+}
+
 remove_kiro_context_mode() {
     local config_root
     config_root="$(kiro_config_root)"
@@ -745,6 +888,42 @@ if (out === '{}') { fs.unlinkSync('$mcp_file'); } else { fs.writeFileSync('$mcp_
     fi
 }
 
+remove_kiro_playwright_mcp() {
+    local config_root
+    config_root="$(kiro_config_root)"
+    local backup_dir
+    backup_dir="$(kiro_backup_dir)"
+    local mcp_file="$config_root/settings/mcp.json"
+    local mcp_backup="$backup_dir/mcp.json"
+
+    if [[ -f "$mcp_file" ]] && command -v node &>/dev/null; then
+        node -e "
+const fs = require('fs');
+const cfg = JSON.parse(fs.readFileSync('$mcp_file', 'utf8'));
+if (cfg.mcpServers) {
+  delete cfg.mcpServers['playwright-firefox'];
+  delete cfg.mcpServers['playwright-webkit'];
+  delete cfg.mcpServers['playwright-msedge'];
+}
+if (cfg.mcpServers && Object.keys(cfg.mcpServers).length === 0) {
+  delete cfg.mcpServers;
+}
+const out = JSON.stringify(cfg, null, 2);
+if (out === '{}') {
+  fs.unlinkSync('$mcp_file');
+} else {
+  fs.writeFileSync('$mcp_file', out + '\n');
+}
+"
+        echo "  Removed: Playwright MCP from settings/mcp.json"
+    fi
+
+    if [[ ! -f "$mcp_file" && -f "$mcp_backup" ]]; then
+        mv "$mcp_backup" "$mcp_file"
+        echo "  Restored: settings/mcp.json"
+    fi
+}
+
 setup_kiro() {
     local skills_dir
     skills_dir="$(kiro_skills_dir)"
@@ -755,7 +934,7 @@ setup_kiro() {
 
     # Get disabled skills
     local disabled_skills
-    disabled_skills=$(get_disabled_skills)
+    disabled_skills=$(get_disabled_skills kiro)
 
     local desired_skills=()
 
@@ -817,6 +996,9 @@ setup_kiro() {
         if [[ "$WITH_CONTEXT_MODE" -eq 1 ]]; then
             install_kiro_context_mode
         fi
+        if [[ "$WITH_PLAYWRIGHT_MCP" -eq 1 ]]; then
+            install_kiro_playwright_mcp
+        fi
     fi
 
     echo ""
@@ -861,6 +1043,7 @@ remove_kiro() {
 
     remove_kiro_notify_script
     remove_kiro_context_mode
+    remove_kiro_playwright_mcp
 }
 
 install_copilot_notify_script() {
@@ -926,6 +1109,11 @@ remove_copilot_notify_script() {
 }
 
 ensure_copilot_js_hooks() {
+    if [[ "${COPILOT_SKIP_JS_HOOK_SETUP:-0}" == "1" ]]; then
+        echo "  Skipping Copilot JS hook setup (COPILOT_SKIP_JS_HOOK_SETUP=1)"
+        return 0
+    fi
+
     # The Copilot CLI npm package bundles a platform-specific SEA (Single
     # Executable Application) binary as an optionalDependency.  The npm-loader
     # prefers this native binary over the JS entry-point (index.js).  However,
@@ -975,6 +1163,102 @@ ensure_copilot_js_hooks() {
     if [[ -n "$node_major" ]] && (( node_major < 24 )); then
         echo "  ⚠  Node.js v${node_major} detected — Copilot JS engine requires v24+."
         echo "     Upgrade Node or hooks will not load."
+    fi
+}
+
+install_copilot_playwright_mcp_config() {
+    local config_file
+    config_file="$(copilot_mcp_config_file)"
+    local backup
+    backup="$(copilot_backup_dir)/mcp-config.json"
+
+    mkdir -p "$(copilot_config_root)"
+    mkdir -p "$(copilot_backup_dir)"
+
+    if [[ -e "$config_file" && ! -e "$backup" ]]; then
+        cp "$config_file" "$backup"
+        echo "  Backed up: mcp-config.json"
+    fi
+
+    if [[ -f "$config_file" ]] && command -v node &>/dev/null; then
+        node -e "
+const fs = require('fs');
+const cfg = JSON.parse(fs.readFileSync('$config_file', 'utf8'));
+cfg.mcpServers = cfg.mcpServers || {};
+for (const [name, browser] of Object.entries({
+  'playwright-firefox': 'firefox',
+  'playwright-webkit': 'webkit',
+  'playwright-msedge': 'msedge',
+})) {
+  cfg.mcpServers[name] = {
+    type: 'local',
+    command: 'npx',
+    tools: ['*'],
+    args: ['-y', '@playwright/mcp@latest', '--browser=' + browser],
+  };
+}
+fs.writeFileSync('$config_file', JSON.stringify(cfg, null, 2) + '\n');
+"
+    else
+        cat > "$config_file" << 'EOF'
+{
+  "mcpServers": {
+    "playwright-firefox": {
+      "type": "local",
+      "command": "npx",
+      "tools": ["*"],
+      "args": ["-y", "@playwright/mcp@latest", "--browser=firefox"]
+    },
+    "playwright-webkit": {
+      "type": "local",
+      "command": "npx",
+      "tools": ["*"],
+      "args": ["-y", "@playwright/mcp@latest", "--browser=webkit"]
+    },
+    "playwright-msedge": {
+      "type": "local",
+      "command": "npx",
+      "tools": ["*"],
+      "args": ["-y", "@playwright/mcp@latest", "--browser=msedge"]
+    }
+  }
+}
+EOF
+    fi
+    echo "  Installed: mcp-config.json (Playwright MCP)"
+}
+
+remove_copilot_playwright_mcp_config() {
+    local config_file
+    config_file="$(copilot_mcp_config_file)"
+    local backup
+    backup="$(copilot_backup_dir)/mcp-config.json"
+
+    if [[ -f "$config_file" ]] && command -v node &>/dev/null; then
+        node -e "
+const fs = require('fs');
+const cfg = JSON.parse(fs.readFileSync('$config_file', 'utf8'));
+if (cfg.mcpServers) {
+  delete cfg.mcpServers['playwright-firefox'];
+  delete cfg.mcpServers['playwright-webkit'];
+  delete cfg.mcpServers['playwright-msedge'];
+}
+if (cfg.mcpServers && Object.keys(cfg.mcpServers).length === 0) {
+  delete cfg.mcpServers;
+}
+const out = JSON.stringify(cfg, null, 2);
+if (out === '{}') {
+  fs.unlinkSync('$config_file');
+} else {
+  fs.writeFileSync('$config_file', out + '\n');
+}
+"
+        echo "  Removed: Playwright MCP from mcp-config.json"
+    fi
+
+    if [[ ! -f "$config_file" && -f "$backup" ]]; then
+        mv "$backup" "$config_file"
+        echo "  Restored: mcp-config.json"
     fi
 }
 
@@ -1051,7 +1335,7 @@ setup_copilot() {
 
     # Get disabled skills
     local disabled_skills
-    disabled_skills=$(get_disabled_skills)
+    disabled_skills=$(get_disabled_skills copilot)
 
     local desired_skills=()
 
@@ -1112,6 +1396,9 @@ setup_copilot() {
         install_copilot_notify_script
         install_copilot_hooks
         ensure_copilot_js_hooks
+        if [[ "$WITH_PLAYWRIGHT_MCP" -eq 1 ]]; then
+            install_copilot_playwright_mcp_config
+        fi
         echo ""
         echo "  ℹ️  Copilot CLI loads hooks from .github/hooks/ in your working directory."
         echo "     To enable ntfy notifications in a project, run:"
@@ -1156,6 +1443,7 @@ remove_copilot() {
     remove_copilot_notify_script
     remove_copilot_hooks
     remove_copilot_context_mode_plugin
+    remove_copilot_playwright_mcp_config
 }
 
 # Remove symlinks for OpenCode
@@ -1169,15 +1457,15 @@ remove_opencode() {
     if [[ "$SKILLS_ONLY" -eq 1 ]]; then
         items=(skills)
     fi
-    local removed_context_mode=0
-    if [[ "$SKILLS_ONLY" -eq 0 && -f "$(opencode_context_mode_state_file)" ]]; then
-        remove_opencode_context_mode_config
-        removed_context_mode=1
+    local removed_managed_config=0
+    if [[ "$SKILLS_ONLY" -eq 0 && -f "$(opencode_managed_config_state_file)" ]]; then
+        remove_managed_opencode_config
+        removed_managed_config=1
     fi
 
     for item in "${items[@]}"; do
         local target="$config_dir/$item"
-        if [[ "$item" == "opencode.json" && "$removed_context_mode" -eq 1 ]]; then
+        if [[ "$item" == "opencode.json" && "$removed_managed_config" -eq 1 ]]; then
             if [[ -e "$target" || -L "$target" ]]; then
                 echo "  Preserved: $item"
             else
@@ -1237,6 +1525,7 @@ TARGET_SET=0
 REMOVE_SEEN=0
 SKILLS_ONLY=0
 WITH_CONTEXT_MODE=0
+WITH_PLAYWRIGHT_MCP=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -1253,6 +1542,9 @@ while [[ $# -gt 0 ]]; do
             ;;
         --with-context-mode)
             WITH_CONTEXT_MODE=1
+            ;;
+        --with-playwright-mcp)
+            WITH_PLAYWRIGHT_MCP=1
             ;;
         opencode|codex|copilot|kiro|both|all)
             if [[ "$TARGET_SET" -eq 1 ]]; then
