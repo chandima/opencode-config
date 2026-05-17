@@ -18,6 +18,7 @@ def parse_args() -> argparse.Namespace:
     install_opencode.add_argument("--state", required=True, type=Path)
     install_opencode.add_argument("--with-context-mode", action="store_true")
     install_opencode.add_argument("--with-playwright-mcp", action="store_true")
+    install_opencode.add_argument("--playwright-headed", action="store_true")
 
     remove_opencode = subparsers.add_parser("remove-opencode", help="Remove managed OpenCode config.")
     remove_opencode.add_argument("--target", required=True, type=Path)
@@ -38,25 +39,38 @@ def ensure_list(value: Any) -> list[Any]:
     return [value]
 
 
-def build_playwright_mcp_entries() -> dict[str, Any]:
+def build_playwright_mcp_entries(*, playwright_headed: bool) -> dict[str, Any]:
     package = "@playwright/mcp@latest"
+
+    def command(browser: str) -> list[str]:
+        args = ["npx", "-y", package, f"--browser={browser}"]
+        if not playwright_headed:
+            args.append("--headless")
+        return args
+
     return {
         "playwright-firefox": {
             "type": "local",
-            "command": ["npx", "-y", package, "--browser=firefox"],
+            "command": command("firefox"),
         },
         "playwright-webkit": {
             "type": "local",
-            "command": ["npx", "-y", package, "--browser=webkit"],
+            "command": command("webkit"),
         },
         "playwright-msedge": {
             "type": "local",
-            "command": ["npx", "-y", package, "--browser=msedge"],
+            "command": command("msedge"),
         },
     }
 
 
-def build_opencode_config(base_path: Path, *, with_context_mode: bool, with_playwright_mcp: bool) -> str:
+def build_opencode_config(
+    base_path: Path,
+    *,
+    with_context_mode: bool,
+    with_playwright_mcp: bool,
+    playwright_headed: bool,
+) -> str:
     config = load_json(base_path)
 
     if with_context_mode:
@@ -72,7 +86,7 @@ def build_opencode_config(base_path: Path, *, with_context_mode: bool, with_play
         if with_context_mode:
             mcp["context-mode"] = {"type": "local", "command": ["context-mode"]}
         if with_playwright_mcp:
-            mcp.update(build_playwright_mcp_entries())
+            mcp.update(build_playwright_mcp_entries(playwright_headed=playwright_headed))
         config["mcp"] = mcp
 
     if with_playwright_mcp:
@@ -94,6 +108,7 @@ def install_opencode(args: argparse.Namespace) -> int:
         args.base,
         with_context_mode=args.with_context_mode,
         with_playwright_mcp=args.with_playwright_mcp,
+        playwright_headed=args.playwright_headed,
     )
 
     previous_kind = "missing"

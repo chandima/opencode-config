@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 show_help() {
     cat << 'EOF'
-Usage: ./setup.sh [TARGET] [--remove] [--with-context-mode] [--with-playwright-mcp]
+Usage: ./setup.sh [TARGET] [--remove] [--with-context-mode] [--with-playwright-mcp] [--playwright-headed]
 
 Install OpenCode/Codex/Copilot/Kiro configuration by symlinking skills and generating prompt files.
 
@@ -21,6 +21,7 @@ TARGETS:
     --skills-only  Install/remove skills only (skip configs and rules)
     --with-context-mode  Install/configure context-mode where supported
     --with-playwright-mcp  Install/configure Playwright MCP where supported
+    --playwright-headed  Configure Playwright MCP servers in headed mode (default is headless)
     --help, -h  Show this help message
 EOF
 }
@@ -103,6 +104,24 @@ codex_playwright_mcp_state_file() {
     echo "$(codex_config_root)/.playwright-mcp-state.json"
 }
 
+playwright_args_json() {
+    local browser="$1"
+    if [[ "$PLAYWRIGHT_HEADED" -eq 1 ]]; then
+        printf '["-y", "@playwright/mcp@latest", "--browser=%s"]' "$browser"
+    else
+        printf '["-y", "@playwright/mcp@latest", "--browser=%s", "--headless"]' "$browser"
+    fi
+}
+
+playwright_args_toml() {
+    local browser="$1"
+    if [[ "$PLAYWRIGHT_HEADED" -eq 1 ]]; then
+        printf '["-y", "@playwright/mcp@latest", "--browser=%s"]' "$browser"
+    else
+        printf '["-y", "@playwright/mcp@latest", "--browser=%s", "--headless"]' "$browser"
+    fi
+}
+
 
 target_uses_global_context_mode() {
     case "$TARGET" in
@@ -135,6 +154,9 @@ install_managed_opencode_config() {
     fi
     if [[ "$WITH_PLAYWRIGHT_MCP" -eq 1 ]]; then
         overlay_args+=(--with-playwright-mcp)
+        if [[ "$PLAYWRIGHT_HEADED" -eq 1 ]]; then
+            overlay_args+=(--playwright-headed)
+        fi
     fi
 
     require_python3
@@ -207,18 +229,18 @@ merge_codex_playwright_mcp_config() {
     local temp_config
     temp_config="$(mktemp)"
 
-    cat > "$temp_config" << 'EOF'
+    cat > "$temp_config" << EOF
 [mcp_servers.playwright-firefox]
 command = "npx"
-args = ["-y", "@playwright/mcp@latest", "--browser=firefox"]
+args = $(playwright_args_toml firefox)
 
 [mcp_servers.playwright-webkit]
 command = "npx"
-args = ["-y", "@playwright/mcp@latest", "--browser=webkit"]
+args = $(playwright_args_toml webkit)
 
 [mcp_servers.playwright-msedge]
 command = "npx"
-args = ["-y", "@playwright/mcp@latest", "--browser=msedge"]
+args = $(playwright_args_toml msedge)
 EOF
 
     require_python3
@@ -818,33 +840,33 @@ const cfg = JSON.parse(fs.readFileSync('$mcp_file', 'utf8'));
 cfg.mcpServers = cfg.mcpServers || {};
 cfg.mcpServers['playwright-firefox'] = {
   command: 'npx',
-  args: ['-y', '@playwright/mcp@latest', '--browser=firefox']
+  args: $(playwright_args_json firefox)
 };
 cfg.mcpServers['playwright-webkit'] = {
   command: 'npx',
-  args: ['-y', '@playwright/mcp@latest', '--browser=webkit']
+  args: $(playwright_args_json webkit)
 };
 cfg.mcpServers['playwright-msedge'] = {
   command: 'npx',
-  args: ['-y', '@playwright/mcp@latest', '--browser=msedge']
+  args: $(playwright_args_json msedge)
 };
 fs.writeFileSync('$mcp_file', JSON.stringify(cfg, null, 2) + '\n');
 "
     else
-        cat > "$mcp_file" << 'EOF'
+        cat > "$mcp_file" << EOF
 {
   "mcpServers": {
     "playwright-firefox": {
       "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest", "--browser=firefox"]
+      "args": $(playwright_args_json firefox)
     },
     "playwright-webkit": {
       "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest", "--browser=webkit"]
+      "args": $(playwright_args_json webkit)
     },
     "playwright-msedge": {
       "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest", "--browser=msedge"]
+      "args": $(playwright_args_json msedge)
     }
   }
 }
@@ -1194,32 +1216,32 @@ for (const [name, browser] of Object.entries({
     type: 'local',
     command: 'npx',
     tools: ['*'],
-    args: ['-y', '@playwright/mcp@latest', '--browser=' + browser],
+    args: ['-y', '@playwright/mcp@latest', '--browser=' + browser$( [[ "$PLAYWRIGHT_HEADED" -eq 0 ]] && printf ", '--headless'" )],
   };
 }
 fs.writeFileSync('$config_file', JSON.stringify(cfg, null, 2) + '\n');
 "
     else
-        cat > "$config_file" << 'EOF'
+        cat > "$config_file" << EOF
 {
   "mcpServers": {
     "playwright-firefox": {
       "type": "local",
       "command": "npx",
       "tools": ["*"],
-      "args": ["-y", "@playwright/mcp@latest", "--browser=firefox"]
+      "args": $(playwright_args_json firefox)
     },
     "playwright-webkit": {
       "type": "local",
       "command": "npx",
       "tools": ["*"],
-      "args": ["-y", "@playwright/mcp@latest", "--browser=webkit"]
+      "args": $(playwright_args_json webkit)
     },
     "playwright-msedge": {
       "type": "local",
       "command": "npx",
       "tools": ["*"],
-      "args": ["-y", "@playwright/mcp@latest", "--browser=msedge"]
+      "args": $(playwright_args_json msedge)
     }
   }
 }
@@ -1526,6 +1548,7 @@ REMOVE_SEEN=0
 SKILLS_ONLY=0
 WITH_CONTEXT_MODE=0
 WITH_PLAYWRIGHT_MCP=0
+PLAYWRIGHT_HEADED=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -1545,6 +1568,9 @@ while [[ $# -gt 0 ]]; do
             ;;
         --with-playwright-mcp)
             WITH_PLAYWRIGHT_MCP=1
+            ;;
+        --playwright-headed)
+            PLAYWRIGHT_HEADED=1
             ;;
         opencode|codex|copilot|kiro|both|all)
             if [[ "$TARGET_SET" -eq 1 ]]; then

@@ -115,19 +115,19 @@ The script will:
 
 - **OpenCode**: Symlink `opencode.json` and `skills/` to `~/.config/opencode/`
 - **OpenCode + context-mode**: With `--with-context-mode`, write a managed `opencode.json` that preserves repo settings and adds the `context-mode` plugin + MCP server
-- **OpenCode + Playwright MCP**: With `--with-playwright-mcp`, write a managed `opencode.json` that enables the `playwright-mcp` skill and adds `playwright-firefox`, `playwright-webkit`, and `playwright-msedge`
+- **OpenCode + Playwright MCP**: With `--with-playwright-mcp`, write a managed `opencode.json` that enables the `playwright-mcp` skill and adds `playwright-firefox`, `playwright-webkit`, and `playwright-msedge` in headless mode by default (`--playwright-headed` keeps them visible)
 - **Codex**: Symlink individual skills to `~/.codex/skills/` (preserves `.system/` directory)
 - **Codex**: Merge repo `.codex/config.toml` into `~/.codex/config.toml` (repo precedence) and install `.codex/rules/*` into `~/.codex/rules/` (backing up conflicts)
 - **Codex + context-mode**: With `--with-context-mode`, also merge `[mcp_servers.context-mode]` into `~/.codex/config.toml`
-- **Codex + Playwright MCP**: With `--with-playwright-mcp`, also merge browser-specific Playwright MCP servers into `~/.codex/config.toml`
+- **Codex + Playwright MCP**: With `--with-playwright-mcp`, also merge browser-specific Playwright MCP servers into `~/.codex/config.toml` in headless mode by default (`--playwright-headed` keeps them visible)
 - **Codex**: Install `.codex/ntfy_notify.sh` to `~/.codex/ntfy_notify.sh` (with backup/restore behavior for existing files)
 - **Copilot**: Symlink individual skill directories to `~/.copilot/skills/` (uses [Agent Skills standard](https://agentskills.io/) natively)
 - **Copilot**: Install `ntfy_notify.sh` and `hooks/copilot-ntfy.json` to `~/.copilot/` for task completion notifications
 - **Copilot + context-mode**: With `--with-context-mode`, install context-mode as a Copilot CLI plugin via `copilot plugin install`
-- **Copilot + Playwright MCP**: With `--with-playwright-mcp`, write browser-specific Playwright MCP server entries to `~/.copilot/mcp-config.json`
+- **Copilot + Playwright MCP**: With `--with-playwright-mcp`, write browser-specific Playwright MCP server entries to `~/.copilot/mcp-config.json` in headless mode by default (`--playwright-headed` keeps them visible)
 - **Kiro**: Symlink individual skill directories to `~/.kiro/skills/` (uses [Agent Skills standard](https://agentskills.io/) natively, default agent auto-discovers skills)
 - **Kiro**: Install `ntfy_notify.sh` to `~/.kiro/ntfy_notify.sh` for task completion notifications (requires manual hook config in agent JSON)
-- **Kiro + Playwright MCP**: With `--with-playwright-mcp`, write browser-specific Playwright MCP server entries to `~/.kiro/settings/mcp.json`
+- **Kiro + Playwright MCP**: With `--with-playwright-mcp`, write browser-specific Playwright MCP server entries to `~/.kiro/settings/mcp.json` in headless mode by default (`--playwright-headed` keeps them visible)
 - **Respects disabled skills**: Skills with `"deny"` permission in `opencode.json` are skipped for all targets
 - **Remove mode**: Use `[target] --remove` to delete only symlinks created by the script
 - **Skills-only mode**: Use `--skills-only` to skip Codex config merge, rules, `ntfy_notify.sh`, and Copilot hooks install (link/remove skills only)

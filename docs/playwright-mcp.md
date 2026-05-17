@@ -36,15 +36,15 @@ When `--with-playwright-mcp` is enabled:
 - GitHub Copilot: writes the same three servers into `~/.copilot/mcp-config.json`
 - Kiro: writes the same three servers into `~/.kiro/settings/mcp.json`
 
-Each server uses `npx -y @playwright/mcp@latest --browser=<engine>`.
+Each server uses `npx -y @playwright/mcp@latest --browser=<engine> --headless` by default.
 
 ## Browser mapping
 
-| Browser target | MCP server name | Launch args |
+| Browser target | MCP server name | Launch args (default) |
 |---|---|---|
-| Firefox | `playwright-firefox` | `--browser=firefox` |
-| WebKit / Safari-class | `playwright-webkit` | `--browser=webkit` |
-| Microsoft Edge | `playwright-msedge` | `--browser=msedge` |
+| Firefox | `playwright-firefox` | `--browser=firefox --headless` |
+| WebKit / Safari-class | `playwright-webkit` | `--browser=webkit --headless` |
+| Microsoft Edge | `playwright-msedge` | `--browser=msedge --headless` |
 
 One server entry maps to one browser engine. Cross-browser checks should use multiple configured servers rather than trying to switch engines inside one Playwright MCP session.
 
@@ -64,6 +64,31 @@ You can combine this with context-mode if needed:
 ./setup.sh all --with-context-mode --with-playwright-mcp
 ```
 
+To keep the browser visible for debugging, opt into headed mode explicitly:
+
+```bash
+./setup.sh opencode --with-playwright-mcp --playwright-headed
+./setup.sh codex --with-playwright-mcp --playwright-headed
+./setup.sh copilot --with-playwright-mcp --playwright-headed
+./setup.sh kiro --with-playwright-mcp --playwright-headed
+```
+
+## First-run browser install
+
+The MCP server configuration is installed by `setup.sh`, but the browser engine itself may still need a one-time download. If the first WebKit/Firefox/Edge run says the browser is missing, install the engine once before retrying:
+
+```bash
+npx @playwright/mcp@latest install-browser webkit
+npx @playwright/mcp@latest install-browser firefox
+npx @playwright/mcp@latest install-browser msedge
+```
+
+For Safari-class verification specifically, the WebKit install is the important one:
+
+```bash
+npx @playwright/mcp@latest install-browser webkit
+```
+
 ## Verify
 
 ```bash
@@ -72,6 +97,58 @@ grep -n 'playwright-webkit' ~/.codex/config.toml
 grep -n 'playwright-msedge' ~/.copilot/mcp-config.json
 grep -n 'playwright-firefox' ~/.kiro/settings/mcp.json
 ```
+
+## Performance tips
+
+The official Playwright MCP docs expose several levers that matter when runs feel slow:
+
+1. **Default to headless; switch to headed only when you need to watch the browser**
+
+   Official docs say Playwright MCP is headed by default. This repo intentionally overrides that by configuring the managed MCP servers in headless mode unless you pass `--playwright-headed`. Headless avoids window-management overhead and prevents visible WebKit windows from lingering after agent runs.
+
+   Example server args:
+
+   ```json
+   ["-y", "@playwright/mcp@latest", "--browser=webkit", "--headless"]
+   ```
+
+2. **Preinstall browsers once**
+
+   First-run downloads are expensive. Installing the needed engine ahead of time removes that startup penalty.
+
+3. **Use a standalone warm server for repeated runs**
+
+   Official docs support starting Playwright MCP separately with HTTP transport:
+
+   ```bash
+   npx @playwright/mcp@latest --browser=webkit --headless --port 8931
+   ```
+
+   Then point your client at:
+
+   ```json
+   {
+     "mcpServers": {
+       "playwright-webkit": {
+         "url": "http://localhost:8931/mcp"
+       }
+     }
+   }
+   ```
+
+   This avoids repeated `npx` + server startup overhead between sessions. The official docs also support `--shared-browser-context` when multiple HTTP clients should reuse one context.
+
+4. **Prefer direct routes and batched assertions**
+
+   For agent prompts, deep-link straight to the page under test when possible and prefer one compact `browser_run_code_unsafe` assertion over many small click/snapshot turns.
+
+5. **Avoid extra evidence collection unless needed**
+
+   Screenshots, full snapshots, console dumps, and network captures are best treated as debugging follow-ups, not the default for every happy-path verification.
+
+6. **Reuse profile state intentionally**
+
+   Persistent profiles or a custom `--user-data-dir` can avoid repeated setup/login work. If parallel clients conflict, official docs recommend `--isolated` or distinct profile directories instead.
 
 ## Remove
 

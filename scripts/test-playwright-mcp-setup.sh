@@ -12,7 +12,15 @@ fail() {
 assert_file_contains() {
     local path="$1"
     local needle="$2"
-    grep -Fq "$needle" "$path" || fail "Expected '$needle' in $path"
+    grep -Fq -- "$needle" "$path" || fail "Expected '$needle' in $path"
+}
+
+assert_file_not_contains() {
+    local path="$1"
+    local needle="$2"
+    if grep -Fq -- "$needle" "$path"; then
+        fail "Did not expect '$needle' in $path"
+    fi
 }
 
 assert_not_exists() {
@@ -50,6 +58,13 @@ main() {
     assert_file_contains "$HOME/.config/opencode/opencode.json" '"playwright-firefox"'
     assert_file_contains "$HOME/.config/opencode/opencode.json" '"playwright-webkit"'
     assert_file_contains "$HOME/.config/opencode/opencode.json" '"playwright-msedge"'
+    assert_file_contains "$HOME/.config/opencode/opencode.json" '"--headless"'
+
+    bash "$REPO_ROOT/setup.sh" opencode --remove
+    assert_symlink_target "$HOME/.config/opencode/opencode.json" "$REPO_ROOT/opencode.json"
+
+    bash "$REPO_ROOT/setup.sh" opencode --with-playwright-mcp --playwright-headed
+    assert_file_not_contains "$HOME/.config/opencode/opencode.json" '"--headless"'
 
     bash "$REPO_ROOT/setup.sh" opencode --remove
     assert_symlink_target "$HOME/.config/opencode/opencode.json" "$REPO_ROOT/opencode.json"
@@ -63,6 +78,13 @@ main() {
     assert_file_contains "$HOME/.codex/config.toml" '[mcp_servers.playwright-firefox]'
     assert_file_contains "$HOME/.codex/config.toml" '[mcp_servers.playwright-webkit]'
     assert_file_contains "$HOME/.codex/config.toml" '[mcp_servers.playwright-msedge]'
+    assert_file_contains "$HOME/.codex/config.toml" '--headless'
+
+    bash "$REPO_ROOT/setup.sh" codex --remove
+    assert_not_exists "$HOME/.codex/config.toml"
+
+    bash "$REPO_ROOT/setup.sh" codex --with-playwright-mcp --playwright-headed
+    assert_file_not_contains "$HOME/.codex/config.toml" '--headless'
 
     bash "$REPO_ROOT/setup.sh" codex --remove
     assert_not_exists "$HOME/.codex/config.toml"
@@ -76,6 +98,13 @@ main() {
     assert_file_contains "$HOME/.copilot/mcp-config.json" '"playwright-firefox"'
     assert_file_contains "$HOME/.copilot/mcp-config.json" '"playwright-webkit"'
     assert_file_contains "$HOME/.copilot/mcp-config.json" '"playwright-msedge"'
+    assert_file_contains "$HOME/.copilot/mcp-config.json" '"--headless"'
+
+    COPILOT_SKIP_JS_HOOK_SETUP=1 bash "$REPO_ROOT/setup.sh" copilot --remove
+    assert_not_exists "$HOME/.copilot/mcp-config.json"
+
+    COPILOT_SKIP_JS_HOOK_SETUP=1 bash "$REPO_ROOT/setup.sh" copilot --with-playwright-mcp --playwright-headed
+    assert_file_not_contains "$HOME/.copilot/mcp-config.json" '"--headless"'
 
     COPILOT_SKIP_JS_HOOK_SETUP=1 bash "$REPO_ROOT/setup.sh" copilot --remove
     assert_not_exists "$HOME/.copilot/mcp-config.json"
@@ -89,6 +118,13 @@ main() {
     assert_file_contains "$HOME/.kiro/settings/mcp.json" '"playwright-firefox"'
     assert_file_contains "$HOME/.kiro/settings/mcp.json" '"playwright-webkit"'
     assert_file_contains "$HOME/.kiro/settings/mcp.json" '"playwright-msedge"'
+    assert_file_contains "$HOME/.kiro/settings/mcp.json" '"--headless"'
+
+    bash "$REPO_ROOT/setup.sh" kiro --remove
+    assert_not_exists "$HOME/.kiro/settings/mcp.json"
+
+    bash "$REPO_ROOT/setup.sh" kiro --with-playwright-mcp --playwright-headed
+    assert_file_not_contains "$HOME/.kiro/settings/mcp.json" '"--headless"'
 
     bash "$REPO_ROOT/setup.sh" kiro --remove
     assert_not_exists "$HOME/.kiro/settings/mcp.json"
