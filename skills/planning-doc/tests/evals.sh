@@ -5,6 +5,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_DIR="$(dirname "$SCRIPT_DIR")"
 SKILL_MD="$SKILL_DIR/SKILL.md"
 TEMPLATE_MD="$SKILL_DIR/references/plan-template.md"
+REPO_DIR="$(cd "$SKILL_DIR/../.." && pwd)"
+PLAN_PATH_SH="$REPO_DIR/scripts/plan-path.sh"
 
 passed=0
 failed=0
@@ -33,6 +35,13 @@ else
     fail "skill missing resumed-session recovery guidance"
 fi
 
+if grep -q "repository's default branch" "$SKILL_MD" \
+    && grep -q "For a simple task or a quick planning pass, staying on the default branch can be fine" "$SKILL_MD"; then
+    pass "skill explains default-branch choice and simple-task exception"
+else
+    fail "skill missing default-branch choice guidance"
+fi
+
 if grep -q "## Goal" "$TEMPLATE_MD"; then
     pass "template includes Goal section"
 else
@@ -49,6 +58,30 @@ if grep -q "## Decisions" "$TEMPLATE_MD"; then
     pass "template includes Decisions section"
 else
     fail "template missing Decisions section"
+fi
+
+if [[ "$(bash "$PLAN_PATH_SH" --branch feat/oauth-login)" == "docs/plans/feat/oauth-login/PLAN.md" ]]; then
+    pass "plan-path derives feature-branch path"
+else
+    fail "plan-path failed to derive feature-branch path"
+fi
+
+if [[ "$(bash "$PLAN_PATH_SH" --branch main --default-branch main --feature quick-doc-update)" == "docs/plans/feat/quick-doc-update/PLAN.md" ]]; then
+    pass "plan-path supports logical slug on main"
+else
+    fail "plan-path failed main-branch slug derivation"
+fi
+
+if [[ "$(bash "$PLAN_PATH_SH" --branch master --default-branch master --feature quick-doc-update)" == "docs/plans/feat/quick-doc-update/PLAN.md" ]]; then
+    pass "plan-path supports logical slug on master"
+else
+    fail "plan-path failed master-branch slug derivation"
+fi
+
+if bash "$PLAN_PATH_SH" --branch master --default-branch master > /dev/null 2>&1; then
+    fail "plan-path should reject default branch without explicit slug"
+else
+    pass "plan-path rejects default branch without explicit slug"
 fi
 
 echo "Results: $passed passed, $failed failed"

@@ -29,11 +29,15 @@ Create and maintain `PLAN.md` files tied to git branches. The plan serves two au
 ## Workflow
 
 1. Determine the current branch: `git rev-parse --abbrev-ref HEAD`.
-2. If on the default branch (usually `main`):
-   - Stop and prompt the user to create and check out a feature branch before proceeding.
+2. If on the repository's default branch (often `main` or `master`):
+   - Ask whether the user wants to create and switch to a feature branch or keep working on the default branch.
+   - Recommend a new branch for larger, longer-lived, or review-heavy work. For a simple task or a quick planning pass, staying on the default branch can be fine if the user prefers it.
+   - If the user chooses to create a branch, stop after suggesting a concrete branch name so they can switch first.
+   - If the user chooses to stay on the default branch, derive a logical plan slug from the request (or ask for one if the topic is ambiguous) and continue as though the work belonged to `feat/<slug>`, unless `fix/` or `chore/` is clearly a better fit.
 3. Derive the plan path:
-   - If the branch matches `^(feat|fix|chore)/(.+)$`, use prefix = match 1 and feature = match 2.
-   - Otherwise use prefix = `feat` and feature = full branch name.
+   - If using a real branch and it matches `^(feat|fix|chore)/(.+)$`, use prefix = match 1 and feature = match 2.
+   - If using a real branch that does not match that pattern, use prefix = `feat` and feature = full branch name.
+   - If staying on the default branch, use the chosen logical prefix/slug from step 2.
    - Plan path: `docs/plans/<prefix>/<feature>/PLAN.md`.
 4. If PLAN.md does not exist:
    - Create directories and create the plan from `references/plan-template.md`.
