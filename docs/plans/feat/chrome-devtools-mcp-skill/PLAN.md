@@ -44,6 +44,45 @@ Out of scope:
 ## STATUS UPDATES (append-only; newest first)
 ### 2026-05-17
 Change:
+- Incorporated external reference research from upstream and third-party Chrome DevTools skill material.
+- Added follow-up plan items for Lighthouse-versus-performance wording, performance trace sequencing, and token-efficient network inspection.
+- Captured a repo-specific note to avoid broad browser-automation framing or isolated-profile defaults that would weaken the live attached-session workflow.
+
+Behavior now:
+- The plan now distinguishes Chrome DevTools performance tracing from Lighthouse audits more explicitly.
+- The follow-up guidance now includes a few Chrome DevTools MCP gotchas that are likely to prevent agent confusion during real debugging sessions.
+
+Validate:
+- `rg -n "lighthouse_audit|performance_start_trace|responseFilePath|isolatedContext|isolated=true" docs/plans/feat/chrome-devtools-mcp-skill/PLAN.md` -> research-driven refinements are visible.
+
+### 2026-05-17
+Change:
+- Refined the follow-up planning guidance using rubber-duck feedback.
+- Split universal operational guardrails from the scoped live interaction/write-testing workflow.
+- Clarified that unexpected error responses remain findings in diagnostic workflows instead of universal abort conditions.
+
+Behavior now:
+- The plan no longer treats a CRUD-style network-verification sequence as the default for every Chrome DevTools task.
+- The follow-up guidance now preserves direct paths for Lighthouse, performance, memory, console-only, and other non-interaction investigations.
+
+Validate:
+- `rg -n "Operational guardrails|Live interaction and write-testing workflow|4xx/5xx" docs/plans/feat/chrome-devtools-mcp-skill/PLAN.md` -> refined guidance is visible.
+
+### 2026-05-17
+Change:
+- Added follow-up planning guidance for tightening the `chrome-devtools-mcp` skill after live-session use in GitHub Copilot.
+- Captured concrete improvements aimed at preventing tool-schema rediscovery loops and making live Chrome validation more procedural and evidence-driven.
+- Defined a recommended default workflow for page selection, snapshotting, interaction, network inspection, and request-level verification.
+
+Behavior now:
+- The current skill is usable for live Chrome inspection, but it would benefit from stronger operational guardrails once the core DevTools tools are known.
+- The plan now explicitly calls for anti-loop guidance, mutation-verification recipes, minimum-evidence rules, and abort criteria so the skill drives execution rather than repeated MCP introspection.
+
+Validate:
+- `test -f docs/plans/feat/chrome-devtools-mcp-skill/PLAN.md` -> exits 0.
+
+### 2026-05-17
+Change:
 - Implemented opt-in Chrome DevTools MCP wiring in `setup.sh` for OpenCode, Codex, GitHub Copilot, and Kiro behind `--with-chrome-devtools-mcp`.
 - Added explicit `--chrome-devtools-auto-connect` support so live-session attachment remains opt-in, and disabled upstream usage statistics by default in repo-managed config.
 - Added `skills/chrome-devtools-mcp/`, `docs/chrome-devtools-mcp.md`, and `scripts/test-chrome-devtools-mcp-setup.sh`.
@@ -73,6 +112,100 @@ Behavior now:
 Validate:
 - `test -f docs/plans/feat/chrome-devtools-mcp-skill/PLAN.md` -> exits 0.
 
+## FOLLOW-UP SKILL REFINEMENTS
+
+### Skill-body guidance to add
+- Split the additions into **universal operational guardrails** and a **live interaction/write-testing workflow** so the skill does not force Lighthouse, performance, memory, console-only, or extension-debugging tasks through a mutation-testing path.
+- Add a **single tool-discovery / anti-loop rule**: one initial discovery pass is acceptable, but once the core tools are known the agent should stop rediscovering schemas and proceed unless a real capability failure forces re-checking.
+- Add a **choose-the-smallest-path principle** so the skill favors the shortest linear sequence that proves one behavior and avoids unnecessary snapshots or network dumps from a live authenticated session.
+- Add guidance to **prefer app state over DOM scraping** when the page exposes reliable client-side state, e.g. via `evaluate_script` against a global store, with `take_snapshot` as the fallback when no reliable app state is exposed.
+- Add a **default workflow for live interaction and network verification**:
+  1. `list_pages`
+  2. `select_page`
+  3. `take_snapshot`
+  4. `evaluate_script` for baseline app state when available; otherwise read the baseline from the snapshot
+  5. `fill_form` when the workflow is form-shaped; otherwise `click` / `fill` / `navigate_page` as needed
+  6. `list_network_requests`
+  7. `get_network_request` for the specific write or verification request that matters
+  8. `list_console_messages` for runtime health checks
+  9. confirm the resulting UI/app state
+- Add **non-interaction workflow guidance** so Lighthouse, performance, memory, and console-only debugging can jump directly to the relevant tools instead of following the interaction workflow above.
+- Add a **Lighthouse scope note** so the skill says `lighthouse_audit` covers accessibility, SEO, and best-practices style checks, but **not** performance profiling.
+- Add a **performance-trace workflow** that explicitly uses:
+  1. `performance_start_trace`
+  2. `performance_stop_trace`
+  3. `performance_analyze_insight`
+  and notes that insight analysis depends on the `insightName` and `insightSetId` returned by the trace output.
+- Add a **live mutation verification recipe**:
+  - capture baseline UI/app state
+  - perform the exact UI interaction sequence
+  - inspect the resulting write request/response (`POST` / `PUT` / `PATCH` or GraphQL mutation)
+  - confirm the final UI/app state change
+  - note that WebSocket or SSE-driven flows may require app-state verification even when a single network request is not sufficient evidence
+- Add a **minimum evidence rule** so the skill prefers:
+  - baseline state
+  - the specific write request/response when applicable
+  - the resulting UI/app state
+  instead of collecting repeated snapshots or excessive tool output.
+- Add a **network-body token-economics note** so large request or response bodies are written to `requestFilePath` / `responseFilePath` instead of being inlined into context when the tool supports it.
+- Add **abort criteria for live write testing**:
+  - 4xx/5xx response
+  - unexpected redirect
+  - missing expected UI/app state change
+  - new console errors
+  - inability to verify the selected record before submission
+- Add a note that in **read-only or diagnostic workflows**, unexpected responses are findings to inspect and report, not automatic stop conditions.
+- Add a **small end-to-end example** for a logged-in Chrome validation flow that uses `evaluate_script` first for state reads, falls back to `take_snapshot` if needed, performs the interaction, inspects the targeted network request, and confirms the final UI/app state.
+- Add a **live-session isolation note**: use `new_page` with `isolatedContext` only when intentionally separating state for a second flow; do not recommend server-level `--isolated=true` as the default repo posture because it conflicts with the skill's live attached-session use case.
+- Keep the skill **routing-oriented rather than tool-catalog-oriented**; do not copy upstream's broad "browser automation" framing or a full inventory of tools into this repo skill.
+
+### Suggested wording block for the skill
+```md
+## Operational guardrails
+
+- Confirm core tools once, then act.
+- Do not re-introspect tool schemas mid-task unless a tool call fails with an
+  explicit capability error.
+- Prefer the smallest evidence set that answers the question.
+- Prefer reading app state with `evaluate_script` when available; fall back to
+  `take_snapshot` when no reliable client-side state is exposed.
+- When request or response bodies are large, prefer `requestFilePath` /
+  `responseFilePath` over inlining them into context.
+
+## Live interaction and write-testing workflow
+
+- Use this workflow for live interaction checks, not for Lighthouse, performance,
+  memory, or console-only debugging.
+- Start with `list_pages`, `select_page`, and `take_snapshot`.
+- Use `evaluate_script` for baseline state when available.
+- Prefer `fill_form` over multiple `fill` calls when the page structure allows it.
+- For mutation checks, capture only:
+  1. baseline UI/app state
+  2. the specific write request/response when applicable
+  3. the resulting UI/app state
+- In live write testing, stop on 4xx/5xx responses, unexpected redirects,
+  missing state changes, or new console errors.
+- In read-only or diagnostic workflows, unexpected responses are findings to
+  inspect and report, not automatic stop conditions.
+
+## Performance and Lighthouse workflow notes
+
+- `lighthouse_audit` is for accessibility, SEO, and best-practices style audits;
+  it is not the performance-profiling path.
+- For performance work, use `performance_start_trace`,
+  `performance_stop_trace`, then `performance_analyze_insight`.
+- Treat the trace output as the source of truth for `insightName` and
+  `insightSetId` before calling `performance_analyze_insight`.
+
+## Live-session state isolation
+
+- Keep the default repo posture aligned with live attached-session debugging.
+- Use `new_page` with `isolatedContext` only when intentionally separating state
+  for an additional flow.
+- Do not recommend server-level `--isolated=true` as the default setup for this
+  repo's primary Chrome DevTools skill.
+```
+
 ## PHASE PLAN
 
 ### Phase 1 - Integration contract and privacy posture
@@ -94,9 +227,27 @@ Scope:
 - Define explicit negative triggers so the new skill does not absorb generic browsing, screenshots, scraping, or ordinary Chrome automation already covered by `agent-browser`.
 - Keep the skill MCP-only in its normal workflow and install assumptions; if the CLI is documented at all, keep it outside the skill's primary instructions as an optional advanced path.
 - Make the skill and docs explicitly differentiate MCP-fit versus CLI-fit cases, for example: MCP for live authenticated Chrome sessions and iterative DevTools debugging; CLI only as an optional fast path for shell-driven scripted tasks such as repeatable Lighthouse runs.
+- Keep the repo wording narrower than upstream's broad browser-automation framing; this skill should remain routing-oriented rather than becoming a full tool catalog.
 Done when: The new skill's trigger language is specific to Chrome DevTools-first workflows and clearly distinct from the existing browser skills.
 Verify: `rg -n "Chrome|Chromium|Firefox|WebKit|Safari|Edge|Lighthouse|network|console|logged-in" skills/*/SKILL.md` -> overlap and differentiation are reviewable.
 Notes: The repo should not import the upstream skill text unchanged if its current description would trigger on broad browser automation requests.
+
+### Phase 2b - Operational guardrails for the Chrome DevTools skill
+Goal: Make the `chrome-devtools-mcp` skill execution-oriented once the tool surface is known.
+Scope:
+- Add universal operational guardrails that discourage repeated tool-schema rediscovery once core tools are known.
+- Add a scoped live interaction/write-testing workflow that moves from page selection to baseline state, interaction, targeted network verification, console review, and final state confirmation.
+- Add non-interaction guidance so Lighthouse, performance, memory, and console-only investigations can jump directly to their relevant tools instead of inheriting the interaction workflow.
+- Add explicit wording that `lighthouse_audit` is not the performance-profiling path, and that performance analysis should use the trace tools instead.
+- Add performance-trace sequencing guidance so `performance_analyze_insight` is only called after the trace output provides the needed `insightName` / `insightSetId`.
+- Add mutation-verification guidance that favors a baseline state, one targeted write request inspection when applicable, and a final state check.
+- Add minimum-evidence and abort criteria for live write testing while keeping diagnostic failures reportable rather than treating every unexpected response as an automatic stop.
+- Add guidance to prefer application state via `evaluate_script` over brittle DOM scraping when a page exposes reliable client-side state.
+- Add network-body handling guidance so large payloads can be written to files instead of bloating agent context.
+- Add a note that repo guidance should not recommend server-level `--isolated=true` as the default, while still documenting `isolatedContext` for intentional per-page separation.
+Done when: The skill can steer an agent through common live Chrome debugging tasks without falling back into MCP surface exploration or forcing unrelated workflows through a CRUD-shaped sequence.
+Verify: `rg -n "Operational guardrails|Live interaction and write-testing workflow|lighthouse_audit|performance_start_trace|performance_analyze_insight|responseFilePath|isolatedContext" skills/chrome-devtools-mcp/SKILL.md` -> the new guidance is visible.
+Notes: This phase is about skill-body ergonomics, not changing the MCP server itself.
 
 ### Phase 3 - Refinements to existing browser skills
 Goal: Tighten the routing boundary across all three browser skills.
@@ -154,6 +305,9 @@ Notes: Because routing quality is a core part of the feature, plan for at least 
 - 2026-05-17 - Tightened the plan further so the repo skill is MCP-only; any CLI mention belongs only in docs as an optional advanced workflow.
 - 2026-05-17 - Updated the plan so the skill/docs must explicitly differentiate MCP-fit workflows from optional CLI-fit workflows such as scripted Lighthouse runs.
 - 2026-05-17 - Implemented the Chrome DevTools MCP integration, skill, docs, and smoke coverage with explicit auto-connect opt-in and usage statistics disabled by default.
+- 2026-05-17 - Added follow-up planning notes for tightening the `chrome-devtools-mcp` skill with default workflows, anti-loop guidance, mutation-verification recipes, minimum-evidence rules, and abort criteria informed by live-session use.
+- 2026-05-17 - Refined the follow-up plan so universal guardrails stay separate from live write-testing workflows, diagnostic failures remain reportable findings, and non-interaction DevTools tasks are not forced through a mutation path.
+- 2026-05-17 - Incorporated external reference research to add Lighthouse/performance differentiation, performance trace sequencing, network-body token guidance, and live-session isolation notes to the plan.
 
 ## DECISIONS
 - 2026-05-17 - Plan around a narrow Chrome DevTools-first workflow boundary rather than importing the upstream skill unchanged, because this repo already has established browser-tooling roles for `agent-browser` and `playwright-mcp`.
@@ -165,6 +319,7 @@ Notes: Because routing quality is a core part of the feature, plan for at least 
 - 2026-05-17 - Keep live-session attachment explicit opt-in via `--chrome-devtools-auto-connect` rather than enabling auto-connect by default.
 - 2026-05-17 - Disable Chrome DevTools MCP usage statistics in repo-managed config by default with `--no-usage-statistics`.
 - 2026-05-17 - Use `chrome-devtools-mcp` as the repo skill name and `chrome-devtools` as the MCP server name.
+- 2026-05-17 - Keep server-level isolation out of the default repo guidance because the primary skill fit is live attached-session debugging, not disposable-profile automation.
 
 ## DISCOVERIES / GOTCHAS
 - 2026-05-17 - The upstream `chrome-devtools-cli` skill description is broader than this repo's desired routing boundary and would overlap with `agent-browser` if copied directly.
@@ -174,3 +329,11 @@ Notes: Because routing quality is a core part of the feature, plan for at least 
 - 2026-05-17 - The only upstream CLI reference file is an installation note centered on global npm install and PATH troubleshooting, which reinforces that the CLI is a separate operator-facing tool rather than the core MCP integration model.
 - 2026-05-17 - Mixing MCP and CLI in one repo skill would blur the install story and increase overlap with `agent-browser`, so the plan now treats CLI material as docs-only collateral.
 - 2026-05-17 - CLI workflows may be more efficient for certain scripted tasks, including repeatable Lighthouse-style audits, but that efficiency gain does not outweigh MCP as the primary fit for live authenticated Chrome debugging.
+- 2026-05-17 - The Chrome DevTools MCP itself appears adequate for live-session inspection, but the repo skill would benefit from stronger operational guardrails so agents do not get stuck re-discovering tool schemas mid-task.
+- 2026-05-17 - Live Chrome validation works better when the skill tells the agent to prove behavior with the smallest evidence set possible: baseline state, one targeted network request/response, and final state.
+- 2026-05-17 - The live interaction workflow should be scoped to write/verification tasks rather than presented as the universal default for Lighthouse, memory, performance, console-only, or extension-debugging work.
+- 2026-05-17 - 4xx/5xx responses are abort conditions for conservative live write testing, but in diagnostic workflows they are often the primary finding and should be inspected rather than treated as an automatic stop.
+- 2026-05-17 - Upstream and marketplace references often frame Chrome DevTools MCP as broad browser automation, but this repo should keep a narrower debugging-first routing boundary to avoid overlap with `agent-browser`.
+- 2026-05-17 - `lighthouse_audit` does not replace performance tracing; performance debugging needs the trace workflow and follow-up `performance_analyze_insight` calls using IDs returned from the trace output.
+- 2026-05-17 - Large network payloads are better handled by writing request and response bodies to files when the tool supports it, which aligns with the plan's minimum-evidence and token-discipline goals.
+- 2026-05-17 - Some third-party install guidance recommends server-level `--isolated=true`, but that would undermine this repo's live authenticated-session use case; page-level `isolatedContext` is the safer scoped note to document instead.
