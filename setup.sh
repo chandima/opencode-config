@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 show_help() {
     cat << 'EOF'
-Usage: ./setup.sh [TARGET] [--remove] [--with-context-mode] [--with-playwright-mcp] [--playwright-headed] [--with-chrome-devtools-mcp] [--chrome-devtools-auto-connect]
+Usage: ./setup.sh [TARGET] [--remove] [--with-context-mode] [--with-playwright-mcp] [--playwright-headed] [--with-chrome-devtools-mcp] [--with-all-integrations] [--chrome-devtools-auto-connect]
 
 Install OpenCode/Codex/Copilot/Kiro configuration by symlinking skills and generating prompt files.
 
@@ -23,6 +23,7 @@ TARGETS:
     --with-playwright-mcp  Install/configure Playwright MCP where supported
     --playwright-headed  Configure Playwright MCP servers in headed mode (default is headless)
     --with-chrome-devtools-mcp  Install/configure Chrome DevTools MCP where supported
+    --with-all-integrations  Shorthand for enabling context-mode, Playwright MCP, and Chrome DevTools MCP together
     --chrome-devtools-auto-connect  Configure Chrome DevTools MCP to auto-connect to a running local Chrome (explicit opt-in)
     --help, -h  Show this help message
 EOF
@@ -756,6 +757,10 @@ copilot_mcp_config_file() {
     echo "$(copilot_config_root)/mcp-config.json"
 }
 
+copilot_mcp_managed_state_file() {
+    echo "$(copilot_backup_dir)/mcp-config.repo-managed"
+}
+
 # ── Kiro CLI ────────────────────────────────────────────────────────────────
 # Kiro natively supports the SKILL.md format (Agent Skills standard).
 # We symlink individual skill directories to ~/.kiro/skills/ — same approach
@@ -771,6 +776,53 @@ kiro_backup_dir() {
 
 kiro_skills_dir() {
     echo "$(kiro_config_root)/skills"
+}
+
+kiro_mcp_managed_state_file() {
+    echo "$(kiro_backup_dir)/mcp.json.repo-managed"
+}
+
+prepare_managed_json_backup() {
+    local config_file="$1"
+    local backup_file="$2"
+    local managed_state_file="$3"
+    local label="$4"
+
+    if [[ -e "$config_file" ]]; then
+        if [[ ! -e "$backup_file" && ! -e "$managed_state_file" ]]; then
+            cp "$config_file" "$backup_file"
+            echo "  Backed up: $label"
+        fi
+    elif [[ ! -e "$backup_file" ]]; then
+        : > "$managed_state_file"
+    fi
+}
+
+finalize_managed_json_restore() {
+    local config_file="$1"
+    local backup_file="$2"
+    local managed_state_file="$3"
+    local label="$4"
+
+    if [[ ! -f "$config_file" && -f "$backup_file" ]]; then
+        mv "$backup_file" "$config_file"
+        rm -f "$managed_state_file"
+        echo "  Restored: $label"
+    elif [[ ! -f "$config_file" ]]; then
+        rm -f "$managed_state_file"
+    fi
+}
+
+cleanup_managed_json_artifacts() {
+    local config_file="$1"
+    local backup_file="$2"
+    local managed_state_file="$3"
+
+    if [[ -f "$config_file" ]]; then
+        rm -f "$backup_file" "$managed_state_file"
+    elif [[ ! -f "$config_file" && ! -f "$backup_file" ]]; then
+        rm -f "$managed_state_file"
+    fi
 }
 
 install_kiro_notify_script() {
@@ -848,10 +900,7 @@ install_kiro_context_mode() {
     # Install MCP server config
     local mcp_file="$mcp_dir/mcp.json"
     local mcp_backup="$backup_dir/mcp.json"
-    if [[ -e "$mcp_file" && ! -e "$mcp_backup" ]]; then
-        cp "$mcp_file" "$mcp_backup"
-        echo "  Backed up: settings/mcp.json"
-    fi
+    prepare_managed_json_backup "$mcp_file" "$mcp_backup" "$(kiro_mcp_managed_state_file)" "settings/mcp.json"
 
     # Merge context-mode into existing mcp.json or create new
     if [[ -f "$mcp_file" ]] && command -v node &>/dev/null; then
@@ -911,10 +960,7 @@ install_kiro_playwright_mcp() {
 
     local mcp_file="$mcp_dir/mcp.json"
     local mcp_backup="$backup_dir/mcp.json"
-    if [[ -e "$mcp_file" && ! -e "$mcp_backup" ]]; then
-        cp "$mcp_file" "$mcp_backup"
-        echo "  Backed up: settings/mcp.json"
-    fi
+    prepare_managed_json_backup "$mcp_file" "$mcp_backup" "$(kiro_mcp_managed_state_file)" "settings/mcp.json"
 
     if [[ -f "$mcp_file" ]] && command -v node &>/dev/null; then
         node -e "
@@ -969,10 +1015,7 @@ install_kiro_chrome_devtools_mcp() {
 
     local mcp_file="$mcp_dir/mcp.json"
     local mcp_backup="$backup_dir/mcp.json"
-    if [[ -e "$mcp_file" && ! -e "$mcp_backup" ]]; then
-        cp "$mcp_file" "$mcp_backup"
-        echo "  Backed up: settings/mcp.json"
-    fi
+    prepare_managed_json_backup "$mcp_file" "$mcp_backup" "$(kiro_mcp_managed_state_file)" "settings/mcp.json"
 
     if [[ -f "$mcp_file" ]] && command -v node &>/dev/null; then
         node -e "
@@ -1016,6 +1059,10 @@ remove_kiro_context_mode() {
     # Remove context-mode from mcp.json
     local mcp_file="$config_root/settings/mcp.json"
     local mcp_backup="$backup_dir/mcp.json"
+    if [[ ! -f "$mcp_file" ]]; then
+        return 0
+    fi
+
     if [[ -f "$mcp_file" ]] && command -v node &>/dev/null; then
         node -e "
 const fs = require('fs');
@@ -1029,10 +1076,7 @@ if (out === '{}') { fs.unlinkSync('$mcp_file'); } else { fs.writeFileSync('$mcp_
     fi
 
     # Restore backup if mcp.json was removed entirely
-    if [[ ! -f "$mcp_file" && -f "$mcp_backup" ]]; then
-        mv "$mcp_backup" "$mcp_file"
-        echo "  Restored: settings/mcp.json"
-    fi
+    finalize_managed_json_restore "$mcp_file" "$mcp_backup" "$(kiro_mcp_managed_state_file)" "settings/mcp.json"
 }
 
 remove_kiro_chrome_devtools_mcp() {
@@ -1071,10 +1115,7 @@ if (out === '{}') {
         echo "  Removed: Chrome DevTools MCP from settings/mcp.json"
     fi
 
-    if [[ ! -f "$mcp_file" && -f "$mcp_backup" ]]; then
-        mv "$mcp_backup" "$mcp_file"
-        echo "  Restored: settings/mcp.json"
-    fi
+    finalize_managed_json_restore "$mcp_file" "$mcp_backup" "$(kiro_mcp_managed_state_file)" "settings/mcp.json"
 }
 
 remove_kiro_playwright_mcp() {
@@ -1115,10 +1156,7 @@ if (out === '{}') {
         echo "  Removed: Playwright MCP from settings/mcp.json"
     fi
 
-    if [[ ! -f "$mcp_file" && -f "$mcp_backup" ]]; then
-        mv "$mcp_backup" "$mcp_file"
-        echo "  Restored: settings/mcp.json"
-    fi
+    finalize_managed_json_restore "$mcp_file" "$mcp_backup" "$(kiro_mcp_managed_state_file)" "settings/mcp.json"
 }
 
 setup_kiro() {
@@ -1245,6 +1283,10 @@ remove_kiro() {
     remove_kiro_context_mode
     remove_kiro_chrome_devtools_mcp
     remove_kiro_playwright_mcp
+    cleanup_managed_json_artifacts \
+        "$(kiro_config_root)/settings/mcp.json" \
+        "$(kiro_backup_dir)/mcp.json" \
+        "$(kiro_mcp_managed_state_file)"
 }
 
 install_copilot_notify_script() {
@@ -1376,10 +1418,7 @@ install_copilot_playwright_mcp_config() {
     mkdir -p "$(copilot_config_root)"
     mkdir -p "$(copilot_backup_dir)"
 
-    if [[ -e "$config_file" && ! -e "$backup" ]]; then
-        cp "$config_file" "$backup"
-        echo "  Backed up: mcp-config.json"
-    fi
+    prepare_managed_json_backup "$config_file" "$backup" "$(copilot_mcp_managed_state_file)" "mcp-config.json"
 
     if [[ -f "$config_file" ]] && command -v node &>/dev/null; then
         node -e "
@@ -1438,10 +1477,7 @@ install_copilot_chrome_devtools_mcp_config() {
     mkdir -p "$(copilot_config_root)"
     mkdir -p "$(copilot_backup_dir)"
 
-    if [[ -e "$config_file" && ! -e "$backup" ]]; then
-        cp "$config_file" "$backup"
-        echo "  Backed up: mcp-config.json"
-    fi
+    prepare_managed_json_backup "$config_file" "$backup" "$(copilot_mcp_managed_state_file)" "mcp-config.json"
 
     if [[ -f "$config_file" ]] && command -v node &>/dev/null; then
         node -e "
@@ -1509,10 +1545,7 @@ if (out === '{}') {
         echo "  Removed: Playwright MCP from mcp-config.json"
     fi
 
-    if [[ ! -f "$config_file" && -f "$backup" ]]; then
-        mv "$backup" "$config_file"
-        echo "  Restored: mcp-config.json"
-    fi
+    finalize_managed_json_restore "$config_file" "$backup" "$(copilot_mcp_managed_state_file)" "mcp-config.json"
 }
 
 remove_copilot_chrome_devtools_mcp_config() {
@@ -1549,10 +1582,7 @@ if (out === '{}') {
         echo "  Removed: Chrome DevTools MCP from mcp-config.json"
     fi
 
-    if [[ ! -f "$config_file" && -f "$backup" ]]; then
-        mv "$backup" "$config_file"
-        echo "  Restored: mcp-config.json"
-    fi
+    finalize_managed_json_restore "$config_file" "$backup" "$(copilot_mcp_managed_state_file)" "mcp-config.json"
 }
 
 install_copilot_hooks() {
@@ -1741,6 +1771,10 @@ remove_copilot() {
     remove_copilot_context_mode_plugin
     remove_copilot_chrome_devtools_mcp_config
     remove_copilot_playwright_mcp_config
+    cleanup_managed_json_artifacts \
+        "$(copilot_mcp_config_file)" \
+        "$(copilot_backup_dir)/mcp-config.json" \
+        "$(copilot_mcp_managed_state_file)"
 }
 
 # Remove symlinks for OpenCode
@@ -1850,6 +1884,11 @@ while [[ $# -gt 0 ]]; do
             PLAYWRIGHT_HEADED=1
             ;;
         --with-chrome-devtools-mcp)
+            WITH_CHROME_DEVTOOLS_MCP=1
+            ;;
+        --with-all-integrations)
+            WITH_CONTEXT_MODE=1
+            WITH_PLAYWRIGHT_MCP=1
             WITH_CHROME_DEVTOOLS_MCP=1
             ;;
         --chrome-devtools-auto-connect)

@@ -21,7 +21,8 @@ opencode-config/                      # This git repo (your config)
 │   ├── install-context-mode.sh       # context-mode install/upgrade helper
 │   ├── test-context-mode-setup.sh    # context-mode smoke tests
 │   ├── test-playwright-mcp-setup.sh  # Playwright MCP smoke tests
-│   └── test-chrome-devtools-mcp-setup.sh  # Chrome DevTools MCP smoke tests
+│   ├── test-chrome-devtools-mcp-setup.sh  # Chrome DevTools MCP smoke tests
+│   └── test-all-integrations-setup.sh  # bundle shortcut smoke test
 ├── .codex/                           # Codex config + rules (tracked)
 │   ├── config.toml                   # Codex config (TOML format)
 │   ├── ntfy_notify.sh                # ntfy notification script (Codex)
@@ -106,6 +107,7 @@ cd opencode-config
 ./setup.sh all --with-chrome-devtools-mcp       # All four with Chrome DevTools MCP
 ./setup.sh all --with-chrome-devtools-mcp --chrome-devtools-auto-connect  # Opt into live-session auto-connect
 ./setup.sh all --with-context-mode --with-playwright-mcp --with-chrome-devtools-mcp  # Combine optional integrations
+./setup.sh all --with-all-integrations  # Shorthand for all three optional integrations
 ./setup.sh opencode --skills-only # OpenCode skills only (skip opencode.json)
 ./setup.sh codex --skills-only    # Codex skills only (skip config merge + rules)
 ./setup.sh opencode --remove  # Remove OpenCode symlinks
@@ -139,6 +141,7 @@ The script will:
 - **Kiro**: Install `ntfy_notify.sh` to `~/.kiro/ntfy_notify.sh` for task completion notifications (requires manual hook config in agent JSON)
 - **Kiro + Playwright MCP**: With `--with-playwright-mcp`, write browser-specific Playwright MCP server entries to `~/.kiro/settings/mcp.json` in headless mode by default (`--playwright-headed` keeps them visible)
 - **Kiro + Chrome DevTools MCP**: With `--with-chrome-devtools-mcp`, write a `chrome-devtools` MCP server entry to `~/.kiro/settings/mcp.json` with usage statistics disabled by default (`--chrome-devtools-auto-connect` explicitly opts into live-session auto-connect)
+- **Bundle shortcut**: With `--with-all-integrations`, enable context-mode, Playwright MCP, and Chrome DevTools MCP together using the same existing per-integration behavior
 - **Respects disabled skills**: Skills with `"deny"` permission in `opencode.json` are skipped for all targets
 - **Remove mode**: Use `[target] --remove` to delete only symlinks created by the script
 - **Skills-only mode**: Use `--skills-only` to skip Codex config merge, rules, `ntfy_notify.sh`, and Copilot hooks install (link/remove skills only)
@@ -238,6 +241,7 @@ Optional integration:
 - The repo treats Chrome DevTools MCP as the Chrome-specific debugging path for live-session DevTools work, while `agent-browser` remains the default for routine Chromium automation
 - `--chrome-devtools-auto-connect` is explicit opt-in; repo-managed config disables Chrome DevTools MCP usage statistics by default
 - See `docs/chrome-devtools-mcp.md` for install, verify, update, remove, and MCP-versus-CLI guidance
+- `./setup.sh ... --with-all-integrations` is shorthand for enabling all three optional integrations together; it does not change the repo's normal skill-permission behavior beyond what those individual flags already do
 
 > **Note:** Some plugins like `opencode-notify` and `opencode-worktree` require [OCX](https://github.com/kdcokenny/ocx) package manager (not available via npm).
 
@@ -354,6 +358,14 @@ Validates opt-in Playwright MCP wiring for OpenCode, Codex, GitHub Copilot, and 
 ```
 
 Validates opt-in Chrome DevTools MCP wiring for OpenCode, Codex, GitHub Copilot, and Kiro, including explicit auto-connect opt-in behavior.
+
+### Testing the All-Integrations Shortcut
+
+```bash
+./scripts/test-all-integrations-setup.sh
+```
+
+Validates `--with-all-integrations` as a shorthand for enabling context-mode, Playwright MCP, and Chrome DevTools MCP together.
 
 ### Skill Loading Evals
 
