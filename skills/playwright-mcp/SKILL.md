@@ -7,7 +7,9 @@ description: |
   Firefox", "reproduce in Safari", "check WebKit", "verify in Edge", "run
   this across browsers", or "compare behavior in all browsers". DO NOT use
   for: ordinary Chrome/Chromium browsing, one-off screenshots, generic form
-  filling, or routine site interaction that agent-browser already supports.
+  filling, routine site interaction that agent-browser already supports, or
+  Chrome-specific DevTools debugging of a live Chrome session (use
+  chrome-devtools-mcp instead).
 compatibility: "OpenCode, Codex CLI, GitHub Copilot, Kiro. Requires Playwright MCP servers configured by setup.sh or client-native MCP config."
 ---
 
@@ -29,6 +31,7 @@ Use the official Playwright MCP servers when browser-engine coverage matters mor
 - Simple screenshots or page scraping
 - Routine login/form-submission flows that do not require browser-engine comparisons
 - Cases where `agent-browser` already fits
+- Chrome-specific DevTools workflows such as selected-element inspection, console or network investigation, or Lighthouse/performance debugging in a live Chrome session
 
 ## Prerequisite
 
@@ -60,6 +63,7 @@ One Playwright MCP server instance is bound to one browser engine at startup. Fo
 1. If the user explicitly names a browser, use the matching Playwright MCP server.
 2. If the user asks for "cross-browser", "all browsers", or a comparison across engines, use multiple Playwright MCP servers and report browser-specific differences.
 3. If the request is just "open the page", "fill the form", "take a screenshot", or similar Chromium-friendly automation, stop and use `agent-browser` instead.
+4. If the request is specifically about Chrome DevTools context in a live Chrome session, stop and use `chrome-devtools-mcp` instead.
 
 ## Performance Guidance
 

@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 show_help() {
     cat << 'EOF'
-Usage: ./setup.sh [TARGET] [--remove] [--with-context-mode] [--with-playwright-mcp] [--playwright-headed]
+Usage: ./setup.sh [TARGET] [--remove] [--with-context-mode] [--with-playwright-mcp] [--playwright-headed] [--with-chrome-devtools-mcp] [--chrome-devtools-auto-connect]
 
 Install OpenCode/Codex/Copilot/Kiro configuration by symlinking skills and generating prompt files.
 
@@ -22,6 +22,8 @@ TARGETS:
     --with-context-mode  Install/configure context-mode where supported
     --with-playwright-mcp  Install/configure Playwright MCP where supported
     --playwright-headed  Configure Playwright MCP servers in headed mode (default is headless)
+    --with-chrome-devtools-mcp  Install/configure Chrome DevTools MCP where supported
+    --chrome-devtools-auto-connect  Configure Chrome DevTools MCP to auto-connect to a running local Chrome (explicit opt-in)
     --help, -h  Show this help message
 EOF
 }
@@ -30,10 +32,18 @@ EOF
 get_disabled_skills() {
     local runtime="${1:-generic}"
     local enable_playwright=0
+    local enable_chrome_devtools=0
     if [[ "$WITH_PLAYWRIGHT_MCP" -eq 1 && "$SKILLS_ONLY" -eq 0 ]]; then
         case "$runtime" in
             codex|copilot|kiro)
                 enable_playwright=1
+                ;;
+        esac
+    fi
+    if [[ "$WITH_CHROME_DEVTOOLS_MCP" -eq 1 && "$SKILLS_ONLY" -eq 0 ]]; then
+        case "$runtime" in
+            codex|copilot|kiro)
+                enable_chrome_devtools=1
                 ;;
         esac
     fi
@@ -44,11 +54,14 @@ const perms = { ...(config.permission?.skill || {}) };
 if (process.argv[2] === '1') {
   delete perms['playwright-mcp'];
 }
+if (process.argv[3] === '1') {
+  delete perms['chrome-devtools-mcp'];
+}
 const disabled = Object.keys(perms)
   .filter(k => k !== '*' && perms[k] === 'deny')
   .map(k => k.replace(/\*/g, '.*'));
 console.log(disabled.join('|'));
-" "$SCRIPT_DIR/opencode.json" "$enable_playwright"
+" "$SCRIPT_DIR/opencode.json" "$enable_playwright" "$enable_chrome_devtools"
 }
 
 skill_in_list() {
@@ -104,6 +117,10 @@ codex_playwright_mcp_state_file() {
     echo "$(codex_config_root)/.playwright-mcp-state.json"
 }
 
+codex_chrome_devtools_mcp_state_file() {
+    echo "$(codex_config_root)/.chrome-devtools-mcp-state.json"
+}
+
 playwright_args_json() {
     local browser="$1"
     if [[ "$PLAYWRIGHT_HEADED" -eq 1 ]]; then
@@ -119,6 +136,22 @@ playwright_args_toml() {
         printf '["-y", "@playwright/mcp@latest", "--browser=%s"]' "$browser"
     else
         printf '["-y", "@playwright/mcp@latest", "--browser=%s", "--headless"]' "$browser"
+    fi
+}
+
+chrome_devtools_args_json() {
+    if [[ "$CHROME_DEVTOOLS_AUTO_CONNECT" -eq 1 ]]; then
+        printf '["-y", "chrome-devtools-mcp@latest", "--no-usage-statistics", "--auto-connect"]'
+    else
+        printf '["-y", "chrome-devtools-mcp@latest", "--no-usage-statistics"]'
+    fi
+}
+
+chrome_devtools_args_toml() {
+    if [[ "$CHROME_DEVTOOLS_AUTO_CONNECT" -eq 1 ]]; then
+        printf '["-y", "chrome-devtools-mcp@latest", "--no-usage-statistics", "--auto-connect"]'
+    else
+        printf '["-y", "chrome-devtools-mcp@latest", "--no-usage-statistics"]'
     fi
 }
 
@@ -156,6 +189,12 @@ install_managed_opencode_config() {
         overlay_args+=(--with-playwright-mcp)
         if [[ "$PLAYWRIGHT_HEADED" -eq 1 ]]; then
             overlay_args+=(--playwright-headed)
+        fi
+    fi
+    if [[ "$WITH_CHROME_DEVTOOLS_MCP" -eq 1 ]]; then
+        overlay_args+=(--with-chrome-devtools-mcp)
+        if [[ "$CHROME_DEVTOOLS_AUTO_CONNECT" -eq 1 ]]; then
+            overlay_args+=(--chrome-devtools-auto-connect)
         fi
     fi
 
@@ -256,6 +295,46 @@ EOF
 remove_codex_playwright_mcp_config() {
     local state_file
     state_file="$(codex_playwright_mcp_state_file)"
+    local target_config
+    target_config="$(codex_config_file)"
+
+    if [[ ! -f "$state_file" && ! -f "$target_config" ]]; then
+        return 0
+    fi
+
+    require_python3
+    python3 "$SCRIPT_DIR/scripts/codex-config.py" remove \
+        --target "$target_config" \
+        --state "$state_file"
+}
+
+merge_codex_chrome_devtools_mcp_config() {
+    local target_config
+    target_config="$(codex_config_file)"
+    local state_file
+    state_file="$(codex_chrome_devtools_mcp_state_file)"
+    local temp_config
+    temp_config="$(mktemp)"
+
+    cat > "$temp_config" << EOF
+[mcp_servers.chrome-devtools]
+command = "npx"
+args = $(chrome_devtools_args_toml)
+EOF
+
+    require_python3
+    python3 "$SCRIPT_DIR/scripts/codex-config.py" install \
+        --repo "$temp_config" \
+        --target "$target_config" \
+        --state "$state_file"
+
+    rm -f "$temp_config"
+    echo "  Merged: ~/.codex/config.toml (Chrome DevTools MCP)"
+}
+
+remove_codex_chrome_devtools_mcp_config() {
+    local state_file
+    state_file="$(codex_chrome_devtools_mcp_state_file)"
     local target_config
     target_config="$(codex_config_file)"
 
@@ -519,6 +598,9 @@ setup_codex_config() {
     if [[ "$WITH_PLAYWRIGHT_MCP" -eq 1 ]]; then
         merge_codex_playwright_mcp_config
     fi
+    if [[ "$WITH_CHROME_DEVTOOLS_MCP" -eq 1 ]]; then
+        merge_codex_chrome_devtools_mcp_config
+    fi
 }
 
 remove_codex_config() {
@@ -538,6 +620,7 @@ remove_codex_config() {
 
     remove_codex_context_mode_config
     remove_codex_playwright_mcp_config
+    remove_codex_chrome_devtools_mcp_config
 
     if [[ -f "$state_file" || -f "$target_config" ]]; then
         require_python3
@@ -576,7 +659,7 @@ setup_opencode() {
     echo "  Linked: skills/"
 
     if [[ "$SKILLS_ONLY" -eq 0 ]]; then
-        if [[ "$WITH_CONTEXT_MODE" -eq 1 || "$WITH_PLAYWRIGHT_MCP" -eq 1 ]]; then
+        if [[ "$WITH_CONTEXT_MODE" -eq 1 || "$WITH_PLAYWRIGHT_MCP" -eq 1 || "$WITH_CHROME_DEVTOOLS_MCP" -eq 1 ]]; then
             install_managed_opencode_config
         else
             ln -sf "$SCRIPT_DIR/opencode.json" "$config_dir/opencode.json"
@@ -875,6 +958,48 @@ EOF
     echo "  Installed: settings/mcp.json (Playwright MCP)"
 }
 
+install_kiro_chrome_devtools_mcp() {
+    local config_root
+    config_root="$(kiro_config_root)"
+    local backup_dir
+    backup_dir="$(kiro_backup_dir)"
+    local mcp_dir="$config_root/settings"
+
+    mkdir -p "$mcp_dir" "$backup_dir"
+
+    local mcp_file="$mcp_dir/mcp.json"
+    local mcp_backup="$backup_dir/mcp.json"
+    if [[ -e "$mcp_file" && ! -e "$mcp_backup" ]]; then
+        cp "$mcp_file" "$mcp_backup"
+        echo "  Backed up: settings/mcp.json"
+    fi
+
+    if [[ -f "$mcp_file" ]] && command -v node &>/dev/null; then
+        node -e "
+const fs = require('fs');
+const cfg = JSON.parse(fs.readFileSync('$mcp_file', 'utf8'));
+cfg.mcpServers = cfg.mcpServers || {};
+cfg.mcpServers['chrome-devtools'] = {
+  command: 'npx',
+  args: $(chrome_devtools_args_json)
+};
+fs.writeFileSync('$mcp_file', JSON.stringify(cfg, null, 2) + '\n');
+"
+    else
+        cat > "$mcp_file" << EOF
+{
+  "mcpServers": {
+    "chrome-devtools": {
+      "command": "npx",
+      "args": $(chrome_devtools_args_json)
+    }
+  }
+}
+EOF
+    fi
+    echo "  Installed: settings/mcp.json (Chrome DevTools MCP)"
+}
+
 remove_kiro_context_mode() {
     local config_root
     config_root="$(kiro_config_root)"
@@ -910,6 +1035,48 @@ if (out === '{}') { fs.unlinkSync('$mcp_file'); } else { fs.writeFileSync('$mcp_
     fi
 }
 
+remove_kiro_chrome_devtools_mcp() {
+    local config_root
+    config_root="$(kiro_config_root)"
+    local backup_dir
+    backup_dir="$(kiro_backup_dir)"
+    local mcp_file="$config_root/settings/mcp.json"
+    local mcp_backup="$backup_dir/mcp.json"
+
+    if [[ ! -f "$mcp_file" ]]; then
+        return 0
+    fi
+
+    if ! grep -Fq '"chrome-devtools"' "$mcp_file"; then
+        return 0
+    fi
+
+    if command -v node &>/dev/null; then
+        node -e "
+const fs = require('fs');
+const cfg = JSON.parse(fs.readFileSync('$mcp_file', 'utf8'));
+if (cfg.mcpServers) {
+  delete cfg.mcpServers['chrome-devtools'];
+}
+if (cfg.mcpServers && Object.keys(cfg.mcpServers).length === 0) {
+  delete cfg.mcpServers;
+}
+const out = JSON.stringify(cfg, null, 2);
+if (out === '{}') {
+  fs.unlinkSync('$mcp_file');
+} else {
+  fs.writeFileSync('$mcp_file', out + '\n');
+}
+"
+        echo "  Removed: Chrome DevTools MCP from settings/mcp.json"
+    fi
+
+    if [[ ! -f "$mcp_file" && -f "$mcp_backup" ]]; then
+        mv "$mcp_backup" "$mcp_file"
+        echo "  Restored: settings/mcp.json"
+    fi
+}
+
 remove_kiro_playwright_mcp() {
     local config_root
     config_root="$(kiro_config_root)"
@@ -918,7 +1085,15 @@ remove_kiro_playwright_mcp() {
     local mcp_file="$config_root/settings/mcp.json"
     local mcp_backup="$backup_dir/mcp.json"
 
-    if [[ -f "$mcp_file" ]] && command -v node &>/dev/null; then
+    if [[ ! -f "$mcp_file" ]]; then
+        return 0
+    fi
+
+    if ! grep -Fq '"playwright-firefox"' "$mcp_file"; then
+        return 0
+    fi
+
+    if command -v node &>/dev/null; then
         node -e "
 const fs = require('fs');
 const cfg = JSON.parse(fs.readFileSync('$mcp_file', 'utf8'));
@@ -1021,6 +1196,9 @@ setup_kiro() {
         if [[ "$WITH_PLAYWRIGHT_MCP" -eq 1 ]]; then
             install_kiro_playwright_mcp
         fi
+        if [[ "$WITH_CHROME_DEVTOOLS_MCP" -eq 1 ]]; then
+            install_kiro_chrome_devtools_mcp
+        fi
     fi
 
     echo ""
@@ -1065,6 +1243,7 @@ remove_kiro() {
 
     remove_kiro_notify_script
     remove_kiro_context_mode
+    remove_kiro_chrome_devtools_mcp
     remove_kiro_playwright_mcp
 }
 
@@ -1250,13 +1429,65 @@ EOF
     echo "  Installed: mcp-config.json (Playwright MCP)"
 }
 
+install_copilot_chrome_devtools_mcp_config() {
+    local config_file
+    config_file="$(copilot_mcp_config_file)"
+    local backup
+    backup="$(copilot_backup_dir)/mcp-config.json"
+
+    mkdir -p "$(copilot_config_root)"
+    mkdir -p "$(copilot_backup_dir)"
+
+    if [[ -e "$config_file" && ! -e "$backup" ]]; then
+        cp "$config_file" "$backup"
+        echo "  Backed up: mcp-config.json"
+    fi
+
+    if [[ -f "$config_file" ]] && command -v node &>/dev/null; then
+        node -e "
+const fs = require('fs');
+const cfg = JSON.parse(fs.readFileSync('$config_file', 'utf8'));
+cfg.mcpServers = cfg.mcpServers || {};
+cfg.mcpServers['chrome-devtools'] = {
+  type: 'local',
+  command: 'npx',
+  tools: ['*'],
+  args: $(chrome_devtools_args_json)
+};
+fs.writeFileSync('$config_file', JSON.stringify(cfg, null, 2) + '\n');
+"
+    else
+        cat > "$config_file" << EOF
+{
+  "mcpServers": {
+    "chrome-devtools": {
+      "type": "local",
+      "command": "npx",
+      "tools": ["*"],
+      "args": $(chrome_devtools_args_json)
+    }
+  }
+}
+EOF
+    fi
+    echo "  Installed: mcp-config.json (Chrome DevTools MCP)"
+}
+
 remove_copilot_playwright_mcp_config() {
     local config_file
     config_file="$(copilot_mcp_config_file)"
     local backup
     backup="$(copilot_backup_dir)/mcp-config.json"
 
-    if [[ -f "$config_file" ]] && command -v node &>/dev/null; then
+    if [[ ! -f "$config_file" ]]; then
+        return 0
+    fi
+
+    if ! grep -Fq '"playwright-firefox"' "$config_file"; then
+        return 0
+    fi
+
+    if command -v node &>/dev/null; then
         node -e "
 const fs = require('fs');
 const cfg = JSON.parse(fs.readFileSync('$config_file', 'utf8'));
@@ -1276,6 +1507,46 @@ if (out === '{}') {
 }
 "
         echo "  Removed: Playwright MCP from mcp-config.json"
+    fi
+
+    if [[ ! -f "$config_file" && -f "$backup" ]]; then
+        mv "$backup" "$config_file"
+        echo "  Restored: mcp-config.json"
+    fi
+}
+
+remove_copilot_chrome_devtools_mcp_config() {
+    local config_file
+    config_file="$(copilot_mcp_config_file)"
+    local backup
+    backup="$(copilot_backup_dir)/mcp-config.json"
+
+    if [[ ! -f "$config_file" ]]; then
+        return 0
+    fi
+
+    if ! grep -Fq '"chrome-devtools"' "$config_file"; then
+        return 0
+    fi
+
+    if command -v node &>/dev/null; then
+        node -e "
+const fs = require('fs');
+const cfg = JSON.parse(fs.readFileSync('$config_file', 'utf8'));
+if (cfg.mcpServers) {
+  delete cfg.mcpServers['chrome-devtools'];
+}
+if (cfg.mcpServers && Object.keys(cfg.mcpServers).length === 0) {
+  delete cfg.mcpServers;
+}
+const out = JSON.stringify(cfg, null, 2);
+if (out === '{}') {
+  fs.unlinkSync('$config_file');
+} else {
+  fs.writeFileSync('$config_file', out + '\n');
+}
+"
+        echo "  Removed: Chrome DevTools MCP from mcp-config.json"
     fi
 
     if [[ ! -f "$config_file" && -f "$backup" ]]; then
@@ -1421,6 +1692,9 @@ setup_copilot() {
         if [[ "$WITH_PLAYWRIGHT_MCP" -eq 1 ]]; then
             install_copilot_playwright_mcp_config
         fi
+        if [[ "$WITH_CHROME_DEVTOOLS_MCP" -eq 1 ]]; then
+            install_copilot_chrome_devtools_mcp_config
+        fi
         echo ""
         echo "  ℹ️  Copilot CLI loads hooks from .github/hooks/ in your working directory."
         echo "     To enable ntfy notifications in a project, run:"
@@ -1465,6 +1739,7 @@ remove_copilot() {
     remove_copilot_notify_script
     remove_copilot_hooks
     remove_copilot_context_mode_plugin
+    remove_copilot_chrome_devtools_mcp_config
     remove_copilot_playwright_mcp_config
 }
 
@@ -1549,6 +1824,8 @@ SKILLS_ONLY=0
 WITH_CONTEXT_MODE=0
 WITH_PLAYWRIGHT_MCP=0
 PLAYWRIGHT_HEADED=0
+WITH_CHROME_DEVTOOLS_MCP=0
+CHROME_DEVTOOLS_AUTO_CONNECT=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -1571,6 +1848,12 @@ while [[ $# -gt 0 ]]; do
             ;;
         --playwright-headed)
             PLAYWRIGHT_HEADED=1
+            ;;
+        --with-chrome-devtools-mcp)
+            WITH_CHROME_DEVTOOLS_MCP=1
+            ;;
+        --chrome-devtools-auto-connect)
+            CHROME_DEVTOOLS_AUTO_CONNECT=1
             ;;
         opencode|codex|copilot|kiro|both|all)
             if [[ "$TARGET_SET" -eq 1 ]]; then

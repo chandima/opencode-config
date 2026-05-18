@@ -18,7 +18,9 @@ def parse_args() -> argparse.Namespace:
     install_opencode.add_argument("--state", required=True, type=Path)
     install_opencode.add_argument("--with-context-mode", action="store_true")
     install_opencode.add_argument("--with-playwright-mcp", action="store_true")
+    install_opencode.add_argument("--with-chrome-devtools-mcp", action="store_true")
     install_opencode.add_argument("--playwright-headed", action="store_true")
+    install_opencode.add_argument("--chrome-devtools-auto-connect", action="store_true")
 
     remove_opencode = subparsers.add_parser("remove-opencode", help="Remove managed OpenCode config.")
     remove_opencode.add_argument("--target", required=True, type=Path)
@@ -64,12 +66,26 @@ def build_playwright_mcp_entries(*, playwright_headed: bool) -> dict[str, Any]:
     }
 
 
+def build_chrome_devtools_mcp_entry(*, auto_connect: bool) -> dict[str, Any]:
+    command = ["npx", "-y", "chrome-devtools-mcp@latest", "--no-usage-statistics"]
+    if auto_connect:
+        command.append("--auto-connect")
+    return {
+        "chrome-devtools": {
+            "type": "local",
+            "command": command,
+        }
+    }
+
+
 def build_opencode_config(
     base_path: Path,
     *,
     with_context_mode: bool,
     with_playwright_mcp: bool,
+    with_chrome_devtools_mcp: bool,
     playwright_headed: bool,
+    chrome_devtools_auto_connect: bool,
 ) -> str:
     config = load_json(base_path)
 
@@ -79,7 +95,7 @@ def build_opencode_config(
             plugins.append("context-mode")
         config["plugin"] = plugins
 
-    if with_context_mode or with_playwright_mcp:
+    if with_context_mode or with_playwright_mcp or with_chrome_devtools_mcp:
         mcp = config.get("mcp")
         if not isinstance(mcp, dict):
             mcp = {}
@@ -87,16 +103,25 @@ def build_opencode_config(
             mcp["context-mode"] = {"type": "local", "command": ["context-mode"]}
         if with_playwright_mcp:
             mcp.update(build_playwright_mcp_entries(playwright_headed=playwright_headed))
+        if with_chrome_devtools_mcp:
+            mcp.update(
+                build_chrome_devtools_mcp_entry(
+                    auto_connect=chrome_devtools_auto_connect
+                )
+            )
         config["mcp"] = mcp
 
-    if with_playwright_mcp:
+    if with_playwright_mcp or with_chrome_devtools_mcp:
         permission = config.get("permission")
         if not isinstance(permission, dict):
             permission = {}
         skill = permission.get("skill")
         if not isinstance(skill, dict):
             skill = {}
-        skill["playwright-mcp"] = "allow"
+        if with_playwright_mcp:
+            skill["playwright-mcp"] = "allow"
+        if with_chrome_devtools_mcp:
+            skill["chrome-devtools-mcp"] = "allow"
         permission["skill"] = skill
         config["permission"] = permission
 
@@ -108,7 +133,9 @@ def install_opencode(args: argparse.Namespace) -> int:
         args.base,
         with_context_mode=args.with_context_mode,
         with_playwright_mcp=args.with_playwright_mcp,
+        with_chrome_devtools_mcp=args.with_chrome_devtools_mcp,
         playwright_headed=args.playwright_headed,
+        chrome_devtools_auto_connect=args.chrome_devtools_auto_connect,
     )
 
     previous_kind = "missing"

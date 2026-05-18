@@ -4,6 +4,7 @@
   "permission": {
     "skill": {
       "*": "allow",
+      "chrome-devtools-mcp": "deny",
       "playwright-mcp": "deny"
     }
   },

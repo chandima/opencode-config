@@ -1,6 +1,6 @@
 ---
 name: agent-browser
-description: "Browser automation CLI for AI agents using Chrome/Chromium. Use when the user needs to interact with websites, including navigating pages, filling forms, clicking buttons, taking screenshots, extracting data, testing web apps, or automating browser tasks in Chrome/Chromium. Triggers include requests to \"open a website\", \"fill out a form\", \"click a button\", \"take a screenshot\", \"scrape data from a page\", \"test this web app\", \"login to a site\", or other programmatic web interaction that does not require Firefox, WebKit/Safari, Edge, or cross-browser coverage. DO NOT use for: Firefox/WebKit/Edge or multi-browser verification (use playwright-mcp instead), API testing without a browser, direct HTTP requests (use curl/fetch instead), or static content scraping that doesn't require JavaScript rendering."
+description: "Browser automation CLI for AI agents using Chrome/Chromium. Use when the user needs to interact with websites, including navigating pages, filling forms, clicking buttons, taking screenshots, extracting data, testing web apps, or automating browser tasks in Chrome/Chromium. Triggers include requests to \"open a website\", \"fill out a form\", \"click a button\", \"take a screenshot\", \"scrape data from a page\", \"test this web app\", \"login to a site\", or other programmatic web interaction that does not require Firefox, WebKit/Safari, Edge, cross-browser coverage, or Chrome DevTools-native inspection. DO NOT use for: Chrome DevTools-first debugging of a live Chrome session, selected-element inspection from DevTools, Chrome console/network/Lighthouse/memory workflows (use chrome-devtools-mcp instead), Firefox/WebKit/Edge or multi-browser verification (use playwright-mcp instead), API testing without a browser, direct HTTP requests (use curl/fetch instead), or static content scraping that doesn't require JavaScript rendering."
 allowed-tools: Bash(npx agent-browser:*), Bash(agent-browser:*)
 context: fork
 compatibility: "OpenCode, Codex CLI, GitHub Copilot. Requires npx and agent-browser CLI."
@@ -9,6 +9,14 @@ compatibility: "OpenCode, Codex CLI, GitHub Copilot. Requires npx and agent-brow
 # Browser Automation with agent-browser
 
 The CLI uses Chrome/Chromium via CDP directly. Install via `npm i -g agent-browser`, `brew install agent-browser`, or `cargo install agent-browser`. Run `agent-browser install` to download Chrome. Update with `agent-browser upgrade`.
+
+## When to Defer
+
+Use `chrome-devtools-mcp` instead when the request is specifically about:
+
+- a live logged-in Chrome session the user already has open
+- the currently selected element in Chrome DevTools
+- Chrome console, network, Lighthouse, performance, or memory investigation
 
 ## AI Chat Mode
 
