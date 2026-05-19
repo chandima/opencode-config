@@ -2,6 +2,26 @@
 
 This repo can optionally configure the official [`chrome-devtools-mcp`](https://github.com/ChromeDevTools/chrome-devtools-mcp) server for the supported harnesses.
 
+## Purpose of this document
+
+This file is the **repo-level integration guide** for Chrome DevTools MCP.
+
+Use it for:
+
+- what `setup.sh` installs
+- which managed defaults and flags the repo supports
+- how to verify or remove the MCP wiring
+- how Chrome DevTools MCP fits alongside `agent-browser` and `playwright-mcp`
+
+Do **not** use this file as the main runtime usage guide for the skill itself.
+
+For runtime behavior, routing, compact testing workflows, and tool-usage guidance, read:
+
+- `skills/chrome-devtools-mcp/SKILL.md`
+- `skills/chrome-devtools-mcp/references/live-session.md`
+- `skills/chrome-devtools-mcp/references/ui-testing-recipes.md`
+- `skills/chrome-devtools-mcp/references/tool-inventory.md`
+
 ## Integration model
 
 - **OpenCode**: opt-in global setup via `./setup.sh opencode --with-chrome-devtools-mcp`
@@ -11,7 +31,7 @@ This repo can optionally configure the official [`chrome-devtools-mcp`](https://
 
 `chrome-devtools-mcp` is treated as an external MCP dependency, not as the skill itself.
 
-## Testing boundary vs other browser skills
+## Browser-skill boundary
 
 | Use case | Preferred skill |
 | --- | --- |
@@ -117,7 +137,15 @@ grep -n 'slim' ~/.copilot/mcp-config.json
 grep -n 'slim' ~/.kiro/settings/mcp.json
 ```
 
-## Live-session attachment
+## Runtime guidance lives in the skill
+
+Once the MCP server is installed, the runtime guidance is intentionally kept with the skill:
+
+- `skills/chrome-devtools-mcp/SKILL.md` explains **when** to load this skill
+- `skills/chrome-devtools-mcp/SKILL.md` and its references explain **how** to use it effectively
+- `docs/chrome-devtools-mcp.md` stays focused on **integration, defaults, verification, and removal**
+
+## Live-session attachment (integration view)
 
 The repo-managed default does **not** attach to the user's current Chrome session. For that, opt into `--chrome-devtools-auto-connect`.
 
@@ -127,7 +155,7 @@ Auto-connect requires:
 2. remote debugging enabled in `chrome://inspect/#remote-debugging`
 3. the remote debugging prompt accepted in Chrome
 
-For more explicit attachment flows such as `--browser-url`, `--ws-endpoint`, and `--ws-headers`, see `skills/chrome-devtools-mcp/references/live-session.md`.
+For runtime workflows and more explicit attachment flows such as `--browser-url`, `--ws-endpoint`, and `--ws-headers`, see `skills/chrome-devtools-mcp/references/live-session.md`.
 
 ## MCP vs CLI
 
