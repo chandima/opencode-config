@@ -42,91 +42,202 @@ assert_symlink_exists() {
     [[ -L "$path" ]] || fail "Expected $path to be a symlink"
 }
 
+run_setup() {
+    local target="$1"
+    shift
+    if [[ "$target" == "copilot" ]]; then
+        COPILOT_SKIP_JS_HOOK_SETUP=1 bash "$REPO_ROOT/setup.sh" "$target" "$@"
+    else
+        bash "$REPO_ROOT/setup.sh" "$target" "$@"
+    fi
+}
+
+assert_default_args() {
+    local path="$1"
+    assert_file_contains "$path" 'chrome-devtools-mcp@latest'
+    assert_file_contains "$path" '--no-usage-statistics'
+    assert_file_contains "$path" '--headless'
+    assert_file_not_contains "$path" '--auto-connect'
+    assert_file_not_contains "$path" '--slim'
+}
+
+assert_headed_args() {
+    local path="$1"
+    assert_file_contains "$path" 'chrome-devtools-mcp@latest'
+    assert_file_contains "$path" '--no-usage-statistics'
+    assert_file_not_contains "$path" '--headless'
+    assert_file_not_contains "$path" '--auto-connect'
+    assert_file_not_contains "$path" '--slim'
+}
+
+assert_slim_args() {
+    local path="$1"
+    assert_file_contains "$path" 'chrome-devtools-mcp@latest'
+    assert_file_contains "$path" '--no-usage-statistics'
+    assert_file_contains "$path" '--headless'
+    assert_file_contains "$path" '--slim'
+    assert_file_not_contains "$path" '--auto-connect'
+}
+
+assert_auto_connect_args() {
+    local path="$1"
+    assert_file_contains "$path" 'chrome-devtools-mcp@latest'
+    assert_file_contains "$path" '--no-usage-statistics'
+    assert_file_contains "$path" '--auto-connect'
+    assert_file_not_contains "$path" '--headless'
+}
+
+test_opencode() {
+    local config_file="$HOME/.config/opencode/opencode.json"
+
+    run_setup opencode
+    assert_symlink_target "$config_file" "$REPO_ROOT/opencode.json"
+    assert_file_contains "$REPO_ROOT/opencode.json" '"chrome-devtools-mcp": "deny"'
+
+    run_setup opencode --with-chrome-devtools-mcp
+    [[ ! -L "$config_file" ]] || fail "Expected managed OpenCode config file"
+    assert_file_contains "$config_file" '"chrome-devtools-mcp": "allow"'
+    assert_file_contains "$config_file" '"chrome-devtools"'
+    assert_default_args "$config_file"
+
+    run_setup opencode --with-chrome-devtools-mcp --chrome-devtools-headed
+    assert_headed_args "$config_file"
+
+    run_setup opencode --remove
+    assert_symlink_target "$config_file" "$REPO_ROOT/opencode.json"
+
+    run_setup opencode --with-chrome-devtools-mcp --chrome-devtools-slim
+    assert_slim_args "$config_file"
+
+    run_setup opencode --remove
+    assert_symlink_target "$config_file" "$REPO_ROOT/opencode.json"
+
+    run_setup opencode --with-chrome-devtools-mcp --chrome-devtools-auto-connect
+    assert_auto_connect_args "$config_file"
+
+    run_setup opencode --remove
+    assert_symlink_target "$config_file" "$REPO_ROOT/opencode.json"
+}
+
+test_codex() {
+    local skill_dir="$HOME/.codex/skills/chrome-devtools-mcp"
+    local config_file="$HOME/.codex/config.toml"
+
+    run_setup codex
+    assert_not_exists "$skill_dir"
+    rm -rf "$HOME/.codex"
+
+    run_setup codex --with-chrome-devtools-mcp
+    assert_symlink_exists "$skill_dir"
+    assert_file_contains "$config_file" '[mcp_servers.chrome-devtools]'
+    assert_default_args "$config_file"
+
+    run_setup codex --with-chrome-devtools-mcp --chrome-devtools-headed
+    assert_headed_args "$config_file"
+
+    run_setup codex --remove
+    [[ -f "$config_file" ]] || fail "Expected Codex base config to remain after remove"
+    assert_file_not_contains "$config_file" '[mcp_servers.chrome-devtools]'
+
+    run_setup codex --with-chrome-devtools-mcp --chrome-devtools-slim
+    assert_slim_args "$config_file"
+
+    run_setup codex --remove
+    [[ -f "$config_file" ]] || fail "Expected Codex base config to remain after remove"
+    assert_file_not_contains "$config_file" '[mcp_servers.chrome-devtools]'
+
+    run_setup codex --with-chrome-devtools-mcp --chrome-devtools-auto-connect
+    assert_auto_connect_args "$config_file"
+
+    run_setup codex --remove
+    [[ -f "$config_file" ]] || fail "Expected Codex base config to remain after remove"
+    assert_file_not_contains "$config_file" '[mcp_servers.chrome-devtools]'
+}
+
+test_copilot() {
+    local skill_dir="$HOME/.copilot/skills/chrome-devtools-mcp"
+    local config_file="$HOME/.copilot/mcp-config.json"
+
+    run_setup copilot
+    assert_not_exists "$skill_dir"
+    rm -rf "$HOME/.copilot"
+
+    run_setup copilot --with-chrome-devtools-mcp
+    assert_symlink_exists "$skill_dir"
+    assert_file_contains "$config_file" '"chrome-devtools"'
+    assert_default_args "$config_file"
+
+    run_setup copilot --with-chrome-devtools-mcp --chrome-devtools-headed
+    assert_headed_args "$config_file"
+
+    run_setup copilot --remove
+    assert_not_exists "$config_file"
+
+    run_setup copilot --with-chrome-devtools-mcp --chrome-devtools-slim
+    assert_slim_args "$config_file"
+
+    run_setup copilot --remove
+    assert_not_exists "$config_file"
+
+    run_setup copilot --with-chrome-devtools-mcp --chrome-devtools-auto-connect
+    assert_auto_connect_args "$config_file"
+
+    run_setup copilot --remove
+    assert_not_exists "$config_file"
+
+    run_setup copilot --with-playwright-mcp
+    assert_file_contains "$config_file" '"playwright-firefox"'
+    run_setup copilot --with-playwright-mcp --with-chrome-devtools-mcp
+    assert_file_contains "$config_file" '"playwright-firefox"'
+    assert_file_contains "$config_file" '"chrome-devtools"'
+    assert_default_args "$config_file"
+
+    run_setup copilot --remove
+    assert_not_exists "$config_file"
+}
+
+test_kiro() {
+    local skill_dir="$HOME/.kiro/skills/chrome-devtools-mcp"
+    local config_file="$HOME/.kiro/settings/mcp.json"
+
+    run_setup kiro
+    assert_not_exists "$skill_dir"
+    rm -rf "$HOME/.kiro"
+
+    run_setup kiro --with-chrome-devtools-mcp
+    assert_symlink_exists "$skill_dir"
+    assert_file_contains "$config_file" '"chrome-devtools"'
+    assert_default_args "$config_file"
+
+    run_setup kiro --with-chrome-devtools-mcp --chrome-devtools-headed
+    assert_headed_args "$config_file"
+
+    run_setup kiro --remove
+    assert_not_exists "$config_file"
+
+    run_setup kiro --with-chrome-devtools-mcp --chrome-devtools-slim
+    assert_slim_args "$config_file"
+
+    run_setup kiro --remove
+    assert_not_exists "$config_file"
+
+    run_setup kiro --with-chrome-devtools-mcp --chrome-devtools-auto-connect
+    assert_auto_connect_args "$config_file"
+
+    run_setup kiro --remove
+    assert_not_exists "$config_file"
+}
+
 main() {
     temp_home="$(mktemp -d)"
     trap 'rm -rf "$temp_home"' EXIT
 
     export HOME="$temp_home"
 
-    bash "$REPO_ROOT/setup.sh" opencode
-    assert_symlink_target "$HOME/.config/opencode/opencode.json" "$REPO_ROOT/opencode.json"
-    assert_file_contains "$REPO_ROOT/opencode.json" '"chrome-devtools-mcp": "deny"'
-
-    bash "$REPO_ROOT/setup.sh" opencode --with-chrome-devtools-mcp
-    [[ ! -L "$HOME/.config/opencode/opencode.json" ]] || fail "Expected managed OpenCode config file"
-    assert_file_contains "$HOME/.config/opencode/opencode.json" '"chrome-devtools-mcp": "allow"'
-    assert_file_contains "$HOME/.config/opencode/opencode.json" '"chrome-devtools"'
-    assert_file_contains "$HOME/.config/opencode/opencode.json" '"chrome-devtools-mcp@latest"'
-    assert_file_contains "$HOME/.config/opencode/opencode.json" '"--no-usage-statistics"'
-    assert_file_not_contains "$HOME/.config/opencode/opencode.json" '"--auto-connect"'
-
-    bash "$REPO_ROOT/setup.sh" opencode --remove
-    assert_symlink_target "$HOME/.config/opencode/opencode.json" "$REPO_ROOT/opencode.json"
-
-    bash "$REPO_ROOT/setup.sh" opencode --with-chrome-devtools-mcp --chrome-devtools-auto-connect
-    assert_file_contains "$HOME/.config/opencode/opencode.json" '"--auto-connect"'
-
-    bash "$REPO_ROOT/setup.sh" opencode --remove
-    assert_symlink_target "$HOME/.config/opencode/opencode.json" "$REPO_ROOT/opencode.json"
-
-    bash "$REPO_ROOT/setup.sh" codex
-    assert_not_exists "$HOME/.codex/skills/chrome-devtools-mcp"
-    rm -rf "$HOME/.codex"
-
-    bash "$REPO_ROOT/setup.sh" codex --with-chrome-devtools-mcp
-    assert_symlink_exists "$HOME/.codex/skills/chrome-devtools-mcp"
-    assert_file_contains "$HOME/.codex/config.toml" '[mcp_servers.chrome-devtools]'
-    assert_file_contains "$HOME/.codex/config.toml" '--no-usage-statistics'
-    assert_file_not_contains "$HOME/.codex/config.toml" '--auto-connect'
-
-    bash "$REPO_ROOT/setup.sh" codex --remove
-    assert_not_exists "$HOME/.codex/config.toml"
-
-    bash "$REPO_ROOT/setup.sh" codex --with-chrome-devtools-mcp --chrome-devtools-auto-connect
-    assert_file_contains "$HOME/.codex/config.toml" '--auto-connect'
-
-    bash "$REPO_ROOT/setup.sh" codex --remove
-    assert_not_exists "$HOME/.codex/config.toml"
-
-    COPILOT_SKIP_JS_HOOK_SETUP=1 bash "$REPO_ROOT/setup.sh" copilot
-    assert_not_exists "$HOME/.copilot/skills/chrome-devtools-mcp"
-    rm -rf "$HOME/.copilot"
-
-    COPILOT_SKIP_JS_HOOK_SETUP=1 bash "$REPO_ROOT/setup.sh" copilot --with-chrome-devtools-mcp
-    assert_symlink_exists "$HOME/.copilot/skills/chrome-devtools-mcp"
-    assert_file_contains "$HOME/.copilot/mcp-config.json" '"chrome-devtools"'
-    assert_file_contains "$HOME/.copilot/mcp-config.json" '"chrome-devtools-mcp@latest"'
-    assert_file_contains "$HOME/.copilot/mcp-config.json" '"--no-usage-statistics"'
-    assert_file_not_contains "$HOME/.copilot/mcp-config.json" '"--auto-connect"'
-
-    COPILOT_SKIP_JS_HOOK_SETUP=1 bash "$REPO_ROOT/setup.sh" copilot --remove
-    assert_not_exists "$HOME/.copilot/mcp-config.json"
-
-    COPILOT_SKIP_JS_HOOK_SETUP=1 bash "$REPO_ROOT/setup.sh" copilot --with-chrome-devtools-mcp --chrome-devtools-auto-connect
-    assert_file_contains "$HOME/.copilot/mcp-config.json" '"--auto-connect"'
-
-    COPILOT_SKIP_JS_HOOK_SETUP=1 bash "$REPO_ROOT/setup.sh" copilot --remove
-    assert_not_exists "$HOME/.copilot/mcp-config.json"
-
-    bash "$REPO_ROOT/setup.sh" kiro
-    assert_not_exists "$HOME/.kiro/skills/chrome-devtools-mcp"
-    rm -rf "$HOME/.kiro"
-
-    bash "$REPO_ROOT/setup.sh" kiro --with-chrome-devtools-mcp
-    assert_symlink_exists "$HOME/.kiro/skills/chrome-devtools-mcp"
-    assert_file_contains "$HOME/.kiro/settings/mcp.json" '"chrome-devtools"'
-    assert_file_contains "$HOME/.kiro/settings/mcp.json" '"chrome-devtools-mcp@latest"'
-    assert_file_contains "$HOME/.kiro/settings/mcp.json" '"--no-usage-statistics"'
-    assert_file_not_contains "$HOME/.kiro/settings/mcp.json" '"--auto-connect"'
-
-    bash "$REPO_ROOT/setup.sh" kiro --remove
-    assert_not_exists "$HOME/.kiro/settings/mcp.json"
-
-    bash "$REPO_ROOT/setup.sh" kiro --with-chrome-devtools-mcp --chrome-devtools-auto-connect
-    assert_file_contains "$HOME/.kiro/settings/mcp.json" '"--auto-connect"'
-
-    bash "$REPO_ROOT/setup.sh" kiro --remove
-    assert_not_exists "$HOME/.kiro/settings/mcp.json"
+    test_opencode
+    test_codex
+    test_copilot
+    test_kiro
 
     echo "PASS: Chrome DevTools MCP setup smoke test"
 }

@@ -20,6 +20,8 @@ def parse_args() -> argparse.Namespace:
     install_opencode.add_argument("--with-playwright-mcp", action="store_true")
     install_opencode.add_argument("--with-chrome-devtools-mcp", action="store_true")
     install_opencode.add_argument("--playwright-headed", action="store_true")
+    install_opencode.add_argument("--chrome-devtools-headed", action="store_true")
+    install_opencode.add_argument("--chrome-devtools-slim", action="store_true")
     install_opencode.add_argument("--chrome-devtools-auto-connect", action="store_true")
 
     remove_opencode = subparsers.add_parser("remove-opencode", help="Remove managed OpenCode config.")
@@ -66,8 +68,14 @@ def build_playwright_mcp_entries(*, playwright_headed: bool) -> dict[str, Any]:
     }
 
 
-def build_chrome_devtools_mcp_entry(*, auto_connect: bool) -> dict[str, Any]:
+def build_chrome_devtools_mcp_entry(
+    *, auto_connect: bool, headed: bool, slim: bool
+) -> dict[str, Any]:
     command = ["npx", "-y", "chrome-devtools-mcp@latest", "--no-usage-statistics"]
+    if not auto_connect and not headed:
+        command.append("--headless")
+    if slim:
+        command.append("--slim")
     if auto_connect:
         command.append("--auto-connect")
     return {
@@ -85,6 +93,8 @@ def build_opencode_config(
     with_playwright_mcp: bool,
     with_chrome_devtools_mcp: bool,
     playwright_headed: bool,
+    chrome_devtools_headed: bool,
+    chrome_devtools_slim: bool,
     chrome_devtools_auto_connect: bool,
 ) -> str:
     config = load_json(base_path)
@@ -106,7 +116,9 @@ def build_opencode_config(
         if with_chrome_devtools_mcp:
             mcp.update(
                 build_chrome_devtools_mcp_entry(
-                    auto_connect=chrome_devtools_auto_connect
+                    auto_connect=chrome_devtools_auto_connect,
+                    headed=chrome_devtools_headed,
+                    slim=chrome_devtools_slim,
                 )
             )
         config["mcp"] = mcp
@@ -135,12 +147,16 @@ def install_opencode(args: argparse.Namespace) -> int:
         with_playwright_mcp=args.with_playwright_mcp,
         with_chrome_devtools_mcp=args.with_chrome_devtools_mcp,
         playwright_headed=args.playwright_headed,
+        chrome_devtools_headed=args.chrome_devtools_headed,
+        chrome_devtools_slim=args.chrome_devtools_slim,
         chrome_devtools_auto_connect=args.chrome_devtools_auto_connect,
     )
 
     previous_kind = "missing"
     previous_content = None
     previous_target = None
+    existing_state = load_json(args.state) if args.state.exists() else None
+
     if args.target.exists() or args.target.is_symlink():
         if args.target.is_symlink():
             previous_kind = "symlink"
@@ -148,8 +164,17 @@ def install_opencode(args: argparse.Namespace) -> int:
             previous_content = args.target.read_text(encoding="utf-8")
             args.target.unlink()
         else:
-            previous_kind = "file"
-            previous_content = args.target.read_text(encoding="utf-8")
+            current_content = args.target.read_text(encoding="utf-8")
+            if (
+                isinstance(existing_state, dict)
+                and current_content == existing_state.get("managed_content")
+            ):
+                previous_kind = str(existing_state.get("previous_kind", "missing"))
+                previous_content = existing_state.get("previous_content")
+                previous_target = existing_state.get("previous_target")
+            else:
+                previous_kind = "file"
+                previous_content = current_content
 
     args.target.parent.mkdir(parents=True, exist_ok=True)
     args.target.write_text(managed_content, encoding="utf-8")

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import sys
 from pathlib import Path
@@ -368,6 +369,45 @@ def apply_opencode_permissions(repo_data: dict[str, Any], opencode_path: Path | 
         skill[key] = value
 
 
+def revert_managed_changes(
+    data: dict[str, Any], config_state: dict[str, Any]
+) -> tuple[dict[str, Any], int]:
+    reverted = copy.deepcopy(data)
+    skipped = 0
+
+    overrides = config_state.get("overrides", [])
+    additions = config_state.get("additions", [])
+
+    for entry in overrides:
+        path = entry.get("path")
+        repo_val = entry.get("repo")
+        previous = entry.get("previous")
+        if not isinstance(path, list):
+            continue
+        current = path_get(reverted, path)
+        if current is None:
+            continue
+        if current == repo_val:
+            path_set(reverted, path, previous)
+        else:
+            skipped += 1
+
+    for entry in additions:
+        path = entry.get("path")
+        repo_val = entry.get("repo")
+        if not isinstance(path, list):
+            continue
+        current = path_get(reverted, path)
+        if current is None:
+            continue
+        if current == repo_val:
+            path_delete(reverted, path)
+        else:
+            skipped += 1
+
+    return reverted, skipped
+
+
 def install(args: argparse.Namespace) -> int:
     repo_data, repo_text = load_toml(args.repo)
     apply_opencode_permissions(repo_data, args.opencode)
@@ -378,6 +418,18 @@ def install(args: argparse.Namespace) -> int:
     if had_config:
         existing_data, existing_text = load_toml(args.target)
         existing_header = extract_header(existing_text)
+        if args.state.exists():
+            prior_state = json.loads(args.state.read_text(encoding="utf-8"))
+            config_state = prior_state.get("config", {})
+            managed_content = config_state.get("managed_content")
+            if isinstance(managed_content, str) and existing_text == managed_content:
+                reverted_data, skipped = revert_managed_changes(existing_data, config_state)
+                if skipped == 0:
+                    existing_data = reverted_data
+                    had_config = bool(config_state.get("had_config"))
+                    prior_header = config_state.get("existing_header", [])
+                    if isinstance(prior_header, list):
+                        existing_header = prior_header
 
     additions: list[dict[str, Any]] = []
     overrides: list[dict[str, Any]] = []
@@ -393,7 +445,8 @@ def install(args: argparse.Namespace) -> int:
     repo_header = extract_header(repo_text)
     header = repo_header if repo_header else existing_header
     args.target.parent.mkdir(parents=True, exist_ok=True)
-    args.target.write_text(dump_toml(merged, header), encoding="utf-8")
+    managed_content = dump_toml(merged, header)
+    args.target.write_text(managed_content, encoding="utf-8")
 
     state = {
         "version": 1,
@@ -403,6 +456,7 @@ def install(args: argparse.Namespace) -> int:
             "existing_header": existing_header,
             "additions": additions,
             "overrides": overrides,
+            "managed_content": managed_content,
         },
     }
     args.state.parent.mkdir(parents=True, exist_ok=True)
@@ -426,36 +480,7 @@ def remove(args: argparse.Namespace) -> int:
 
     data, _ = load_toml(args.target)
 
-    additions = config_state.get("additions", [])
-    overrides = config_state.get("overrides", [])
-
-    skipped = 0
-    for entry in overrides:
-        path = entry.get("path")
-        repo_val = entry.get("repo")
-        previous = entry.get("previous")
-        if not isinstance(path, list):
-            continue
-        current = path_get(data, path)
-        if current is None:
-            continue
-        if current == repo_val:
-            path_set(data, path, previous)
-        else:
-            skipped += 1
-
-    for entry in additions:
-        path = entry.get("path")
-        repo_val = entry.get("repo")
-        if not isinstance(path, list):
-            continue
-        current = path_get(data, path)
-        if current is None:
-            continue
-        if current == repo_val:
-            path_delete(data, path)
-        else:
-            skipped += 1
+    data, skipped = revert_managed_changes(data, config_state)
 
     if data:
         args.target.write_text(dump_toml(data, existing_header), encoding="utf-8")

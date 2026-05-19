@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 show_help() {
     cat << 'EOF'
-Usage: ./setup.sh [TARGET] [--remove] [--with-context-mode] [--with-playwright-mcp] [--playwright-headed] [--with-chrome-devtools-mcp] [--with-all-integrations] [--chrome-devtools-auto-connect]
+Usage: ./setup.sh [TARGET] [--remove] [--with-context-mode] [--with-playwright-mcp] [--playwright-headed] [--with-chrome-devtools-mcp] [--chrome-devtools-headed] [--chrome-devtools-slim] [--with-all-integrations] [--chrome-devtools-auto-connect]
 
 Install OpenCode/Codex/Copilot/Kiro configuration by symlinking skills and generating prompt files.
 
@@ -23,6 +23,8 @@ TARGETS:
     --with-playwright-mcp  Install/configure Playwright MCP where supported
     --playwright-headed  Configure Playwright MCP servers in headed mode (default is headless)
     --with-chrome-devtools-mcp  Install/configure Chrome DevTools MCP where supported
+    --chrome-devtools-headed  Configure Chrome DevTools MCP in headed mode when it launches its own browser (default is headless unless auto-connect is enabled)
+    --chrome-devtools-slim  Configure Chrome DevTools MCP with the slim 3-tool surface for narrow UI-verification workflows
     --with-all-integrations  Shorthand for enabling context-mode, Playwright MCP, and Chrome DevTools MCP together
     --chrome-devtools-auto-connect  Configure Chrome DevTools MCP to auto-connect to a running local Chrome (explicit opt-in)
     --help, -h  Show this help message
@@ -140,20 +142,27 @@ playwright_args_toml() {
     fi
 }
 
-chrome_devtools_args_json() {
-    if [[ "$CHROME_DEVTOOLS_AUTO_CONNECT" -eq 1 ]]; then
-        printf '["-y", "chrome-devtools-mcp@latest", "--no-usage-statistics", "--auto-connect"]'
-    else
-        printf '["-y", "chrome-devtools-mcp@latest", "--no-usage-statistics"]'
+chrome_devtools_args() {
+    local args='["-y", "chrome-devtools-mcp@latest", "--no-usage-statistics"'
+    if [[ "$CHROME_DEVTOOLS_AUTO_CONNECT" -eq 0 && "$CHROME_DEVTOOLS_HEADED" -eq 0 ]]; then
+        args+=', "--headless"'
     fi
+    if [[ "$CHROME_DEVTOOLS_SLIM" -eq 1 ]]; then
+        args+=', "--slim"'
+    fi
+    if [[ "$CHROME_DEVTOOLS_AUTO_CONNECT" -eq 1 ]]; then
+        args+=', "--auto-connect"'
+    fi
+    args+=']'
+    printf '%s' "$args"
+}
+
+chrome_devtools_args_json() {
+    chrome_devtools_args
 }
 
 chrome_devtools_args_toml() {
-    if [[ "$CHROME_DEVTOOLS_AUTO_CONNECT" -eq 1 ]]; then
-        printf '["-y", "chrome-devtools-mcp@latest", "--no-usage-statistics", "--auto-connect"]'
-    else
-        printf '["-y", "chrome-devtools-mcp@latest", "--no-usage-statistics"]'
-    fi
+    chrome_devtools_args
 }
 
 
@@ -194,6 +203,12 @@ install_managed_opencode_config() {
     fi
     if [[ "$WITH_CHROME_DEVTOOLS_MCP" -eq 1 ]]; then
         overlay_args+=(--with-chrome-devtools-mcp)
+        if [[ "$CHROME_DEVTOOLS_HEADED" -eq 1 ]]; then
+            overlay_args+=(--chrome-devtools-headed)
+        fi
+        if [[ "$CHROME_DEVTOOLS_SLIM" -eq 1 ]]; then
+            overlay_args+=(--chrome-devtools-slim)
+        fi
         if [[ "$CHROME_DEVTOOLS_AUTO_CONNECT" -eq 1 ]]; then
             overlay_args+=(--chrome-devtools-auto-connect)
         fi
@@ -1859,6 +1874,8 @@ WITH_CONTEXT_MODE=0
 WITH_PLAYWRIGHT_MCP=0
 PLAYWRIGHT_HEADED=0
 WITH_CHROME_DEVTOOLS_MCP=0
+CHROME_DEVTOOLS_HEADED=0
+CHROME_DEVTOOLS_SLIM=0
 CHROME_DEVTOOLS_AUTO_CONNECT=0
 
 while [[ $# -gt 0 ]]; do
@@ -1885,6 +1902,12 @@ while [[ $# -gt 0 ]]; do
             ;;
         --with-chrome-devtools-mcp)
             WITH_CHROME_DEVTOOLS_MCP=1
+            ;;
+        --chrome-devtools-headed)
+            CHROME_DEVTOOLS_HEADED=1
+            ;;
+        --chrome-devtools-slim)
+            CHROME_DEVTOOLS_SLIM=1
             ;;
         --with-all-integrations)
             WITH_CONTEXT_MODE=1

@@ -17,28 +17,22 @@ compatibility: "OpenCode, Codex CLI, GitHub Copilot, Kiro. Requires Chrome DevTo
 
 # Chrome DevTools MCP
 
-Use the official Chrome DevTools MCP server when Chrome DevTools context matters more than lightweight browser automation.
+Use the official Chrome DevTools MCP server when **Chrome DevTools context** matters more than generic browser automation.
 
-## When to Use
+## Use This Skill or Another One?
 
-- Debug a page in an existing Chrome session
-- Inspect the currently selected element in Chrome DevTools
-- Investigate Chrome console errors or network requests
-- Run Lighthouse audits against a live page
-- Capture memory snapshots or performance traces
-- Debug Chrome extension behavior with DevTools-native tooling
-
-## When NOT to Use
-
-- General browser automation in Chrome or Chromium
-- Simple screenshots, page scraping, or form submission flows
-- Routine login flows where `agent-browser` already fits
-- Firefox, WebKit/Safari-class, Edge, or cross-browser verification
-- Shell-driven command generation for the `chrome-devtools` CLI
+| Testing job | Use this skill? | Why |
+| --- | --- | --- |
+| Live logged-in Chrome session | **Yes** | Attach to the real Chrome context the user already has open |
+| DevTools-selected element inspection | **Yes** | The selected element comes from DevTools, not generic page automation |
+| Chrome console / network debugging | **Yes** | These are DevTools-native workflows |
+| Lighthouse / performance / memory in Chrome | **Yes** | These require Chrome DevTools tooling |
+| Routine Chrome form flow, screenshots, scraping | **No — use `agent-browser`** | Faster and simpler for Chromium automation |
+| Firefox / WebKit / Edge / cross-browser testing | **No — use `playwright-mcp`** | That skill is for browser-engine coverage |
 
 ## Prerequisite
 
-This skill depends on the repo-managed Chrome DevTools MCP setup:
+Install the MCP server via the repo-managed setup:
 
 ```bash
 ./setup.sh opencode --with-chrome-devtools-mcp
@@ -47,97 +41,107 @@ This skill depends on the repo-managed Chrome DevTools MCP setup:
 ./setup.sh kiro --with-chrome-devtools-mcp
 ```
 
-For live-session attachment to a running local Chrome profile, opt in explicitly:
+Repo-managed defaults:
 
-```bash
-./setup.sh opencode --with-chrome-devtools-mcp --chrome-devtools-auto-connect
-./setup.sh codex --with-chrome-devtools-mcp --chrome-devtools-auto-connect
-./setup.sh copilot --with-chrome-devtools-mcp --chrome-devtools-auto-connect
-./setup.sh kiro --with-chrome-devtools-mcp --chrome-devtools-auto-connect
-```
+| Mode | Setup flag | Result |
+| --- | --- | --- |
+| Default | `--with-chrome-devtools-mcp` | Launches Chrome DevTools MCP with `--headless` and usage statistics disabled |
+| Live session | `--chrome-devtools-auto-connect` | Attaches to a running local Chrome session instead of launching headless Chrome |
+| Visible browser | `--chrome-devtools-headed` | Keeps spawned Chrome visible for debugging |
+| Narrow UI verification | `--chrome-devtools-slim` | Shrinks the tool surface to basic navigation / eval / screenshot only |
 
 If Chrome DevTools MCP is not configured for the current harness, do not improvise a replacement workflow. Tell the user the integration is not installed yet.
 
 ## Server Name
 
-The repo wires one Chrome DevTools MCP server:
-
 | Purpose | MCP server name |
-|---|---|
+| --- | --- |
 | Chrome DevTools debugging | `chrome-devtools` |
 
-## Selection Guidance
+## Decision Flow
 
-1. If the request is about a live Chrome session, a DevTools-selected element, Chrome console or network state, Lighthouse, performance, memory, or Chrome extension debugging, use `chrome-devtools`.
-2. If the request is just "open the page", "fill the form", "take a screenshot", or similar Chromium-friendly automation, stop and use `agent-browser` instead.
-3. If the request is Firefox, WebKit/Safari-class, Edge, or cross-browser verification, stop and use `playwright-mcp` instead.
+1. If the user wants **their current Chrome session**, a **DevTools-selected element**, **console/network state**, **Lighthouse**, **performance**, **memory**, or **Chrome extension debugging**, use `chrome-devtools`.
+2. If the ask is just **open the page**, **fill the form**, **click around**, **take a screenshot**, or similar routine Chromium automation, stop and use `agent-browser`.
+3. If the ask is **Firefox**, **WebKit/Safari-class**, **Edge**, or **cross-browser**, stop and use `playwright-mcp`.
 
-## Live-session guidance
+## 60-Second Quickstart
 
-- Repo-managed config disables Chrome DevTools MCP usage statistics by default with `--no-usage-statistics`.
-- Repo-managed config does **not** enable `--auto-connect` unless the user explicitly opts in with `--chrome-devtools-auto-connect`.
-- If the MCP server is installed without auto-connect or `--browser-url`, do not claim it is attached to the user's existing Chrome session.
+### Fast standalone Chrome-specific check (4 calls)
 
-## Operational guardrails
+Use this when DevTools tooling matters but you do **not** need the user's existing Chrome profile.
 
-- Verify tool availability once at session start, then proceed without re-enumerating tools mid-task.
-- Do not re-introspect tool schemas mid-task unless a tool call fails with an explicit capability error.
-- Prefer the smallest evidence set that answers the question.
-- Prefer reading app state with `evaluate_script` when available; fall back to `take_snapshot` when no reliable client-side state is exposed.
-- When request or response bodies are large, prefer `requestFilePath` / `responseFilePath` over inlining them into context.
+1. `new_page` with the target URL
+2. `take_snapshot`
+3. `fill_form` or `click` with `includeSnapshot: true`
+4. `evaluate_script` or `list_console_messages` for the one thing you need to verify
 
-## Live interaction and write-testing workflow
+### Fast live-session check (4 calls)
 
-- Use this workflow for live interaction checks, not for Lighthouse, performance, memory, or console-only debugging.
-- Start with `list_pages`, `select_page`, and `take_snapshot`.
-- Use `evaluate_script` for baseline state when available.
-- Prefer `fill_form` over repeated `fill` calls when the page structure allows it.
-- For mutation checks, capture only:
-  1. baseline UI/app state
-  2. the specific write request/response when applicable
-  3. the resulting UI/app state
-- In live write testing, stop on 4xx/5xx responses, unexpected redirects, inability to verify the target record before submission, missing state changes, or new console errors.
-- In read-only or diagnostic workflows, unexpected responses are findings to inspect and report, not automatic stop conditions.
-
-### Default interaction sequence
-
-Use this only when you are already attached to a live Chrome session and need to verify behavior in its real browser or authenticated state, not as a general automation workflow.
+Use this when the user explicitly wants their current Chrome state.
 
 1. `list_pages`
 2. `select_page`
 3. `take_snapshot`
-4. `evaluate_script` for baseline app state when available; otherwise read the baseline from the snapshot
-5. `fill_form` when the flow is form-shaped; otherwise use `click`, `fill`, or `navigate_page` as needed
-6. `list_network_requests`
-7. `get_network_request` for the specific write or verification request that matters
-8. `list_console_messages` for runtime health checks
-9. Confirm the resulting UI/app state
+4. `fill_form` or `click` with `includeSnapshot: true`
 
-For WebSocket- or SSE-driven flows, network capture may not be sufficient evidence on its own. Confirm the final state with `evaluate_script` or a fresh `take_snapshot`.
+Use one extra call only if you still need console/network evidence after the action.
 
-### Example: logged-in Chrome validation
+## Operational Rules
 
-1. `list_pages` and `select_page` to attach to the live tab.
-2. `take_snapshot` to anchor the current UI and locate the target control.
-3. `evaluate_script` to read the current count, selection, or store-backed state when available.
-4. `fill_form` or `click` to perform the interaction.
-5. `list_network_requests` and `get_network_request` to inspect the targeted write request and response.
-6. `list_console_messages` to catch runtime errors introduced by the change.
-7. `evaluate_script` or a fresh `take_snapshot` to confirm the updated UI/app state.
+- **Verify tool availability once**, then stop re-enumerating tools mid-task unless a call fails with a capability error.
+- **Prefer `fill_form` over repeated `fill` calls** for forms.
+- **Prefer `includeSnapshot: true`** on `click`, `fill`, `fill_form`, `hover`, `press_key`, `upload_file`, and `drag` so you do not spend an extra turn on `take_snapshot`.
+- **Prefer `evaluate_script` for deterministic state checks** when the app exposes state cleanly. Use `take_snapshot` when you need UI structure or uids.
+- **Keep snapshots non-verbose by default**. Only use `verbose: true` when you genuinely need the full a11y tree.
+- **Use file outputs for heavy assets**: `filePath`, `requestFilePath`, `responseFilePath`, trace outputs, screenshots, and heapsnapshots.
+- **Do not treat this as a generic browser-driving skill.** If DevTools context stops mattering, switch to `agent-browser`.
 
-## Performance and Lighthouse workflow notes
+## Workflow Boundaries
 
-- `lighthouse_audit` is for accessibility, SEO, best practices, and agentic browsing audits; it excludes performance.
-- For performance work, use `performance_start_trace`, `performance_stop_trace`, then `performance_analyze_insight`.
-- Treat the trace output as the source of truth for `insightName` and `insightSetId` before calling `performance_analyze_insight`.
-- For console-only, memory, or extension-debugging tasks, jump directly to the relevant DevTools tools instead of following the interaction workflow above.
+### Live Chrome / write-validation workflow
 
-## Live-session state separation
+Use this only when you are intentionally validating behavior in a real Chrome session or in Chrome-specific state.
 
-- Use `new_page` with `isolatedContext` only when intentionally separating state for an additional flow.
+1. Establish page context (`list_pages` + `select_page`, or `new_page` for a standalone run).
+2. Get the current UI anchor with `take_snapshot`.
+3. Perform the interaction with `fill_form`, `click`, `press_key`, or `navigate_page`, preferably with `includeSnapshot: true`.
+4. Confirm exactly one of:
+   - resulting UI state (`take_snapshot` result or returned snapshot)
+   - app state (`evaluate_script`)
+   - network mutation (`list_network_requests` + `get_network_request`)
+   - runtime health (`list_console_messages`)
+
+### Performance / Lighthouse workflow
+
+- Use `lighthouse_audit` for accessibility, SEO, best practices, and agentic browsing audits.
+- Use `performance_start_trace` -> `performance_stop_trace` -> `performance_analyze_insight` for performance work.
+- Treat the trace output as the source of truth for `insightName` and `insightSetId`.
+
+### Memory / extension workflow
+
+- Use heapsnapshot tools for memory-leak investigations.
+- Use extension tools only when the server was started with the extensions category enabled.
+
+## Live-Session Guidance
+
+- Repo-managed config disables usage statistics with `--no-usage-statistics`.
+- Repo-managed config is **headless by default** only for spawned Chrome runs.
+- `--chrome-devtools-auto-connect` is the explicit path for attaching to a running Chrome profile.
+- If the server was installed without `--chrome-devtools-auto-connect`, do not claim you are attached to the user's existing Chrome session.
+
+## Deep-Dive References
+
+| Reference | When to Read It |
+| --- | --- |
+| [references/tool-inventory.md](references/tool-inventory.md) | Full tool inventory grouped by category, including slim-mode constraints |
+| [references/ui-testing-recipes.md](references/ui-testing-recipes.md) | Compact 2-4-call UI verification flows |
+| [references/performance-levers.md](references/performance-levers.md) | Speed and token-efficiency guidance for macOS and repeated runs |
+| [references/live-session.md](references/live-session.md) | Auto-connect, `--browser-url`, `--ws-endpoint`, and current-Chrome workflows |
+| [references/lighthouse-and-traces.md](references/lighthouse-and-traces.md) | Lighthouse modes plus trace/insight analysis flows |
+| [references/troubleshooting.md](references/troubleshooting.md) | Bluetooth TCC, auto-connect timeouts, sandbox, WSL, and Windows fixes |
 
 ## Notes
 
-- This skill is MCP-first. It should not switch to the `chrome-devtools` CLI as part of the default workflow.
-- The CLI can still be useful for advanced shell-driven tasks, but that is a docs-only secondary path in this repo.
-- Chrome DevTools MCP is Chrome-specific. Keep routine Chromium automation with `agent-browser` and browser-engine coverage with `playwright-mcp`.
+- This skill is MCP-first. Do not switch to the `chrome-devtools` CLI as the default workflow.
+- `--chrome-devtools-slim` is only for narrow UI-verification projects. It intentionally removes most DevTools workflows.
+- Chrome DevTools MCP is Chrome-specific. Keep routine Chromium automation with `agent-browser` and engine coverage with `playwright-mcp`.

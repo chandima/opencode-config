@@ -105,7 +105,9 @@ cd opencode-config
 ./setup.sh copilot --with-chrome-devtools-mcp   # Opt-in Copilot Chrome DevTools MCP
 ./setup.sh kiro --with-chrome-devtools-mcp      # Opt-in Kiro Chrome DevTools MCP
 ./setup.sh all --with-chrome-devtools-mcp       # All four with Chrome DevTools MCP
+./setup.sh all --with-chrome-devtools-mcp --chrome-devtools-headed  # Spawn a visible Chrome window instead of headless
 ./setup.sh all --with-chrome-devtools-mcp --chrome-devtools-auto-connect  # Opt into live-session auto-connect
+./setup.sh all --with-chrome-devtools-mcp --chrome-devtools-slim  # Narrow Chrome DevTools MCP to the slim 3-tool surface
 ./setup.sh all --with-context-mode --with-playwright-mcp --with-chrome-devtools-mcp  # Combine optional integrations
 ./setup.sh all --with-all-integrations  # Shorthand for all three optional integrations
 ./setup.sh opencode --skills-only # OpenCode skills only (skip opencode.json)
@@ -125,22 +127,22 @@ The script will:
 - **OpenCode**: Symlink `opencode.json` and `skills/` to `~/.config/opencode/`
 - **OpenCode + context-mode**: With `--with-context-mode`, write a managed `opencode.json` that preserves repo settings and adds the `context-mode` plugin + MCP server
 - **OpenCode + Playwright MCP**: With `--with-playwright-mcp`, write a managed `opencode.json` that enables the `playwright-mcp` skill and adds `playwright-firefox`, `playwright-webkit`, and `playwright-msedge` in headless mode by default (`--playwright-headed` keeps them visible)
-- **OpenCode + Chrome DevTools MCP**: With `--with-chrome-devtools-mcp`, write a managed `opencode.json` that enables the `chrome-devtools-mcp` skill and adds a `chrome-devtools` MCP server with usage statistics disabled by default (`--chrome-devtools-auto-connect` explicitly opts into live-session auto-connect)
+- **OpenCode + Chrome DevTools MCP**: With `--with-chrome-devtools-mcp`, write a managed `opencode.json` that enables the `chrome-devtools-mcp` skill and adds a `chrome-devtools` MCP server with usage statistics disabled and headless Chrome enabled by default (`--chrome-devtools-headed` keeps the spawned browser visible, `--chrome-devtools-auto-connect` explicitly opts into live-session attachment, `--chrome-devtools-slim` narrows the tool surface)
 - **Codex**: Symlink individual skills to `~/.codex/skills/` (preserves `.system/` directory)
 - **Codex**: Merge repo `.codex/config.toml` into `~/.codex/config.toml` (repo precedence) and install `.codex/rules/*` into `~/.codex/rules/` (backing up conflicts)
 - **Codex + context-mode**: With `--with-context-mode`, also merge `[mcp_servers.context-mode]` into `~/.codex/config.toml`
 - **Codex + Playwright MCP**: With `--with-playwright-mcp`, also merge browser-specific Playwright MCP servers into `~/.codex/config.toml` in headless mode by default (`--playwright-headed` keeps them visible)
-- **Codex + Chrome DevTools MCP**: With `--with-chrome-devtools-mcp`, also merge `[mcp_servers.chrome-devtools]` into `~/.codex/config.toml` with usage statistics disabled by default (`--chrome-devtools-auto-connect` explicitly opts into live-session auto-connect)
+- **Codex + Chrome DevTools MCP**: With `--with-chrome-devtools-mcp`, also merge `[mcp_servers.chrome-devtools]` into `~/.codex/config.toml` with usage statistics disabled and headless Chrome enabled by default (`--chrome-devtools-headed`, `--chrome-devtools-auto-connect`, and `--chrome-devtools-slim` apply the same way)
 - **Codex**: Install `.codex/ntfy_notify.sh` to `~/.codex/ntfy_notify.sh` (with backup/restore behavior for existing files)
 - **Copilot**: Symlink individual skill directories to `~/.copilot/skills/` (uses [Agent Skills standard](https://agentskills.io/) natively)
 - **Copilot**: Install `ntfy_notify.sh` and `hooks/copilot-ntfy.json` to `~/.copilot/` for task completion notifications
 - **Copilot + context-mode**: With `--with-context-mode`, install context-mode as a Copilot CLI plugin via `copilot plugin install`
 - **Copilot + Playwright MCP**: With `--with-playwright-mcp`, write browser-specific Playwright MCP server entries to `~/.copilot/mcp-config.json` in headless mode by default (`--playwright-headed` keeps them visible)
-- **Copilot + Chrome DevTools MCP**: With `--with-chrome-devtools-mcp`, write a `chrome-devtools` MCP server entry to `~/.copilot/mcp-config.json` with usage statistics disabled by default (`--chrome-devtools-auto-connect` explicitly opts into live-session auto-connect)
+- **Copilot + Chrome DevTools MCP**: With `--with-chrome-devtools-mcp`, write a `chrome-devtools` MCP server entry to `~/.copilot/mcp-config.json` with usage statistics disabled and headless Chrome enabled by default (`--chrome-devtools-headed`, `--chrome-devtools-auto-connect`, and `--chrome-devtools-slim` apply the same way)
 - **Kiro**: Symlink individual skill directories to `~/.kiro/skills/` (uses [Agent Skills standard](https://agentskills.io/) natively, default agent auto-discovers skills)
 - **Kiro**: Install `ntfy_notify.sh` to `~/.kiro/ntfy_notify.sh` for task completion notifications (requires manual hook config in agent JSON)
 - **Kiro + Playwright MCP**: With `--with-playwright-mcp`, write browser-specific Playwright MCP server entries to `~/.kiro/settings/mcp.json` in headless mode by default (`--playwright-headed` keeps them visible)
-- **Kiro + Chrome DevTools MCP**: With `--with-chrome-devtools-mcp`, write a `chrome-devtools` MCP server entry to `~/.kiro/settings/mcp.json` with usage statistics disabled by default (`--chrome-devtools-auto-connect` explicitly opts into live-session auto-connect)
+- **Kiro + Chrome DevTools MCP**: With `--with-chrome-devtools-mcp`, write a `chrome-devtools` MCP server entry to `~/.kiro/settings/mcp.json` with usage statistics disabled and headless Chrome enabled by default (`--chrome-devtools-headed`, `--chrome-devtools-auto-connect`, and `--chrome-devtools-slim` apply the same way)
 - **Bundle shortcut**: With `--with-all-integrations`, enable context-mode, Playwright MCP, and Chrome DevTools MCP together using the same existing per-integration behavior
 - **Respects disabled skills**: Skills with `"deny"` permission in `opencode.json` are skipped for all targets
 - **Remove mode**: Use `[target] --remove` to delete only symlinks created by the script
@@ -238,8 +240,8 @@ Optional integration:
 - The repo configures only non-Chromium Playwright MCP servers (`playwright-firefox`, `playwright-webkit`, `playwright-msedge`) so `agent-browser` remains the default for Chromium flows
 - See `docs/playwright-mcp.md` for install, verify, update, and remove flows
 - `chrome-devtools-mcp` can be enabled through `./setup.sh ... --with-chrome-devtools-mcp`
-- The repo treats Chrome DevTools MCP as the Chrome-specific debugging path for live-session DevTools work, while `agent-browser` remains the default for routine Chromium automation
-- `--chrome-devtools-auto-connect` is explicit opt-in; repo-managed config disables Chrome DevTools MCP usage statistics by default
+- The repo treats Chrome DevTools MCP as the Chrome-specific debugging path for live-session DevTools work, while `agent-browser` remains the default for routine Chromium automation and `playwright-mcp` remains the path for non-Chromium or cross-browser verification
+- Repo-managed Chrome DevTools MCP disables usage statistics and enables headless Chrome by default; `--chrome-devtools-headed` keeps spawned Chrome visible, `--chrome-devtools-auto-connect` is the explicit live-session path, and `--chrome-devtools-slim` is an opt-in narrow tool surface
 - See `docs/chrome-devtools-mcp.md` for install, verify, update, remove, and MCP-versus-CLI guidance
 - `./setup.sh ... --with-all-integrations` is shorthand for enabling all three optional integrations together; it does not change the repo's normal skill-permission behavior beyond what those individual flags already do
 
@@ -284,7 +286,7 @@ Skills in this repository may require the following dependencies:
 | gh CLI      | github-ops              | `brew install gh`                                                        |
 | context-mode | optional OpenCode/Codex/Copilot integration | `npm install -g context-mode` or `./scripts/install-context-mode.sh install` |
 | Playwright MCP | optional OpenCode/Codex/Copilot/Kiro integration | No preinstall required; repo wiring uses `npx -y @playwright/mcp@latest` |
-| Chrome DevTools MCP | optional OpenCode/Codex/Copilot/Kiro integration | No preinstall required; repo wiring uses `npx -y chrome-devtools-mcp@latest --no-usage-statistics` |
+| Chrome DevTools MCP | optional OpenCode/Codex/Copilot/Kiro integration | No preinstall required; repo wiring uses `npx -y chrome-devtools-mcp@latest --no-usage-statistics --headless` by default |
 
 > **Note:** MCPorter can be invoked via `npx mcporter` without installation. The skills use this approach by default.
 
@@ -363,7 +365,7 @@ Validates opt-in Playwright MCP wiring for OpenCode, Codex, GitHub Copilot, and 
 ./scripts/test-chrome-devtools-mcp-setup.sh
 ```
 
-Validates opt-in Chrome DevTools MCP wiring for OpenCode, Codex, GitHub Copilot, and Kiro, including explicit auto-connect opt-in behavior.
+Validates opt-in Chrome DevTools MCP wiring for OpenCode, Codex, GitHub Copilot, and Kiro, including default headless behavior, headed opt-out, slim opt-in, and explicit auto-connect behavior.
 
 ### Testing the All-Integrations Shortcut
 
