@@ -300,7 +300,7 @@ skills/
     └── SKILL.md
 ```
 
-Each `SKILL.md` must have YAML frontmatter with `name` and `description`.
+Each `SKILL.md` must have YAML frontmatter with `name` and `description`. For GitHub Copilot compatibility, keep the `description` value at 1024 characters or fewer.
 
 See [OpenCode Skills docs](https://opencode.ai/docs/skills/) for details.
 
@@ -331,6 +331,12 @@ Skills with a `tests/` directory should have smoke tests run after modifications
 
 ```bash
 ./skills/<skill-name>/tests/smoke.sh
+```
+
+For repo-wide skill validation, including `SKILL.md` frontmatter checks plus any discovered smoke/evals, run:
+
+```bash
+./scripts/test-battery.sh
 ```
 
 All tests should pass before committing changes.
