@@ -20,6 +20,11 @@ def parse_args() -> argparse.Namespace:
     install_opencode.add_argument("--with-playwright-mcp", action="store_true")
     install_opencode.add_argument("--with-chrome-devtools-mcp", action="store_true")
     install_opencode.add_argument("--playwright-headed", action="store_true")
+    install_opencode.add_argument("--playwright-caps-devtools", action="store_true")
+    install_opencode.add_argument("--playwright-caps-storage", action="store_true")
+    install_opencode.add_argument("--playwright-caps-network", action="store_true")
+    install_opencode.add_argument("--playwright-isolated", action="store_true")
+    install_opencode.add_argument("--playwright-output-dir", type=Path)
     install_opencode.add_argument("--chrome-devtools-headed", action="store_true")
     install_opencode.add_argument("--chrome-devtools-slim", action="store_true")
     install_opencode.add_argument("--chrome-devtools-auto-connect", action="store_true")
@@ -43,13 +48,33 @@ def ensure_list(value: Any) -> list[Any]:
     return [value]
 
 
-def build_playwright_mcp_entries(*, playwright_headed: bool) -> dict[str, Any]:
+def build_playwright_mcp_entries(
+    *,
+    playwright_headed: bool,
+    playwright_caps_devtools: bool,
+    playwright_caps_storage: bool,
+    playwright_caps_network: bool,
+    playwright_isolated: bool,
+    playwright_output_dir: Path | None,
+) -> dict[str, Any]:
     package = "@playwright/mcp@latest"
+    caps = ["testing"]
+    if playwright_caps_devtools:
+        caps.append("devtools")
+    if playwright_caps_storage:
+        caps.append("storage")
+    if playwright_caps_network:
+        caps.append("network")
 
     def command(browser: str) -> list[str]:
         args = ["npx", "-y", package, f"--browser={browser}"]
         if not playwright_headed:
             args.append("--headless")
+        args.append(f"--caps={','.join(caps)}")
+        if playwright_isolated:
+            args.append("--isolated")
+        if playwright_output_dir is not None:
+            args.append(f"--output-dir={playwright_output_dir}")
         return args
 
     return {
@@ -93,6 +118,11 @@ def build_opencode_config(
     with_playwright_mcp: bool,
     with_chrome_devtools_mcp: bool,
     playwright_headed: bool,
+    playwright_caps_devtools: bool,
+    playwright_caps_storage: bool,
+    playwright_caps_network: bool,
+    playwright_isolated: bool,
+    playwright_output_dir: Path | None,
     chrome_devtools_headed: bool,
     chrome_devtools_slim: bool,
     chrome_devtools_auto_connect: bool,
@@ -112,7 +142,16 @@ def build_opencode_config(
         if with_context_mode:
             mcp["context-mode"] = {"type": "local", "command": ["context-mode"]}
         if with_playwright_mcp:
-            mcp.update(build_playwright_mcp_entries(playwright_headed=playwright_headed))
+            mcp.update(
+                build_playwright_mcp_entries(
+                    playwright_headed=playwright_headed,
+                    playwright_caps_devtools=playwright_caps_devtools,
+                    playwright_caps_storage=playwright_caps_storage,
+                    playwright_caps_network=playwright_caps_network,
+                    playwright_isolated=playwright_isolated,
+                    playwright_output_dir=playwright_output_dir,
+                )
+            )
         if with_chrome_devtools_mcp:
             mcp.update(
                 build_chrome_devtools_mcp_entry(
@@ -147,6 +186,11 @@ def install_opencode(args: argparse.Namespace) -> int:
         with_playwright_mcp=args.with_playwright_mcp,
         with_chrome_devtools_mcp=args.with_chrome_devtools_mcp,
         playwright_headed=args.playwright_headed,
+        playwright_caps_devtools=args.playwright_caps_devtools,
+        playwright_caps_storage=args.playwright_caps_storage,
+        playwright_caps_network=args.playwright_caps_network,
+        playwright_isolated=args.playwright_isolated,
+        playwright_output_dir=args.playwright_output_dir,
         chrome_devtools_headed=args.chrome_devtools_headed,
         chrome_devtools_slim=args.chrome_devtools_slim,
         chrome_devtools_auto_connect=args.chrome_devtools_auto_connect,

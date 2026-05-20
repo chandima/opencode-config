@@ -1,6 +1,26 @@
 # Playwright MCP integration
 
-This repo can optionally configure the official [`@playwright/mcp`](https://github.com/microsoft/playwright-mcp) server for the supported harnesses.
+This repo can optionally configure the official [`@playwright/mcp`](https://github.com/microsoft/playwright-mcp) servers for the supported harnesses.
+
+## Purpose of this document
+
+This file is the **repo-level integration guide** for Playwright MCP.
+
+Use it for:
+
+- what `setup.sh` installs
+- which managed defaults and flags the repo supports
+- how to verify or remove the MCP wiring
+- how Playwright MCP fits alongside `agent-browser` and `chrome-devtools-mcp`
+
+Do **not** use this file as the main runtime usage guide for the skill itself.
+
+For runtime behavior, recipes, capability guidance, and workflow boundaries, read:
+
+- `skills/playwright-mcp/SKILL.md`
+- `skills/playwright-mcp/references/tool-inventory.md`
+- `skills/playwright-mcp/references/cross-browser-recipes.md`
+- `skills/playwright-mcp/references/capabilities-and-flags.md`
 
 ## Integration model
 
@@ -9,46 +29,56 @@ This repo can optionally configure the official [`@playwright/mcp`](https://gith
 - **GitHub Copilot**: opt-in global setup via `./setup.sh copilot --with-playwright-mcp`
 - **Kiro**: opt-in global setup via `./setup.sh kiro --with-playwright-mcp`
 
-`@playwright/mcp` is treated as an external MCP dependency, not as a skill in `skills/`.
+`@playwright/mcp` is treated as an external MCP dependency, not as the skill itself.
 
-## Why this is separate from agent-browser
+## Browser-skill boundary
 
-`agent-browser` remains the default skill for Chrome/Chromium browser automation.
+| Use case | Preferred skill |
+| --- | --- |
+| Firefox, WebKit/Safari-class, Edge, cross-engine comparison | `playwright-mcp` |
+| Routine Chrome/Chromium automation, screenshots, scraping, simple form flows | `agent-browser` |
+| Live Chrome session, DevTools-selected element, console/network/Lighthouse/performance/memory in Chrome | `chrome-devtools-mcp` |
 
-Playwright MCP is reserved for cases where browser-engine coverage matters:
+This repo intentionally does **not** configure a Playwright Chromium server.
 
-- Firefox
-- WebKit / Safari-class issues
-- Microsoft Edge
-- Cross-browser verification
+## Managed defaults
 
-This repo intentionally configures only non-Chromium Playwright servers so the routing boundary stays clear.
+When `--with-playwright-mcp` is enabled, each repo-managed Playwright server uses:
 
-## What setup does
+```json
+["-y", "@playwright/mcp@latest", "--browser=<engine>", "--headless", "--caps=testing"]
+```
 
-When `--with-playwright-mcp` is enabled:
+This means:
 
-- OpenCode: writes a managed `~/.config/opencode/opencode.json` that preserves the repo config, enables the `playwright-mcp` skill permission, and adds three MCP entries:
-  - `playwright-firefox`
-  - `playwright-webkit`
-  - `playwright-msedge`
-- Codex: merges the same three servers into `~/.codex/config.toml`
-- GitHub Copilot: writes the same three servers into `~/.copilot/mcp-config.json`
-- Kiro: writes the same three servers into `~/.kiro/settings/mcp.json`
+- Firefox / WebKit / Edge servers are headless by default
+- assertion-grade `verify_*` and `browser_generate_locator` tools are enabled by default
+- Playwright-specific artifact, storage, and network helpers stay opt-in
 
-Each server uses `npx -y @playwright/mcp@latest --browser=<engine> --headless` by default.
+The repo-managed setup also supports:
+
+| Setup flag | Effect |
+| --- | --- |
+| `--playwright-headed` | Launch the configured Playwright engines without `--headless` |
+| `--playwright-caps-devtools` | Add `--caps=devtools` for trace/video and related QA helpers |
+| `--playwright-caps-storage` | Add `--caps=storage` for cookie/localStorage/sessionStorage helpers |
+| `--playwright-caps-network` | Add `--caps=network` for request mocking and offline simulation |
+| `--playwright-isolated` | Add `--isolated` for in-memory isolated browser profiles |
+| `--playwright-output-dir PATH` | Add `--output-dir=PATH` for predictable artifact output |
 
 ## Browser mapping
 
 | Browser target | MCP server name | Launch args (default) |
-|---|---|---|
-| Firefox | `playwright-firefox` | `--browser=firefox --headless` |
-| WebKit / Safari-class | `playwright-webkit` | `--browser=webkit --headless` |
-| Microsoft Edge | `playwright-msedge` | `--browser=msedge --headless` |
+| --- | --- | --- |
+| Firefox | `playwright-firefox` | `--browser=firefox --headless --caps=testing` |
+| WebKit / Safari-class | `playwright-webkit` | `--browser=webkit --headless --caps=testing` |
+| Microsoft Edge | `playwright-msedge` | `--browser=msedge --headless --caps=testing` |
 
-One server entry maps to one browser engine. Cross-browser checks should use multiple configured servers rather than trying to switch engines inside one Playwright MCP session.
+One server entry maps to one browser engine. Cross-engine checks should use multiple configured servers rather than trying to switch engines mid-session.
 
 ## Install
+
+Default Playwright MCP setup:
 
 ```bash
 ./setup.sh opencode --with-playwright-mcp
@@ -58,38 +88,57 @@ One server entry maps to one browser engine. Cross-browser checks should use mul
 ./setup.sh all --with-playwright-mcp
 ```
 
-You can combine this with context-mode if needed:
+Visible browsers:
+
+```bash
+./setup.sh all --with-playwright-mcp --playwright-headed
+```
+
+Trace/video helpers:
+
+```bash
+./setup.sh all --with-playwright-mcp --playwright-caps-devtools
+```
+
+Storage helpers:
+
+```bash
+./setup.sh all --with-playwright-mcp --playwright-caps-storage
+```
+
+Network mocking helpers:
+
+```bash
+./setup.sh all --with-playwright-mcp --playwright-caps-network
+```
+
+Isolated profiles with a predictable artifact directory:
+
+```bash
+./setup.sh all --with-playwright-mcp --playwright-isolated --playwright-output-dir "./playwright-artifacts"
+```
+
+You can combine this with other optional integrations if needed:
 
 ```bash
 ./setup.sh all --with-context-mode --with-playwright-mcp
-```
-
-To keep the browser visible for debugging, opt into headed mode explicitly:
-
-```bash
-./setup.sh opencode --with-playwright-mcp --playwright-headed
-./setup.sh codex --with-playwright-mcp --playwright-headed
-./setup.sh copilot --with-playwright-mcp --playwright-headed
-./setup.sh kiro --with-playwright-mcp --playwright-headed
+./setup.sh all --with-playwright-mcp --with-chrome-devtools-mcp
+./setup.sh all --with-context-mode --with-playwright-mcp --with-chrome-devtools-mcp
 ```
 
 ## First-run browser install
 
-The MCP server configuration is installed by `setup.sh`, but the browser engine itself may still need a one-time download. If the first WebKit/Firefox/Edge run says the browser is missing, install the engine once before retrying:
+The MCP server configuration is installed by `setup.sh`, but the browser engine itself may still need a one-time download. If the first run says the engine is missing, install it once before retrying:
 
 ```bash
-npx @playwright/mcp@latest install-browser webkit
 npx @playwright/mcp@latest install-browser firefox
+npx @playwright/mcp@latest install-browser webkit
 npx @playwright/mcp@latest install-browser msedge
 ```
 
-For Safari-class verification specifically, the WebKit install is the important one:
-
-```bash
-npx @playwright/mcp@latest install-browser webkit
-```
-
 ## Verify
+
+Check the server wiring:
 
 ```bash
 grep -n 'playwright-firefox' ~/.config/opencode/opencode.json
@@ -98,57 +147,51 @@ grep -n 'playwright-msedge' ~/.copilot/mcp-config.json
 grep -n 'playwright-firefox' ~/.kiro/settings/mcp.json
 ```
 
-## Performance tips
+Check the default testing capability:
 
-The official Playwright MCP docs expose several levers that matter when runs feel slow:
+```bash
+grep -n 'caps=testing' ~/.config/opencode/opencode.json
+grep -n 'caps=testing' ~/.codex/config.toml
+grep -n 'caps=testing' ~/.copilot/mcp-config.json
+grep -n 'caps=testing' ~/.kiro/settings/mcp.json
+```
 
-1. **Default to headless; switch to headed only when you need to watch the browser**
+If you opted into devtools, storage, or network helpers, verify the config contains:
 
-   Official docs say Playwright MCP is headed by default. This repo intentionally overrides that by configuring the managed MCP servers in headless mode unless you pass `--playwright-headed`. Headless avoids window-management overhead and prevents visible WebKit windows from lingering after agent runs.
+```bash
+grep -n 'caps=testing,devtools' ~/.config/opencode/opencode.json
+grep -n 'caps=testing,storage' ~/.codex/config.toml
+grep -n 'caps=testing,network' ~/.copilot/mcp-config.json
+```
 
-   Example server args:
+If you opted into isolated mode or a custom output directory, verify the config contains:
 
-   ```json
-   ["-y", "@playwright/mcp@latest", "--browser=webkit", "--headless"]
-   ```
+```bash
+grep -n 'isolated' ~/.config/opencode/opencode.json
+grep -n 'output-dir' ~/.config/opencode/opencode.json
+```
 
-2. **Preinstall browsers once**
+## Runtime guidance lives in the skill
 
-   First-run downloads are expensive. Installing the needed engine ahead of time removes that startup penalty.
+Once the MCP servers are installed, the runtime guidance is intentionally kept with the skill:
 
-3. **Use a standalone warm server for repeated runs**
+- `skills/playwright-mcp/SKILL.md` explains **when** to load this skill
+- `skills/playwright-mcp/SKILL.md` and its references explain **how** to use it effectively
+- `docs/playwright-mcp.md` stays focused on **integration, defaults, verification, and removal**
 
-   Official docs support starting Playwright MCP separately with HTTP transport:
+## Upstream/manual-only capabilities
 
-   ```bash
-   npx @playwright/mcp@latest --browser=webkit --headless --port 8931
-   ```
+The upstream Playwright MCP server also supports flags such as:
 
-   Then point your client at:
+- `--device`
+- `--storage-state`
+- `--init-page`
+- `--init-script`
+- `--extension`
+- `--cdp-endpoint`
+- `--save-session`
 
-   ```json
-   {
-     "mcpServers": {
-       "playwright-webkit": {
-         "url": "http://localhost:8931/mcp"
-       }
-     }
-   }
-   ```
-
-   This avoids repeated `npx` + server startup overhead between sessions. The official docs also support `--shared-browser-context` when multiple HTTP clients should reuse one context.
-
-4. **Prefer direct routes and batched assertions**
-
-   For agent prompts, deep-link straight to the page under test when possible and prefer one compact `browser_run_code_unsafe` assertion over many small click/snapshot turns.
-
-5. **Avoid extra evidence collection unless needed**
-
-   Screenshots, full snapshots, console dumps, and network captures are best treated as debugging follow-ups, not the default for every happy-path verification.
-
-6. **Reuse profile state intentionally**
-
-   Persistent profiles or a custom `--user-data-dir` can avoid repeated setup/login work. If parallel clients conflict, official docs recommend `--isolated` or distinct profile directories instead.
+Those capabilities are **not** part of the repo-managed default setup. Read `skills/playwright-mcp/references/capabilities-and-flags.md` and `skills/playwright-mcp/references/cdp-and-extension.md` before treating them as available.
 
 ## Remove
 
@@ -167,6 +210,6 @@ Removal is conservative:
 
 ## Limitations
 
-- Playwright MCP is an MCP server entrypoint, not a lightweight browser CLI like `agent-browser`.
-- WebKit is the closest Playwright engine for Safari-class debugging, but it is not identical to every Safari environment detail.
-- This repo does not configure Playwright Chromium by default; Chrome/Chromium automation should continue to use `agent-browser`.
+- This repo does not configure a Playwright Chromium server; Chrome/Chromium automation still belongs to `agent-browser`.
+- WebKit is the closest Safari-class engine available here, but it is not identical to every Safari environment detail.
+- Gated tools such as trace/video, storage helpers, and network mocking do not exist unless the matching repo-managed opt-in flag was used.

@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 show_help() {
     cat << 'EOF'
-Usage: ./setup.sh [TARGET] [--remove] [--with-context-mode] [--with-playwright-mcp] [--playwright-headed] [--with-chrome-devtools-mcp] [--chrome-devtools-headed] [--chrome-devtools-slim] [--with-all-integrations] [--chrome-devtools-auto-connect]
+Usage: ./setup.sh [TARGET] [--remove] [--with-context-mode] [--with-playwright-mcp] [--playwright-headed] [--playwright-caps-devtools] [--playwright-caps-storage] [--playwright-caps-network] [--playwright-isolated] [--playwright-output-dir PATH] [--with-chrome-devtools-mcp] [--chrome-devtools-headed] [--chrome-devtools-slim] [--with-all-integrations] [--chrome-devtools-auto-connect]
 
 Install OpenCode/Codex/Copilot/Kiro configuration by symlinking skills and generating prompt files.
 
@@ -22,6 +22,11 @@ TARGETS:
     --with-context-mode  Install/configure context-mode where supported
     --with-playwright-mcp  Install/configure Playwright MCP where supported
     --playwright-headed  Configure Playwright MCP servers in headed mode (default is headless)
+    --playwright-caps-devtools  Enable Playwright trace/video and related devtools helpers
+    --playwright-caps-storage  Enable Playwright cookie/localStorage/sessionStorage helpers
+    --playwright-caps-network  Enable Playwright network mocking/offline helpers
+    --playwright-isolated  Run Playwright MCP with in-memory isolated browser profiles
+    --playwright-output-dir PATH  Write Playwright artifacts to a predictable output directory
     --with-chrome-devtools-mcp  Install/configure Chrome DevTools MCP where supported
     --chrome-devtools-headed  Configure Chrome DevTools MCP in headed mode when it launches its own browser (default is headless unless auto-connect is enabled)
     --chrome-devtools-slim  Configure Chrome DevTools MCP with the slim 3-tool surface for narrow UI-verification workflows
@@ -88,6 +93,30 @@ require_python3() {
     fi
 }
 
+json_escape() {
+    local value="$1"
+    value=${value//\\/\\\\}
+    value=${value//\"/\\\"}
+    value=${value//$'\n'/\\n}
+    value=${value//$'\r'/\\r}
+    value=${value//$'\t'/\\t}
+    printf '%s' "$value"
+}
+
+json_array_from_args() {
+    local first=1
+    local item
+    printf '['
+    for item in "$@"; do
+        if [[ "$first" -eq 0 ]]; then
+            printf ', '
+        fi
+        first=0
+        printf '"%s"' "$(json_escape "$item")"
+    done
+    printf ']'
+}
+
 opencode_config_root() {
     echo "$HOME/.config/opencode"
 }
@@ -124,22 +153,51 @@ codex_chrome_devtools_mcp_state_file() {
     echo "$(codex_config_root)/.chrome-devtools-mcp-state.json"
 }
 
+playwright_caps_csv() {
+    local caps=("testing")
+    if [[ "$PLAYWRIGHT_CAPS_DEVTOOLS" -eq 1 ]]; then
+        caps+=("devtools")
+    fi
+    if [[ "$PLAYWRIGHT_CAPS_STORAGE" -eq 1 ]]; then
+        caps+=("storage")
+    fi
+    if [[ "$PLAYWRIGHT_CAPS_NETWORK" -eq 1 ]]; then
+        caps+=("network")
+    fi
+
+    local IFS=,
+    printf '%s' "${caps[*]}"
+}
+
+playwright_args() {
+    local browser="$1"
+    local args=("-y" "@playwright/mcp@latest" "--browser=$browser")
+
+    if [[ "$PLAYWRIGHT_HEADED" -eq 0 ]]; then
+        args+=("--headless")
+    fi
+
+    args+=("--caps=$(playwright_caps_csv)")
+
+    if [[ "$PLAYWRIGHT_ISOLATED" -eq 1 ]]; then
+        args+=("--isolated")
+    fi
+
+    if [[ -n "$PLAYWRIGHT_OUTPUT_DIR" ]]; then
+        args+=("--output-dir=$PLAYWRIGHT_OUTPUT_DIR")
+    fi
+
+    json_array_from_args "${args[@]}"
+}
+
 playwright_args_json() {
     local browser="$1"
-    if [[ "$PLAYWRIGHT_HEADED" -eq 1 ]]; then
-        printf '["-y", "@playwright/mcp@latest", "--browser=%s"]' "$browser"
-    else
-        printf '["-y", "@playwright/mcp@latest", "--browser=%s", "--headless"]' "$browser"
-    fi
+    playwright_args "$browser"
 }
 
 playwright_args_toml() {
     local browser="$1"
-    if [[ "$PLAYWRIGHT_HEADED" -eq 1 ]]; then
-        printf '["-y", "@playwright/mcp@latest", "--browser=%s"]' "$browser"
-    else
-        printf '["-y", "@playwright/mcp@latest", "--browser=%s", "--headless"]' "$browser"
-    fi
+    playwright_args "$browser"
 }
 
 chrome_devtools_args() {
@@ -199,6 +257,21 @@ install_managed_opencode_config() {
         overlay_args+=(--with-playwright-mcp)
         if [[ "$PLAYWRIGHT_HEADED" -eq 1 ]]; then
             overlay_args+=(--playwright-headed)
+        fi
+        if [[ "$PLAYWRIGHT_CAPS_DEVTOOLS" -eq 1 ]]; then
+            overlay_args+=(--playwright-caps-devtools)
+        fi
+        if [[ "$PLAYWRIGHT_CAPS_STORAGE" -eq 1 ]]; then
+            overlay_args+=(--playwright-caps-storage)
+        fi
+        if [[ "$PLAYWRIGHT_CAPS_NETWORK" -eq 1 ]]; then
+            overlay_args+=(--playwright-caps-network)
+        fi
+        if [[ "$PLAYWRIGHT_ISOLATED" -eq 1 ]]; then
+            overlay_args+=(--playwright-isolated)
+        fi
+        if [[ -n "$PLAYWRIGHT_OUTPUT_DIR" ]]; then
+            overlay_args+=(--playwright-output-dir "$PLAYWRIGHT_OUTPUT_DIR")
         fi
     fi
     if [[ "$WITH_CHROME_DEVTOOLS_MCP" -eq 1 ]]; then
@@ -1440,18 +1513,24 @@ install_copilot_playwright_mcp_config() {
 const fs = require('fs');
 const cfg = JSON.parse(fs.readFileSync('$config_file', 'utf8'));
 cfg.mcpServers = cfg.mcpServers || {};
-for (const [name, browser] of Object.entries({
-  'playwright-firefox': 'firefox',
-  'playwright-webkit': 'webkit',
-  'playwright-msedge': 'msedge',
-})) {
-  cfg.mcpServers[name] = {
-    type: 'local',
-    command: 'npx',
-    tools: ['*'],
-    args: ['-y', '@playwright/mcp@latest', '--browser=' + browser$( [[ "$PLAYWRIGHT_HEADED" -eq 0 ]] && printf ", '--headless'" )],
-  };
-}
+cfg.mcpServers['playwright-firefox'] = {
+  type: 'local',
+  command: 'npx',
+  tools: ['*'],
+  args: $(playwright_args_json firefox),
+};
+cfg.mcpServers['playwright-webkit'] = {
+  type: 'local',
+  command: 'npx',
+  tools: ['*'],
+  args: $(playwright_args_json webkit),
+};
+cfg.mcpServers['playwright-msedge'] = {
+  type: 'local',
+  command: 'npx',
+  tools: ['*'],
+  args: $(playwright_args_json msedge),
+};
 fs.writeFileSync('$config_file', JSON.stringify(cfg, null, 2) + '\n');
 "
     else
@@ -1873,6 +1952,11 @@ SKILLS_ONLY=0
 WITH_CONTEXT_MODE=0
 WITH_PLAYWRIGHT_MCP=0
 PLAYWRIGHT_HEADED=0
+PLAYWRIGHT_CAPS_DEVTOOLS=0
+PLAYWRIGHT_CAPS_STORAGE=0
+PLAYWRIGHT_CAPS_NETWORK=0
+PLAYWRIGHT_ISOLATED=0
+PLAYWRIGHT_OUTPUT_DIR=""
 WITH_CHROME_DEVTOOLS_MCP=0
 CHROME_DEVTOOLS_HEADED=0
 CHROME_DEVTOOLS_SLIM=0
@@ -1899,6 +1983,28 @@ while [[ $# -gt 0 ]]; do
             ;;
         --playwright-headed)
             PLAYWRIGHT_HEADED=1
+            ;;
+        --playwright-caps-devtools)
+            PLAYWRIGHT_CAPS_DEVTOOLS=1
+            ;;
+        --playwright-caps-storage)
+            PLAYWRIGHT_CAPS_STORAGE=1
+            ;;
+        --playwright-caps-network)
+            PLAYWRIGHT_CAPS_NETWORK=1
+            ;;
+        --playwright-isolated)
+            PLAYWRIGHT_ISOLATED=1
+            ;;
+        --playwright-output-dir)
+            shift
+            if [[ $# -eq 0 ]]; then
+                echo "Error: --playwright-output-dir requires a path."
+                echo ""
+                show_help
+                exit 1
+            fi
+            PLAYWRIGHT_OUTPUT_DIR="$1"
             ;;
         --with-chrome-devtools-mcp)
             WITH_CHROME_DEVTOOLS_MCP=1
@@ -1942,6 +2048,15 @@ while [[ $# -gt 0 ]]; do
     esac
     shift
 done
+
+if [[ "$WITH_PLAYWRIGHT_MCP" -eq 0 ]]; then
+    if [[ "$PLAYWRIGHT_HEADED" -eq 1 || "$PLAYWRIGHT_CAPS_DEVTOOLS" -eq 1 || "$PLAYWRIGHT_CAPS_STORAGE" -eq 1 || "$PLAYWRIGHT_CAPS_NETWORK" -eq 1 || "$PLAYWRIGHT_ISOLATED" -eq 1 || -n "$PLAYWRIGHT_OUTPUT_DIR" ]]; then
+        echo "Error: Playwright-specific flags require --with-playwright-mcp."
+        echo ""
+        show_help
+        exit 1
+    fi
+fi
 
 ensure_context_mode_runtime
 
