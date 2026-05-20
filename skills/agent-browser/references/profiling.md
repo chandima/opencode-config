@@ -1,6 +1,8 @@
-# Profiling
+# Scripted trace profiling
 
-Capture Chrome DevTools performance profiles during browser automation for performance analysis.
+Use this only for scripted Chromium trace capture during automation runs.
+
+If the user wants Chrome DevTools performance analysis, Lighthouse, or interactive investigation in their current Chrome context, use `chrome-devtools-mcp` instead.
 
 **Related**: [commands.md](commands.md) for full command reference, [SKILL.md](../SKILL.md) for quick start.
 

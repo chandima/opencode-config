@@ -1,6 +1,6 @@
 ---
 name: agent-browser
-description: "Browser automation skill for Chrome/Chromium using agent-browser. Use when the user needs to open sites, click elements, fill forms, take screenshots, extract page data, test web apps, log in, or automate browser flows in Chrome/Chromium. Triggers include requests to open a website, submit a form, click a button, take a screenshot, scrape a JS-rendered page, or interact with a site programmatically. Do not use for Chrome DevTools-first debugging of a live Chrome session, selected-element inspection, console/network/Lighthouse/memory analysis (use chrome-devtools-mcp), Firefox/WebKit/Edge or cross-browser verification (use playwright-mcp), API-only testing without a browser, direct HTTP requests, or static scraping that does not need JavaScript rendering."
+description: "Browser automation skill for Chrome/Chromium using agent-browser. Use when the user needs to open sites, click elements, fill forms, take screenshots, extract page data, test web apps, log in, or automate browser flows in Chrome/Chromium. Triggers include requests to open a website, submit a form, click a button, take a screenshot, scrape a JS-rendered page, or interact with a site programmatically. Do not use for Chrome DevTools-first debugging of a live Chrome session, selected-element inspection, console/network/Lighthouse/performance/memory analysis (use chrome-devtools-mcp), Firefox/WebKit/Edge or cross-browser verification (use playwright-mcp), API-only testing without a browser, direct HTTP requests, or static scraping that does not need JavaScript rendering."
 allowed-tools: Bash(npx agent-browser:*), Bash(agent-browser:*)
 context: fork
 compatibility: "OpenCode, Codex CLI, GitHub Copilot. Requires npx and agent-browser CLI."
@@ -84,11 +84,13 @@ echo '[["open", "https://example.com"], ["snapshot", "-i"], ["click", "@e1"]]' |
 
 ## Handling Authentication
 
-For quick tasks, connect to the user's running Chrome (`--auto-connect`) or use a persistent profile (`--profile`). For recurring automation, use the auth vault or session names to persist credentials securely.
+For automation that needs saved auth, prefer a persistent profile (`--profile`), saved state, or session names. Use `--auto-connect` only to import auth state into agent-browser when that is the quickest setup.
 
-Read `references/auth-patterns.md` if the target site requires authentication or login. This covers state files, profiles, session names, auth vault, and OAuth hints.
+If the user wants validation in their current live Chrome tab or existing Chrome DevTools context, defer to `chrome-devtools-mcp`.
 
-See also [references/authentication.md](references/authentication.md) for OAuth, 2FA, cookie-based auth, and token refresh patterns.
+Read `references/auth-patterns.md` first when the target site requires authentication or login. It covers state files, profiles, session names, and auth-vault workflows.
+
+Read [references/authentication.md](references/authentication.md) only for OAuth, 2FA, cookie-based auth, and token refresh patterns.
 
 ## Essential Commands
 
@@ -249,30 +251,33 @@ agent-browser snapshot -i            # MUST re-snapshot
 agent-browser click @e1              # Use new refs
 ```
 
-## Security
-
-By default, agent-browser imposes no restrictions. For AI agent workflows, consider enabling content boundaries, domain allowlists, and action policies.
-
-Read `references/security.md` for content boundary configuration, domain allowlists, action policies, and output limits.
-
-## Advanced Features
+## Additional UI-testing Features
 
 Read `references/advanced.md` for diffing, session management, annotated screenshots, semantic locators, JavaScript evaluation, configuration files, browser engine selection, and more.
 
-## Deep-Dive Documentation
+## Core UI-testing References
 
-| Reference                                                            | When to Use                                                          |
-| -------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| [references/commands.md](references/commands.md)                     | Full command reference with all options                               |
-| [references/snapshot-refs.md](references/snapshot-refs.md)           | Ref lifecycle, invalidation rules, troubleshooting                   |
-| [references/session-management.md](references/session-management.md) | Parallel sessions, state persistence, concurrent scraping            |
-| [references/authentication.md](references/authentication.md)         | Login flows, OAuth, 2FA handling, state reuse                        |
-| [references/auth-patterns.md](references/auth-patterns.md)           | Authentication variants: state files, profiles, sessions, auth vault |
-| [references/security.md](references/security.md)                     | Content boundaries, domain allowlists, action policies               |
-| [references/advanced.md](references/advanced.md)                     | Diffing, JS eval, browser engines, iOS, and more                     |
-| [references/video-recording.md](references/video-recording.md)       | Recording workflows for debugging and documentation                  |
-| [references/profiling.md](references/profiling.md)                   | Chrome DevTools profiling for performance analysis                   |
-| [references/proxy-support.md](references/proxy-support.md)           | Proxy configuration, geo-testing, rotating proxies                   |
+Start with these when the quickstart is not enough:
+
+| Reference                                                  | When to Use |
+| ---------------------------------------------------------- | ----------- |
+| [references/commands.md](references/commands.md)           | Full command reference once the core workflow is not enough |
+| [references/snapshot-refs.md](references/snapshot-refs.md) | Ref lifecycle, invalidation rules, and snapshot troubleshooting |
+| [references/auth-patterns.md](references/auth-patterns.md) | Login/session reuse choices for ordinary UI automation |
+| [references/advanced.md](references/advanced.md)           | Annotated screenshots, diffing, semantic locators, and JS evaluation |
+
+## Specialized / Non-default Workflows
+
+Open these only when the task explicitly needs them:
+
+| Reference                                                            | When to Use |
+| -------------------------------------------------------------------- | ----------- |
+| [references/authentication.md](references/authentication.md)         | OAuth, 2FA, cookie-based auth, and token refresh patterns |
+| [references/session-management.md](references/session-management.md) | Parallel named sessions, explicit cleanup, and state persistence |
+| [references/security.md](references/security.md)                     | Content boundaries and action policies for constrained agent deployments |
+| [references/video-recording.md](references/video-recording.md)       | Recording flows when the user explicitly wants video evidence |
+| [references/profiling.md](references/profiling.md)                   | Scripted Chromium trace capture only; use `chrome-devtools-mcp` for DevTools performance work |
+| [references/proxy-support.md](references/proxy-support.md)           | Proxy configuration, geo-testing, and rotating-proxy setups |
 
 ## Ready-to-Use Templates
 
